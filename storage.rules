@@ -1,0 +1,62 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is a teacher
+    function isTeacher() {
+      return isAuthenticated() && 
+             firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    }
+    
+    // Storage structure: {teacherUid}/{grade}/{lessonId}/presentation.{ext}
+    // OR: {teacherUid}/{grade}/{fileName} (for mock files)
+    // Teachers can upload files to their own folder structure
+    
+    // Allow reading files in the lesson structure: {teacherUid}/{grade}/{lessonId}/{fileName}
+    match /{teacherUid}/{grade}/{lessonId}/{fileName} {
+      // Allow read if user is authenticated
+      allow read: if isAuthenticated();
+      
+      // Allow write (upload/delete) if:
+      // 1. User is authenticated
+      // 2. The teacherUid matches the authenticated user's UID
+      // 3. User is a teacher
+      // 4. File name is "presentation.pdf" or "presentation.pptx" or "presentation.ppt"
+      allow write: if isAuthenticated() && 
+                      request.auth.uid == teacherUid &&
+                      isTeacher() &&
+                      (fileName == "presentation.pdf" || 
+                       fileName == "presentation.pptx" || 
+                       fileName == "presentation.ppt");
+      
+      // Allow delete if user owns the file and is a teacher
+      allow delete: if isAuthenticated() && 
+                       request.auth.uid == teacherUid &&
+                       isTeacher();
+    }
+    
+    // Allow reading files directly in grade folder: {teacherUid}/{grade}/{fileName}
+    // This is for mock/test files
+    match /{teacherUid}/{grade}/{fileName} {
+      // Allow read if user is authenticated
+      allow read: if isAuthenticated();
+      
+      // Allow write/delete only if user owns the file and is a teacher
+      allow write, delete: if isAuthenticated() && 
+                              request.auth.uid == teacherUid &&
+                              isTeacher();
+    }
+    
+    // Deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

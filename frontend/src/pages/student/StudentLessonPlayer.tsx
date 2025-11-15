@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, X, CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { doc, updateDoc, arrayUnion, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc, arrayUnion, serverTimestamp, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 
 export default function StudentLessonPlayer() {
@@ -37,6 +37,37 @@ export default function StudentLessonPlayer() {
       navigate("/login");
     }
   }, [user, authLoading, navigate]);
+
+  // Mark lesson as completed when student views it
+  useEffect(() => {
+    const markLessonAsCompleted = async () => {
+      if (!user || !lessonId) return;
+
+      try {
+        const userDocRef = doc(db, "users", user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data();
+          const completedLessons = userData.completedLessons || [];
+          
+          // Only update if lesson is not already marked as completed
+          if (!completedLessons.includes(lessonId)) {
+            await updateDoc(userDocRef, {
+              completedLessons: arrayUnion(lessonId),
+              updatedAt: serverTimestamp(),
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error marking lesson as completed:", error);
+      }
+    };
+
+    if (user && lessonId) {
+      markLessonAsCompleted();
+    }
+  }, [user, lessonId]);
 
   if (authLoading) {
     return (

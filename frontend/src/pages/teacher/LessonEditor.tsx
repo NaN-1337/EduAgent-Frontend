@@ -19,10 +19,12 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/lib/translations";
+import { convertLessonFromStorage, gradeToStorage, teachingFieldToStorage } from "@/lib/dataConverters";
 import { CheckCircle2, AlertTriangle, FileCheck, Trash2, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/firebaseConfig";
-import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 
 interface LessonData {
   id: string;
@@ -46,7 +48,7 @@ export default function LessonEditor() {
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
   const { user, userData, loading } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [loadingLesson, setLoadingLesson] = useState(true);
@@ -121,11 +123,17 @@ export default function LessonEditor() {
           }
         }
 
+        // Convert from storage format to display format
+        const converted = convertLessonFromStorage(data, {
+          grades: translations[language].grades,
+          teachingFields: translations[language].teachingFields,
+        });
+        
         const lessonData: LessonData = {
           id: lessonDocSnap.id,
-          title: data.title || "Untitled Lesson",
-          subject: data.subject || "Unknown",
-          grade: data.grade || "Unknown",
+          title: converted.title || "Untitled Lesson",
+          subject: converted.subject || "Unknown",
+          grade: converted.grade || "Unknown",
           duration: data.duration || "",
           status: data.status || "draft",
           studentSummary: data.studentSummary || "",
@@ -158,21 +166,34 @@ export default function LessonEditor() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (newStatus?: "draft" | "fact-check pending" | "ready") => {
     if (!lesson || !lessonId) return;
     
     setIsSaving(true);
     try {
       const lessonDocRef = doc(db, "lessons", lessonId);
+      const statusToSave = newStatus || lesson.status;
+      
+      // Convert grade and subject back to storage format before saving
+      const gradeStorage = gradeToStorage(lesson.grade);
+      const subjectStorage = teachingFieldToStorage(lesson.subject);
+      
       await updateDoc(lessonDocRef, {
         title: lesson.title,
-        status: lesson.status,
+        grade: gradeStorage !== null ? gradeStorage : lesson.grade,
+        subject: subjectStorage || lesson.subject,
+        status: statusToSave,
         studentSummary: lesson.studentSummary,
         slides: lesson.slides,
         teacherGuidelines: lesson.teacherGuidelines,
-        updatedAt: new Date(),
-        lastModified: new Date(),
+        updatedAt: serverTimestamp(),
+        lastModified: serverTimestamp(),
       });
+      
+      // Update local state with the saved status
+      if (newStatus) {
+        setLesson({ ...lesson, status: newStatus });
+      }
     } catch (error) {
       console.error("Error saving lesson:", error);
     } finally {
@@ -234,7 +255,7 @@ export default function LessonEditor() {
                   placeholder={t.teacher.lessonEditor.placeholder}
                 />
                 <p className="text-sm text-muted-foreground mt-1">
-                  {lesson.subject} · {lesson.grade} · {lesson.duration}
+                  {lesson.subject} · {translations[language].grades[lesson.grade as keyof typeof translations.ro.grades] || lesson.grade} · {lesson.duration}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -250,11 +271,11 @@ export default function LessonEditor() {
                   {t.teacher.lessonEditor.runFactCheck}
                 </Button>
                 <Button
-                  onClick={() => {
+                  onClick={async () => {
+                    await handleSave("ready");
                     handleStatusChange("ready");
-                    handleSave();
                   }}
-                  disabled={lesson.status === "ready"}
+                  disabled={lesson.status === "ready" || isSaving}
                   size="sm"
                 >
                   {t.teacher.lessonEditor.markAsReady}
@@ -320,11 +341,11 @@ export default function LessonEditor() {
                 {isSaving ? t.teacher.lessonEditor.saving : t.teacher.lessonEditor.saveDraft}
               </Button>
               <Button
-                onClick={() => {
+                onClick={async () => {
+                  await handleSave("ready");
                   handleStatusChange("ready");
-                  handleSave();
                 }}
-                disabled={lesson.status === "ready"}
+                disabled={lesson.status === "ready" || isSaving}
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 {t.teacher.lessonEditor.markReadyForStudents}

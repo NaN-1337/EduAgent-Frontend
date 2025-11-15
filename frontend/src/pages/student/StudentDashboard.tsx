@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getMockLessonsList, translations } from "@/lib/translations";
-import { BookOpen, Users, ArrowRight, GraduationCap, User } from "lucide-react";
+import { translations } from "@/lib/translations";
+import { convertLessonFromStorage, gradeToStorage, teachingFieldFromStorage } from "@/lib/dataConverters";
+import { BookOpen, Users, ArrowRight, GraduationCap, User, CheckCircle2 } from "lucide-react";
 import { db } from "@/lib/firebaseConfig";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Teacher {
@@ -21,15 +22,26 @@ interface Teacher {
   photoURL?: string;
 }
 
+interface Lesson {
+  id: string;
+  title: string;
+  subject: string;
+  grade: string;
+  teacherName: string;
+  teacherId: string;
+  createdAt?: any;
+  lastModified?: any;
+  isCompleted?: boolean;
+}
+
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const { user, userData, loading } = useAuth();
   const { t, language } = useLanguage();
   const [enrolledTeachers, setEnrolledTeachers] = useState<Teacher[]>([]);
   const [loadingTeachers, setLoadingTeachers] = useState(true);
-  
-  // Get mock lessons based on current language
-  const myLessons = useMemo(() => getMockLessonsList(language), [language]);
+  const [myLessons, setMyLessons] = useState<Lesson[]>([]);
+  const [loadingLessons, setLoadingLessons] = useState(true);
 
   useEffect(() => {
     if (!loading && (!user || userData?.role !== "student")) {
@@ -65,7 +77,12 @@ export default function StudentDashboard() {
               uid: data.uid,
               name: data.name,
               email: data.email,
-              teachingField: data.teachingField,
+              teachingField: data.teachingField 
+                ? (() => {
+                    const englishKey = teachingFieldFromStorage(data.teachingField);
+                    return englishKey ? (translations[language].teachingFields[englishKey] || data.teachingField) : data.teachingField;
+                  })()
+                : undefined,
               teacherCode: data.teacherCode,
               photoURL: data.photoURL,
             } as Teacher;
@@ -85,6 +102,136 @@ export default function StudentDashboard() {
 
     if (userData && userData.role === "student") {
       fetchTeachers();
+    }
+  }, [userData]);
+
+  useEffect(() => {
+    const fetchLessons = async () => {
+      if (!userData || userData.role !== "student" || !userData.enrolledTeachers || !userData.grade) {
+        setLoadingLessons(false);
+        return;
+      }
+
+      try {
+        setLoadingLessons(true);
+        const enrolledTeacherIds = userData.enrolledTeachers;
+        // Convert student grade to integer for querying (storage format)
+        const studentGradeStorage = gradeToStorage(userData.grade || "");
+        const studentGrade = studentGradeStorage !== null ? studentGradeStorage : userData.grade;
+
+        if (enrolledTeacherIds.length === 0) {
+          setMyLessons([]);
+          setLoadingLessons(false);
+          return;
+        }
+
+        // Fetch lessons for enrolled teachers that match the student's grade and are ready
+        const lessonsRef = collection(db, "lessons");
+        const lessonsData: Lesson[] = [];
+        const teacherMap = new Map<string, string>(); // Map teacherId to teacher name
+
+        // First, fetch all teacher names
+        const teacherPromises = enrolledTeacherIds.map(async (teacherId) => {
+          const teacherDocRef = doc(db, "users", teacherId);
+          const teacherDocSnap = await getDoc(teacherDocRef);
+          if (teacherDocSnap.exists()) {
+            const data = teacherDocSnap.data();
+            teacherMap.set(teacherId, data.name || "Unknown Teacher");
+          }
+        });
+        await Promise.all(teacherPromises);
+
+        // Query lessons for each enrolled teacher
+        const lessonPromises = enrolledTeacherIds.map(async (teacherId) => {
+          try {
+            const q = query(
+              lessonsRef,
+              where("teacherId", "==", teacherId),
+              where("grade", "==", studentGrade),
+              where("status", "==", "ready"),
+              orderBy("lastModified", "desc")
+            );
+            const querySnapshot = await getDocs(q);
+            
+            querySnapshot.forEach((doc) => {
+              const data = doc.data();
+              // Convert from storage format to display format
+              const converted = convertLessonFromStorage(data, {
+                grades: translations[language].grades,
+                teachingFields: translations[language].teachingFields,
+              });
+              lessonsData.push({
+                id: doc.id,
+                title: converted.title || "Untitled Lesson",
+                subject: converted.subject || "Unknown",
+                grade: converted.grade || "Unknown",
+                teacherName: teacherMap.get(teacherId) || "Unknown Teacher",
+                teacherId: teacherId,
+                createdAt: data.createdAt,
+                lastModified: data.lastModified,
+              });
+            });
+          } catch (error) {
+            // If orderBy fails, try without it
+            try {
+              const q = query(
+                lessonsRef,
+                where("teacherId", "==", teacherId),
+                where("grade", "==", studentGrade),
+                where("status", "==", "ready")
+              );
+              const querySnapshot = await getDocs(q);
+              
+              querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                // Convert from storage format to display format
+                const converted = convertLessonFromStorage(data, {
+                  grades: translations[language].grades,
+                  teachingFields: translations[language].teachingFields,
+                });
+                lessonsData.push({
+                  id: doc.id,
+                  title: converted.title || "Untitled Lesson",
+                  subject: converted.subject || "Unknown",
+                  grade: converted.grade || "Unknown",
+                  teacherName: teacherMap.get(teacherId) || "Unknown Teacher",
+                  teacherId: teacherId,
+                  createdAt: data.createdAt,
+                  lastModified: data.lastModified,
+                });
+              });
+            } catch (fallbackError) {
+              console.error(`Error fetching lessons for teacher ${teacherId}:`, fallbackError);
+            }
+          }
+        });
+
+        await Promise.all(lessonPromises);
+
+        // Sort by lastModified (most recent first)
+        lessonsData.sort((a, b) => {
+          const dateA = a.lastModified?.toDate?.() || a.createdAt?.toDate?.() || new Date(0);
+          const dateB = b.lastModified?.toDate?.() || b.createdAt?.toDate?.() || new Date(0);
+          return dateB.getTime() - dateA.getTime();
+        });
+
+        // Check which lessons are completed
+        const completedLessons = userData.completedLessons || [];
+        const lessonsWithCompletion = lessonsData.map((lesson) => ({
+          ...lesson,
+          isCompleted: completedLessons.includes(lesson.id),
+        }));
+
+        setMyLessons(lessonsWithCompletion);
+      } catch (error) {
+        console.error("Error fetching lessons:", error);
+      } finally {
+        setLoadingLessons(false);
+      }
+    };
+
+    if (userData && userData.role === "student" && userData.enrolledTeachers && userData.grade) {
+      fetchLessons();
     }
   }, [userData]);
 
@@ -229,7 +376,11 @@ export default function StudentDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {myLessons.length === 0 ? (
+              {loadingLessons ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                </div>
+              ) : myLessons.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">
                   {t.student.dashboard.myLessons.emptyState}
                 </p>
@@ -250,11 +401,19 @@ export default function StudentDashboard() {
                     aria-label={t.student.dashboard.myLessons.lessonAriaLabel(lesson.title)}
                   >
                     <div className="flex-1 space-y-1">
-                      <h3 className="font-semibold text-lg">{lesson.title}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-lg">{lesson.title}</h3>
+                        {lesson.isCompleted && (
+                          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            {t.student.dashboard.myLessons.completed || "Completed"}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                         <span>{lesson.subject}</span>
                         <span>·</span>
-                        <span>{lesson.grade}</span>
+                        <span>{translations[language].grades[lesson.grade as keyof typeof translations.ro.grades] || lesson.grade}</span>
                         <span>·</span>
                         <span>{lesson.teacherName}</span>
                       </div>

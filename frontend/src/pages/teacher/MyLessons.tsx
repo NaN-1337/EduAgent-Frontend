@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/lib/translations";
+import { convertLessonFromStorage } from "@/lib/dataConverters";
 import { db } from "@/lib/firebaseConfig";
 import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { BookOpen, GraduationCap, ArrowRight, Plus } from "lucide-react";
@@ -58,11 +60,16 @@ export default function MyLessons() {
 
         querySnapshot.forEach((doc) => {
           const data = doc.data();
+          // Convert from storage format to display format
+          const converted = convertLessonFromStorage(data, {
+            grades: translations[language].grades,
+            teachingFields: translations[language].teachingFields,
+          });
           lessonsData.push({
             uid: doc.id,
-            title: data.title || "Untitled Lesson",
-            grade: data.grade || "Unknown",
-            subject: data.subject || "Unknown",
+            title: converted.title || "Untitled Lesson",
+            grade: converted.grade || "Unknown",
+            subject: converted.subject || "Unknown",
             duration: data.duration,
             status: data.status || "draft",
             lastModified: data.lastModified,
@@ -94,11 +101,16 @@ export default function MyLessons() {
 
           querySnapshot.forEach((doc) => {
             const data = doc.data();
+            // Convert from storage format to display format
+            const converted = convertLessonFromStorage(data, {
+              grades: translations[language].grades,
+              teachingFields: translations[language].teachingFields,
+            });
             lessonsData.push({
               uid: doc.id,
-              title: data.title || "Untitled Lesson",
-              grade: data.grade || "Unknown",
-              subject: data.subject || "Unknown",
+              title: converted.title || "Untitled Lesson",
+              grade: converted.grade || "Unknown",
+              subject: converted.subject || "Unknown",
               duration: data.duration,
               status: data.status || "draft",
               lastModified: data.lastModified,
@@ -230,7 +242,7 @@ export default function MyLessons() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <GraduationCap className="h-5 w-5 text-primary" />
-                      {grade}
+                      {translations[language].grades[grade as keyof typeof translations.ro.grades] || grade}
                       <span className="text-base font-normal text-muted-foreground">
                         ({lessonsByGrade[grade].length} {lessonsByGrade[grade].length === 1 ? t.teacher.myLessons.lesson : t.teacher.myLessons.lessons})
                       </span>

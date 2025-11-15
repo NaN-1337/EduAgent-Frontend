@@ -4,6 +4,8 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/lib/translations";
+import { gradeFromStorage } from "@/lib/dataConverters";
 import { db } from "@/lib/firebaseConfig";
 import { doc, getDoc, getDocs, collection, query, where } from "firebase/firestore";
 import { Users, GraduationCap } from "lucide-react";
@@ -20,7 +22,7 @@ interface Student {
 export default function StudentsView() {
   const navigate = useNavigate();
   const { user, userData, loading } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [students, setStudents] = useState<Student[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [studentsByGrade, setStudentsByGrade] = useState<Record<string, Student[]>>({});
@@ -59,7 +61,11 @@ export default function StudentsView() {
               uid: data.uid,
               name: data.name,
               email: data.email,
-              grade: data.grade || "Unknown",
+              grade: data.grade !== undefined
+                ? (typeof data.grade === "number"
+                    ? gradeFromStorage(data.grade)
+                    : data.grade)
+                : "Unknown",
               photoURL: data.photoURL,
             } as Student;
           }
@@ -155,7 +161,7 @@ export default function StudentsView() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <GraduationCap className="h-5 w-5 text-primary" />
-                      {grade}
+                      {translations[language].grades[grade as keyof typeof translations.ro.grades] || grade}
                       <span className="text-base font-normal text-muted-foreground">
                         ({studentsByGrade[grade].length} {studentsByGrade[grade].length === 1 ? t.teacher.studentsView.student : t.teacher.studentsView.students})
                       </span>

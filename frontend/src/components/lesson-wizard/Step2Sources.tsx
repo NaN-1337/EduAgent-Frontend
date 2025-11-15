@@ -3,17 +3,14 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, FileText, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Step2Data {
   files: File[];
   textContent: string;
-  useCurriculumStandards: boolean;
-  useReputableSites: boolean;
-  customUrls: string;
+  presentationFile?: File | null; // PDF or PPT file for slide viewer
 }
 
 interface Step2SourcesProps {
@@ -22,7 +19,9 @@ interface Step2SourcesProps {
 }
 
 export function Step2Sources({ data, onChange }: Step2SourcesProps) {
+  const { t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const presentationFileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const handleFileSelect = (files: FileList | null) => {
@@ -53,11 +52,7 @@ export function Step2Sources({ data, onChange }: Step2SourcesProps) {
     onChange({ files: data.files.filter((_, i) => i !== index) });
   };
 
-  const isValid =
-    data.files.length > 0 ||
-    data.textContent.trim() ||
-    data.useCurriculumStandards ||
-    data.useReputableSites;
+  const isValid = data.files.length > 0 || data.textContent.trim();
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -66,9 +61,9 @@ export function Step2Sources({ data, onChange }: Step2SourcesProps) {
         {/* Primary reference material */}
         <div className="space-y-4">
           <div>
-            <Label className="text-base font-semibold">Primary reference material</Label>
+            <Label className="text-base font-semibold">{t.teacher.newLesson.step2.title}</Label>
             <p className="text-sm text-muted-foreground mt-1">
-              Upload files or paste text content
+              {t.teacher.newLesson.step2.description}
             </p>
           </div>
 
@@ -86,15 +81,15 @@ export function Step2Sources({ data, onChange }: Step2SourcesProps) {
           >
             <Upload className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
             <p className="text-base font-medium mb-2">
-              Drag and drop PDF or DOCX files here
+              {t.teacher.newLesson.step2.dragDrop}
             </p>
-            <p className="text-sm text-muted-foreground mb-4">or</p>
+            <p className="text-sm text-muted-foreground mb-4">{t.teacher.newLesson.step2.or}</p>
             <Button
               type="button"
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
             >
-              Browse files
+              {t.teacher.newLesson.step2.browseFiles}
             </Button>
             <input
               ref={fileInputRef}
@@ -140,102 +135,101 @@ export function Step2Sources({ data, onChange }: Step2SourcesProps) {
           {/* Textarea for pasting content */}
           <div className="space-y-2">
             <Label htmlFor="textContent" className="text-base font-semibold">
-              Or paste textbook excerpt / notes
+              {t.teacher.newLesson.step2.promptLabel}
             </Label>
             <Textarea
               id="textContent"
               value={data.textContent}
               onChange={(e) => onChange({ textContent: e.target.value })}
-              placeholder="Paste your reference material here..."
-              className="min-h-[150px] text-base"
-              rows={6}
+              placeholder={t.teacher.newLesson.step2.promptPlaceholder}
+              className="min-h-[200px] text-base"
+              rows={8}
             />
           </div>
-        </div>
 
-        {/* Trusted sources */}
-        <div className="space-y-4">
-          <div>
-            <Label className="text-base font-semibold">Trusted sources</Label>
-            <p className="text-sm text-muted-foreground mt-1">
-              Select additional sources for fact-checking
+          {/* Presentation file upload (PDF/PPT) */}
+          <div className="space-y-2">
+            <Label className="text-base font-semibold">
+              {t.teacher.newLesson.step2.presentationLabel || "Presentation File (PDF/PPT)"}
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              {t.teacher.newLesson.step2.presentationDescription || "Upload a PDF or PowerPoint file to display slide-by-slide"}
             </p>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <Checkbox
-                id="curriculum"
-                checked={data.useCurriculumStandards}
-                onCheckedChange={(checked) =>
-                  onChange({ useCurriculumStandards: checked === true })
-                }
-                className="mt-1"
-              />
-              <div className="flex-1">
-                <Label
-                  htmlFor="curriculum"
-                  className="text-base font-medium cursor-pointer"
-                >
-                  Use official curriculum standards (if available)
-                </Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Automatically reference relevant educational standards
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-3">
-              <Checkbox
-                id="reputable"
-                checked={data.useReputableSites}
-                onCheckedChange={(checked) =>
-                  onChange({ useReputableSites: checked === true })
-                }
-                className="mt-1"
-              />
-              <div className="flex-1">
-                <Label
-                  htmlFor="reputable"
-                  className="text-base font-medium cursor-pointer"
-                >
-                  Use reputable encyclopedia/science sites
-                </Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Include verified sources like Wikipedia, Britannica, etc.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-2">
-              <Label htmlFor="customUrls" className="text-base font-semibold">
-                Add specific URLs (comma-separated)
-              </Label>
-              <Input
-                id="customUrls"
-                value={data.customUrls}
-                onChange={(e) => onChange({ customUrls: e.target.value })}
-                placeholder="https://example.com, https://another-site.org"
-                className="text-base h-12"
-              />
-              <p className="text-xs text-muted-foreground">
-                Separate multiple URLs with commas
-              </p>
+            <div className="border-2 border-dashed rounded-lg p-6 text-center">
+              {data.presentationFile ? (
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">{data.presentationFile.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {((data.presentationFile.size || 0) / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onChange({ presentationFile: null })}
+                    aria-label="Remove presentation file"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Upload className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {t.teacher.newLesson.step2.presentationPlaceholder || "Upload PDF or PowerPoint file"}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => presentationFileInputRef.current?.click()}
+                  >
+                    {t.teacher.newLesson.step2.browseFiles || "Browse Files"}
+                  </Button>
+                  <input
+                    ref={presentationFileInputRef}
+                    type="file"
+                    accept=".pdf,.ppt,.pptx"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        onChange({ presentationFile: file });
+                      }
+                    }}
+                  />
+                </>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       {/* Right panel */}
-      <div className="lg:col-span-1">
+      <div className="lg:col-span-1 space-y-4">
         <Card className="border-2 bg-primary/5 border-primary/20">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">About sources</CardTitle>
+            <CardTitle className="text-lg font-semibold">{t.teacher.newLesson.step2.aboutTitle}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              EduAgent prioritizes these sources when generating and fact-checking content. The
-              more relevant sources you provide, the more accurate and aligned your lesson will be.
+              {t.teacher.newLesson.step2.aboutDescription}
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-2 bg-primary/5 border-primary/20">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">{t.teacher.newLesson.step2.promptTipsTitle}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {t.teacher.newLesson.step2.promptTipsDescription}
             </p>
           </CardContent>
         </Card>

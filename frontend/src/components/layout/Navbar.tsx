@@ -38,7 +38,7 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
   const teacherLinks = [
     { path: "/teacher/dashboard", label: t.navbar.student.dashboard },
     { path: "/teacher/lessons", label: t.navbar.student.myLessons },
-    { path: "/teacher/students", label: "Elevii" },
+    { path: "/teacher/students", label: t.teacher.studentsView.title },
     { path: "/profile", label: t.navbar.student.account },
   ];
 

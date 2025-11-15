@@ -8,6 +8,7 @@ import { db } from "@/lib/firebaseConfig";
 import { RoleSelectionDialog } from "@/components/auth/role-selection-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getDashboardRoute } from "@/lib/routes";
+import { gradeToStorage, teachingFieldToStorage } from "@/lib/dataConverters";
 
 export default function LoginPage() {
   const { user, userData, loading, refreshUserData } = useAuth();
@@ -78,15 +79,21 @@ export default function LoginPage() {
         createdAt: new Date(),
       };
       
-      // Add grade if user is a student
+      // Add grade if user is a student (convert to integer for storage)
       if (role === "student" && grade) {
-        userData.grade = grade;
+        const gradeStorage = gradeToStorage(grade);
+        if (gradeStorage !== null) {
+          userData.grade = gradeStorage;
+        }
       }
       
-      // Add teaching field and generate teacher code if user is a teacher
+      // Add teaching field and generate teacher code if user is a teacher (convert to storage key)
       if (role === "teacher") {
         if (teachingField) {
-          userData.teachingField = teachingField;
+          const fieldStorage = teachingFieldToStorage(teachingField);
+          if (fieldStorage) {
+            userData.teachingField = fieldStorage;
+          }
         }
         // Generate unique teacher code
         const { generateTeacherCode } = await import("@/lib/teacherCode");
