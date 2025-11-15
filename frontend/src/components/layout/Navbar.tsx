@@ -1,5 +1,6 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -10,11 +11,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Menu, X, User, LogOut } from "lucide-react";
+import { Menu, User, LogOut } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { t } from "@/lib/translations";
+import { LanguageToggle } from "@/components/language-toggle";
 
 interface NavbarProps {
   role?: "teacher" | "student";
@@ -22,6 +23,7 @@ interface NavbarProps {
 
 export function Navbar({ role = "teacher" }: NavbarProps) {
   const { user, userData, signOut } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -34,16 +36,16 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
   const isActive = (path: string) => location.pathname === path;
 
   const teacherLinks = [
-    { path: "/teacher/dashboard", label: t("nav.dashboard") },
-    { path: "/teacher/lessons", label: t("nav.myLessons") },
-    { path: "/teacher/students", label: t("nav.studentsView") },
-    { path: "/profile", label: t("nav.account") },
+    { path: "/teacher/dashboard", label: t.navbar.student.dashboard },
+    { path: "/teacher/lessons", label: t.navbar.student.myLessons },
+    { path: "/teacher/students", label: "Elevii" },
+    { path: "/profile", label: t.navbar.student.account },
   ];
 
   const studentLinks = [
-    { path: "/student/dashboard", label: t("nav.dashboard") },
-    { path: "/student/lessons", label: t("nav.myLessons") },
-    { path: "/profile", label: t("nav.account") },
+    { path: "/student/dashboard", label: t.navbar.student.dashboard },
+    { path: "/student/lessons", label: t.navbar.student.myLessons },
+    { path: "/profile", label: t.navbar.student.account },
   ];
 
   const links = role === "teacher" ? teacherLinks : studentLinks;
@@ -84,8 +86,11 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
             <NavLinks />
           </div>
 
-          {/* Right side: Theme toggle, Avatar */}
+          {/* Right side: Language toggle, Theme toggle, Avatar */}
           <div className="flex items-center space-x-3">
+            <div className="hidden md:block">
+              <LanguageToggle />
+            </div>
             <div className="hidden md:block">
               <ThemeToggle />
             </div>
@@ -103,28 +108,28 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {userData?.name || "User"}
-                        </p>
-                        <p className="text-xs leading-none text-muted-foreground capitalize">
-                          {userData?.role || "User"}
-                        </p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/profile" className="cursor-pointer">
-                        <User className="mr-2 h-4 w-4" />
-                        {t("nav.profile")}
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive focus:text-destructive">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      {t("nav.logout")}
-                    </DropdownMenuItem>
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {userData?.name || "User"}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground capitalize">
+                        {userData?.role || "User"}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="cursor-pointer">
+                      <User className="mr-2 h-4 w-4" />
+                      {t.navbar.profile}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    {t.navbar.logout}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -137,12 +142,15 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
                   <span className="sr-only">Toggle menu</span>
                 </Button>
               </SheetTrigger>
-                <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                  <div className="flex flex-col space-y-4 mt-8">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-semibold">{t("nav.menu")}</h2>
+              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                <div className="flex flex-col space-y-4 mt-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold">{t.navbar.menu}</h2>
+                    <div className="flex items-center gap-2">
+                      <LanguageToggle />
                       <ThemeToggle />
                     </div>
+                  </div>
                   <div className="flex flex-col space-y-2">
                     <NavLinks />
                   </div>
@@ -167,7 +175,7 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
                           className="w-full justify-start"
                         >
                           <LogOut className="mr-2 h-4 w-4" />
-                          Logout
+                          {t.navbar.logout}
                         </Button>
                       </div>
                     </>

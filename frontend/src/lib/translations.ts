@@ -1,557 +1,745 @@
 /**
- * Translations for EduAgent
- * 
- * This file contains all user-facing text strings in the application.
- * Romanian is the main/default language.
- * 
- * Structure:
- * - Organized by feature/page for easy maintenance
- * - Nested objects for logical grouping
- * - Easy to extend with additional languages in the future
+ * Translations for EduAgent Application
+ * Main language: Romanian (ro)
+ * Structure is scalable for future language additions
  */
 
-export const translations = {
-  ro: {
-    // Common/Shared UI elements
-    common: {
-      buttons: {
-        save: "Salvează",
-        cancel: "Anulează",
-        delete: "Șterge",
-        edit: "Editează",
-        back: "Înapoi",
-        next: "Următorul",
-        continue: "Continuă",
-        done: "Gata",
-        close: "Închide",
-        open: "Deschide",
-        download: "Descarcă",
-        copy: "Copiază",
-        copied: "Copiat",
-        loading: "Se încarcă...",
-        submit: "Trimite",
-        confirm: "Confirmă",
-        dismiss: "Închide",
-        retry: "Încearcă din nou",
-        refresh: "Reîmprospătează",
-      },
-      labels: {
-        name: "Nume complet",
-        email: "Email",
-        password: "Parolă",
-        confirmPassword: "Confirmă parola",
-        role: "Rol",
-        grade: "Clasă",
-        subject: "Materie",
-        title: "Titlu",
-        status: "Status",
-        date: "Dată",
-        search: "Caută",
-        filter: "Filtrează",
-        sort: "Sortează",
-        select: "Selectează",
-        optional: "Opțional",
-        required: "Obligatoriu",
-      },
-      messages: {
-        loading: "Se încarcă...",
-        error: "A apărut o eroare",
-        success: "Succes",
-        noData: "Nu există date",
-        notFound: "Nu a fost găsit",
-        saved: "Salvat cu succes",
-        deleted: "Șters cu succes",
-        updated: "Actualizat cu succes",
-        today: "Astăzi",
-        yesterday: "Ieri",
-      },
-      status: {
-        draft: "Ciornă",
-        "fact-checkneeded": "Necesită verificare",
-        "fact-checkpending": "Verificare în așteptare",
-        ready: "Gata",
-      },
-    },
+export type Language = "ro" | "en"; // Add more languages as needed
 
-    // Authentication pages
-    auth: {
-      login: {
-        title: "Bun venit înapoi",
-        description: "Introdu datele pentru a te conecta",
-        emailLabel: "Email",
-        passwordLabel: "Parolă",
-        submitButton: "Conectează-te",
-        googleButton: "Continuă cu Google",
-        orContinueWith: "Sau continuă cu",
-        noAccount: "Nu ai cont?",
-        signUpLink: "Înregistrează-te",
-        forgotPassword: "Ai uitat parola?",
-        errors: {
-          invalidCredentials: "Email sau parolă incorectă",
-          userNotFound: "Utilizatorul nu a fost găsit",
-          wrongPassword: "Parolă incorectă",
-          networkError: "Eroare de rețea. Te rugăm să încerci din nou.",
-        },
-      },
-      register: {
-        title: "Creează un cont",
-        description: "Introdu informațiile pentru a începe",
-        nameLabel: "Nume complet",
-        emailLabel: "Email",
-        passwordLabel: "Parolă",
-        confirmPasswordLabel: "Confirmă parola",
-        roleLabel: "Rol",
-        gradeLabel: "Clasă",
-        teachingFieldLabel: "Domeniul de predare",
-        submitButton: "Înregistrează-te",
-        googleButton: "Continuă cu Google",
-        hasAccount: "Ai deja cont?",
-        signInLink: "Conectează-te",
-        passwordRequirements: {
-          title: "Parola trebuie să conțină:",
-          minLength: "Cel puțin 8 caractere",
-          uppercase: "O literă mare",
-          lowercase: "O literă mică",
-          number: "O cifră",
-          special: "Un caracter special",
-        },
-        passwordMatch: "✓ Parolele se potrivesc",
-        emailVerification: "Cont creat! Te rugăm să verifici emailul pentru a verifica contul.",
-        errors: {
-          emailExists: "Acest email este deja înregistrat",
-          weakPassword: "Parola este prea slabă",
-          invalidEmail: "Te rugăm să introduci un email valid",
-          passwordsDontMatch: "Parolele nu se potrivesc",
-          gradeRequired: "Te rugăm să selectezi clasa",
-          teachingFieldRequired: "Te rugăm să selectezi domeniul de predare",
-        },
-      },
-      roleSelection: {
-        title: "Selectează rolul tău",
-        description: "Te rugăm să alegi rolul pentru a continua. Acest lucru ne ajută să personalizăm experiența ta.",
-        student: {
-          label: "Elev",
-          description: "Sunt elev și vreau să particip la evenimente",
-        },
-        teacher: {
-          label: "Profesor",
-          description: "Sunt profesor și organizez evenimente",
-        },
-        individual: {
-          label: "Individual",
-          description: "Sunt participant individual",
-        },
-        continueButton: "Continuă",
-        gradeRequired: "Te rugăm să selectezi clasa",
-        teachingFieldRequired: "Te rugăm să selectezi domeniul de predare",
-      },
-    },
+export interface Translations {
+  // Common/Shared translations
+  common: {
+    appName: string;
+    loading: string;
+    error: string;
+    success: string;
+    cancel: string;
+    save: string;
+    delete: string;
+    edit: string;
+    close: string;
+    back: string;
+    next: string;
+    previous: string;
+    submit: string;
+    search: string;
+    filter: string;
+    noResults: string;
+    welcome: string;
+    welcomeBack: (name: string) => string;
+  };
 
-    // Navigation
-    nav: {
-      dashboard: "Dashboard",
-      myLessons: "Lecțiile mele",
-      studentsView: "Elevii",
-      account: "Cont",
-      profile: "Profil",
-      logout: "Deconectare",
-      menu: "Meniu",
-    },
+  // Navbar translations
+  navbar: {
+    student: {
+      dashboard: string;
+      myLessons: string;
+      account: string;
+    };
+    profile: string;
+    logout: string;
+    menu: string;
+    toggleMenu: string;
+  };
 
-    // Profile page
-    profile: {
-      title: "Profil",
-      profileInfo: "Informații profil",
-      accountDetails: "Detalii cont",
-      editProfile: "Editează profilul",
-      saveChanges: "Salvează modificările",
-      accountCreated: "Cont creat",
-      authMethod: "Metodă de autentificare",
-      noProfileData: "Nu există date de profil.",
-      tryAgain: "Încearcă din nou",
-      refreshPage: "Reîmprospătează pagina",
-      signOut: "Deconectează-te",
-      loading: "Se încarcă profilul...",
-    },
+  // Student Dashboard
+  student: {
+    dashboard: {
+      title: string;
+      welcomeMessage: (name: string) => string;
+      joinLesson: {
+        title: string;
+        description: string;
+        button: string;
+        ariaLabel: string;
+      };
+      myLessons: {
+        title: string;
+        description: string;
+        emptyState: string;
+        openButton: string;
+        openAriaLabel: (title: string) => string;
+        lessonAriaLabel: (title: string) => string;
+      };
+    };
 
-    // Teacher Dashboard
-    teacherDashboard: {
-      title: "Dashboard",
-      createNewLesson: {
-        title: "Creează lecție nouă",
-        description: "Generează rezumat, slide-uri și ghiduri de predare cu verificare de fapte integrată.",
-        button: "Lecție nouă",
-      },
-      recentLessons: {
-        title: "Lecții recente",
-        empty: "Nu există lecții încă. Creează prima ta lecție pentru a începe.",
-      },
-      insights: {
-        title: "Perspective",
-        hoursSaved: "Ore economisite",
-        lessonsGenerated: "Lecții generate",
-        mostFrequentSubject: "Materie frecventă",
-      },
-      tips: {
-        title: "Sfaturi pentru lecții mai bune",
-        tip1: "Specifică clar nivelul clasei în prompt",
-        tip2: "Adaugă 1–3 obiective de învățare pentru rezultate mai bune",
-        tip3: "Include stilul de predare preferat sau formatul",
-        tip4: "Menționează orice subiecte specifice de evidențiat sau de evitat",
-      },
-    },
+    // Join Lesson Page
+    joinLesson: {
+      title: string;
+      description: string;
+      classCodeLabel: string;
+      classCodePlaceholder: string;
+      button: string;
+      buttonLoading: string;
+      helperText: string;
+      errors: {
+        emptyCode: string;
+        codeNotFound: string;
+        genericError: string;
+      };
+    };
 
-    // Teacher Lessons page
-    teacherLessons: {
-      title: "Lecțiile mele",
-      description: "Toate lecțiile create de tine, organizate pe clase",
-      empty: "Nu există lecții pentru această clasă.",
-      createFirst: "Creează prima ta lecție pentru a începe.",
-      filterByGrade: "Filtrează după clasă",
-      allGrades: "Toate clasele",
-    },
+    // My Lessons Page
+    lessons: {
+      title: string;
+      description: string;
+      allLessons: string;
+      clickToStart: string;
+      emptyState: string;
+      openButton: string;
+      openAriaLabel: (title: string) => string;
+      lessonAriaLabel: (title: string) => string;
+    };
 
-    // Teacher Students page
-    teacherStudents: {
-      title: "Elevii",
-      description: "Vezi toți elevii înscriși la clasele tale, organizați pe clase.",
-      empty: {
-        title: "Nu există elevi înscriși",
-        description: "Nu ai elevi înscriși încă. Distribuie codul tău de profesor elevilor pentru ca aceștia să se alăture clasei tale.",
-        teacherCode: "Codul tău de profesor:",
-      },
-      student: "elev",
-      students: "elevi",
-    },
-
-    // Lesson Creation Wizard
-    lessonWizard: {
-      progress: {
-        step: "Pasul",
-        of: "din",
-      },
-      step1: {
-        title: "Definește lecția",
-        lessonTitle: "Titlul lecției",
-        gradeLevel: "Clasă/Nivel",
-        subject: "Materie",
-        duration: "Durată",
-        learningObjectives: "Obiective de învățare",
-        addObjective: "Adaugă obiectiv",
-        exampleTitle: "Exemplu de configurare bună a lecției",
-        exampleDescription: "EduAgent folosește obiectivele tale pentru a genera conținut țintit și a asigura alinierea cu obiectivele tale de predare.",
-        errors: {
-          titleRequired: "Titlul lecției este obligatoriu",
-          gradeRequired: "Clasa este obligatorie",
-          subjectRequired: "Materia este obligatorie",
-        },
-      },
-      step2: {
-        title: "Încarcă / Selectează surse",
-        primaryReference: "Material de referință principal",
-        uploadDescription: "Încarcă fișiere sau lipește conținut text",
-        dragDrop: "Trage și plasează fișiere PDF sau DOCX aici",
-        browseFiles: "Răsfoiește fișiere",
-        pasteText: "Sau lipește fragment din manual / notițe",
-        trustedSources: "Surse de încredere",
-        trustedSourcesDescription: "Selectează surse suplimentare pentru verificarea faptelor",
-        useCurriculum: "Folosește standardele oficiale ale curriculumului (dacă sunt disponibile)",
-        useReputable: "Folosește site-uri enciclopedice/științifice de încredere",
-        addUrls: "Adaugă URL-uri specifice (separate prin virgulă)",
-        aboutSources: "Despre surse",
-        aboutSourcesDescription: "EduAgent prioritizează aceste surse la generarea și verificarea conținutului. Cu cât oferi mai multe surse relevante, cu atât lecția ta va fi mai precisă și mai aliniată.",
-      },
-      step3: {
-        title: "Generarea lecției tale…",
-        description: "Acest lucru poate dura câteva momente. Te rugăm să nu închizi această pagină.",
-        steps: {
-          understanding: "Înțelegerea cererii",
-          researching: "Cercetarea subiectului",
-          drafting: "Redactarea rezumatului pentru elevi",
-          slides: "Crearea structurii slide-urilor",
-          guidelines: "Scrierea ghidurilor pentru profesori",
-          factcheck: "Rularea verificărilor de fapte",
-        },
-        stepDescriptions: {
-          understanding: "Analizarea cerințelor și obiectivelor lecției tale...",
-          researching: "Scanarea PDF-ului încărcat și a surselor de încredere...",
-          drafting: "Crearea unui rezumat clar, potrivit vârstei pentru elevi...",
-          slides: "Organizarea conținutului în slide-uri de prezentare structurate...",
-          guidelines: "Pregătirea notițelor de predare și a sugestiilor de activități...",
-          factcheck: "Verificarea faptelor față de sursele de încredere...",
-        },
-        complete: "Poți revizui și ajusta tot conținutul înainte de a-l partaja cu elevii.",
-        continueButton: "Continuă la rezumatul de verificare",
-      },
-      step4: {
-        title: "Rezumat verificare fapte",
-        description: "Revizuiește prezentarea generală a calității înainte de a intra în editorul detaliat",
-        status: {
-          highConfidence: "Încredere ridicată",
-          needsReview: "Necesită revizuire",
-          criticalIssues: "Probleme critice găsite",
-        },
-        claimsVerified: "Fapte verificate",
-        outdatedFacts: "Fapte potențial învechite",
-        unsupportedStatements: "Afirmații nejustificate",
-        topFlaggedIssues: "Probleme marcate principale",
-        noIssues: "Nu au fost găsite probleme!",
-        continueToEditor: "Continuă la editorul detaliat",
-        regenerate: "Regenerează cu surse diferite",
-        willSeeHighlighted: "Vei vedea acest lucru evidențiat în editor.",
-      },
-      step5: {
-        title: "Ciorna lecției tale este gata",
-        description: "Poți încă edita conținutul și rula verificări detaliate de fapte pe ecranul următor.",
-        openInEditor: "Deschide în editor",
-      },
-    },
-
-    // Lesson Editor
-    lessonEditor: {
-      title: "Editor lecție",
-      metadata: "Metadate",
-      runFactCheck: "Rulează verificare fapte din nou",
-      markAsReady: "Marchează ca gata",
+    // Lesson Player
+    lessonPlayer: {
+      backToLessons: string;
       tabs: {
-        studentSummary: "Rezumat elev",
-        slides: "Slide-uri",
-        teacherGuidelines: "Ghiduri profesor",
-      },
-      deleteLesson: "Șterge lecția",
-      saveDraft: "Salvează ciorna",
-      deleteConfirm: {
-        title: "Eștii sigur?",
-        description: "Această acțiune nu poate fi anulată. Aceasta va șterge permanent lecția și toate datele asociate.",
-        cancel: "Anulează",
-        delete: "Șterge",
-      },
-    },
-
-    // Student Summary Tab
-    studentSummaryTab: {
-      title: "Rezumat elev",
-      placeholder: "Introdu rezumatul pentru elevi aici...",
-      analysis: {
-        title: "Analiză",
-        readingLevel: "Nivel de lectură",
-        readingTime: "Timp estimat de lectură",
-        paragraphCount: "Număr de paragrafe",
-        headingsUsed: "Titluri folosite",
-        factCheckIssues: "Probleme de verificare fapte",
-        flagged: "marcate",
-      },
-      issue: {
-        critical: "Critic",
-        warning: "Avertisment",
-        dismiss: "Închide",
-      },
-    },
-
-    // Slides Tab
-    slidesTab: {
-      title: "Slide-uri",
-      slideNumber: "Slide",
-      of: "din",
-      slideTitle: "Titlul slide-ului",
-      content: "Conținut (folosește bullet points: - sau * pentru elemente de listă)",
-      contentPlaceholder: "Introdu conținutul slide-ului...\n\nFolosește bullet points:\n- Punct 1\n- Punct 2\n* Punct 3",
-      imageDescription: "Adaugă descriere imagine (opțional)",
-      imageDescriptionPlaceholder: "Descrie o imagine de inclus pe acest slide...",
-      imageDescriptionHelp: "Acest lucru ajută la generarea sau selectarea imaginilor potrivite pentru slide.",
-      newSlide: "Slide nou",
-      deleteSlide: "Șterge slide",
-      bullets: "bullet points",
-    },
-
-    // Teacher Guidelines Tab
-    teacherGuidelinesTab: {
-      teacherOnly: "Conținut doar pentru profesori — elevii nu văd acest lucru.",
-      sections: {
-        objectives: {
-          title: "Obiective lecție",
-          placeholder: "Listează obiectivele de învățare pentru această lecție...",
-        },
-        timing: {
-          title: "Timing și ritm",
-          placeholder: "0-10 min: Introducere\n10-25 min: Activitate principală\n25-45 min: Exersare...",
-        },
-        questions: {
-          title: "Întrebări sugerate",
-          placeholder: "Ce crezi că se întâmplă când...?\nCum ai explica...?",
-        },
-        differentiation: {
-          title: "Sfaturi de diferențiere",
-          placeholder: "Pentru elevi cu dificultăți: ...\nPentru elevi avansați: ...",
-        },
-        assessment: {
-          title: "Idei de evaluare",
-          placeholder: "Bilet de ieșire: ...\nVerificare rapidă: ...",
-        },
-      },
-    },
-
-    // Fact Check Panel
-    factCheckPanel: {
-      title: "Verificare fapte și revizuire calitate",
-      subtitle: "Inspectează problemele identificate și acționează asupra lor",
+        summary: string;
+        slides: string;
+        quiz: string;
+      };
       summary: {
-        title: "Rezumat",
-        status: {
-          highConfidence: "Încredere ridicată",
-          needsReview: "Necesită revizuire",
-          criticalIssues: "Probleme critice găsite",
+        learningObjectives: string;
+        fontControls: {
+          decrease: string;
+          increase: string;
+          listen: string;
+          listenTooltip: string;
+        };
+      };
+      slides: {
+        counter: (current: number, total: number) => string;
+        previous: string;
+        next: string;
+        textVersion: string;
+        goToSlide: (index: number) => string;
+        emptyState: string;
+      };
+      quiz: {
+        questionLabel: (index: number, question: string) => string;
+        answeredCount: (answered: number, total: number) => string;
+        submitButton: string;
+        submitButtonLoading: string;
+        submitWarning: string;
+        success: {
+          title: string;
+          score: (correct: number, total: number, percentage: number) => string;
+          message: string;
+          feedbackMessage: string;
+        };
+        errors: {
+          notAllAnswered: string;
+          submitFailed: string;
+        };
+        emptyState: string;
+      };
+      keyTerms: {
+        title: string;
+        footer: string;
+      };
+    };
+  };
+
+  // Placeholders for dynamic content (lessons, subjects, etc.)
+  placeholders: {
+    student: string;
+    lessonTitle: string;
+    subject: string;
+    grade: string;
+    teacherName: string;
+    className: string;
+  };
+
+  // Subject names
+  subjects: {
+    science: string;
+    history: string;
+    math: string;
+    language: string;
+    art: string;
+    music: string;
+    physicalEducation: string;
+  };
+
+  // Mock lesson data translations
+  mockLessons: {
+    lesson1: {
+      title: string;
+      subject: string;
+      grade: string;
+      teacherName: string;
+      learningObjectives: string[];
+      studentSummary: string;
+      slides: Array<{ id: string; title: string; content: string }>;
+      quiz: Array<{
+        id: string;
+        question: string;
+        options: string[];
+        correctAnswer: number;
+        explanation: string;
+      }>;
+      keyTerms: Array<{ term: string; definition: string }>;
+    };
+    lesson2: {
+      title: string;
+      subject: string;
+      grade: string;
+      teacherName: string;
+    };
+  };
+}
+
+// Romanian translations (main language)
+const ro: Translations = {
+  common: {
+    appName: "EduAgent",
+    loading: "Se încarcă...",
+    error: "Eroare",
+    success: "Succes",
+    cancel: "Anulează",
+    save: "Salvează",
+    delete: "Șterge",
+    edit: "Editează",
+    close: "Închide",
+    back: "Înapoi",
+    next: "Următor",
+    previous: "Anterior",
+    submit: "Trimite",
+    search: "Caută",
+    filter: "Filtrează",
+    noResults: "Nu s-au găsit rezultate",
+    welcome: "Bun venit",
+    welcomeBack: (name: string) => `Bine ai revenit, ${name}!`,
+  },
+
+  navbar: {
+    student: {
+      dashboard: "Panou",
+      myLessons: "Lecțiile mele",
+      account: "Cont",
+    },
+    profile: "Profil",
+    logout: "Deconectare",
+    menu: "Meniu",
+    toggleMenu: "Deschide/închide meniul",
+  },
+
+  student: {
+    dashboard: {
+      title: "Panou Student",
+      welcomeMessage: (name: string) => `Bine ai revenit, ${name || "Student"}!`,
+      joinLesson: {
+        title: "Alătură-te unei lecții",
+        description: "Introdu codul clasei pentru a te alătura lecției profesorului tău.",
+        button: "Alătură-te lecției",
+        ariaLabel: "Alătură-te unei lecții cu codul clasei",
+      },
+      myLessons: {
+        title: "Lecțiile mele",
+        description: "Accesează lecțiile tale și materialele de învățare",
+        emptyState: "Încă nu ai lecții atribuite. Profesorul tău va partaja lecții cu tine în curând.",
+        openButton: "Deschide",
+        openAriaLabel: (title: string) => `Deschide ${title}`,
+        lessonAriaLabel: (title: string) => `Deschide lecția: ${title}`,
+      },
+    },
+
+    joinLesson: {
+      title: "Alătură-te lecției",
+      description: "Introdu codul clasei dat de profesorul tău.",
+      classCodeLabel: "Cod clasă",
+      classCodePlaceholder: "ABC123",
+      button: "Alătură-te lecției",
+      buttonLoading: "Te alăturăm...",
+      helperText: "Sau deschide link-ul direct dacă profesorul tău ți l-a partajat.",
+      errors: {
+        emptyCode: "Te rugăm să introduci un cod clasă",
+        codeNotFound: "Acest cod clasă nu a putut fi găsit. Verifică cu profesorul tău.",
+        genericError: "Ceva nu a mers bine. Te rugăm să încerci din nou.",
+      },
+    },
+
+    lessons: {
+      title: "Lecțiile mele",
+      description: "Accesează toate lecțiile tale și materialele de învățare",
+      allLessons: "Toate lecțiile",
+      clickToStart: "Click pe orice lecție pentru a începe să înveți",
+      emptyState: "Încă nu ai lecții atribuite. Profesorul tău va partaja lecții cu tine în curând.",
+      openButton: "Deschide",
+      openAriaLabel: (title: string) => `Deschide ${title}`,
+      lessonAriaLabel: (title: string) => `Deschide lecția: ${title}`,
+    },
+
+    lessonPlayer: {
+      backToLessons: "Înapoi la lecții",
+      tabs: {
+        summary: "Rezumat",
+        slides: "Slide-uri",
+        quiz: "Test",
+      },
+      summary: {
+        learningObjectives: "La sfârșitul acestei lecții vei putea…",
+        fontControls: {
+          decrease: "Micșorează dimensiunea fontului",
+          increase: "Mărește dimensiunea fontului",
+          listen: "Ascultă",
+          listenTooltip: "Funcția de citire cu voce tare va fi disponibilă în curând",
         },
-        claimsVerified: "Fapte verificate",
-        outdatedFacts: "Fapte potențial învechite",
-        unsupportedStatements: "Afirmații nejustificate",
       },
-      filters: {
-        title: "Filtre",
-        all: "Toate",
-        warningsOnly: "Doar avertismente",
-        criticalOnly: "Doar critice",
+      slides: {
+        counter: (current: number, total: number) => `Slide ${current} din ${total}`,
+        previous: "Anterior",
+        next: "Următor",
+        textVersion: "Conținut slide (versiune text)",
+        goToSlide: (index: number) => `Mergi la slide-ul ${index + 1}`,
+        emptyState: "Nu sunt slide-uri disponibile pentru această lecție.",
       },
-      claims: {
-        title: "Afirmații marcate",
-        location: {
-          summary: "Rezumat",
-          slides: "Slide-uri",
-          teacherGuide: "Ghid profesor",
-          slide: "Slide",
+      quiz: {
+        questionLabel: (index: number, question: string) => `Întrebarea ${index + 1}: ${question}`,
+        answeredCount: (answered: number, total: number) => `${answered} din ${total} întrebări răspunse`,
+        submitButton: "Trimite testul",
+        submitButtonLoading: "Se trimite...",
+        submitWarning: "Te rugăm să răspunzi la toate întrebările înainte de a trimite.",
+        success: {
+          title: "Test trimis cu succes!",
+          score: (correct: number, total: number, percentage: number) =>
+            `Scorul tău: ${correct} / ${total} (${percentage}%)`,
+          message: "Testul tău a fost trimis și așteaptă feedback-ul profesorului.",
+          feedbackMessage: "Profesorul tău va revizui răspunsurile tale și va oferi feedback în curând.",
         },
-        fullClaim: "Afirmație completă:",
-        reason: "Motiv:",
-        sourcesConsulted: "Surse consultate:",
-        askToFix: "Cere EduAgent să corecteze",
-        fixing: "Se corectează…",
-        markAccepted: "Marchează ca acceptat",
-        editManually: "Editează manual",
-        noClaims: "Nu există afirmații marcate.",
-        expand: "Extinde",
-        collapse: "Restrânge",
-      },
-      preview: {
-        tabs: {
-          studentSummary: "Rezumat elev",
-          slides: "Slide-uri",
-          teacherGuidelines: "Ghiduri profesor",
+        errors: {
+          notAllAnswered: "Te rugăm să răspunzi la toate întrebările înainte de a trimite.",
+          submitFailed: "Trimiterea testului a eșuat. Te rugăm să încerci din nou.",
         },
+        emptyState: "Nu este disponibil niciun test pentru această lecție.",
+      },
+      keyTerms: {
+        title: "Termeni cheie",
+        footer: "Această lecție a fost creată cu EduAgent și revizuită de profesorul tău.",
       },
     },
+  },
 
-    // Export & Share Modal
-    exportShareModal: {
-      title: "Lecția ta este gata de partajat",
-      downloads: {
-        title: "Descărcări",
-        studentSummary: "Descarcă rezumat elev (PDF)",
-        slides: "Descarcă slide-uri (PPTX sau PDF)",
-        teacherGuide: "Descarcă ghid profesor (PDF)",
-        downloadButton: "Descarcă",
-      },
-      share: {
-        title: "Partajează cu elevi",
-        classLink: "Link clasă",
-        classCode: "Cod clasă",
-        copyLink: "Copiază link",
-        copyCode: "Copiază cod",
-        codeHelp: "Elevii pot folosi acest cod pentru a accesa lecția",
-      },
-      studentView: {
-        title: "Opțiuni vizualizare elev",
-        showSources: "Permite elevilor să vadă sursele folosite",
-        showQuiz: "Afișează quiz după citirea rezumatului",
-        on: "Pornit",
-        off: "Oprit",
-      },
-      buttons: {
-        backToEditor: "Înapoi la editor",
-        done: "Gata",
-      },
+  placeholders: {
+    student: "Student",
+    lessonTitle: "Titlul lecției",
+    subject: "Materia",
+    grade: "Clasa",
+    teacherName: "Numele profesorului",
+    className: "Clasa",
+  },
+
+  subjects: {
+    science: "Științe",
+    history: "Istorie",
+    math: "Matematică",
+    language: "Limba română",
+    art: "Arte",
+    music: "Muzică",
+    physicalEducation: "Educație fizică",
+  },
+
+  mockLessons: {
+    lesson1: {
+      title: "Fotosinteză – Clasa a 5-a",
+      subject: "Științe",
+      grade: "Clasa a 5-a",
+      teacherName: "D-na Ionescu",
+      learningObjectives: [
+        "Să înțelegi cum plantele produc hrană",
+        "Să identifici componentele cheie ale fotosintezei",
+        "Să explici rolul luminii solare în acest proces",
+      ],
+      studentSummary: `# Introducere în Fotosinteză
+
+Fotosinteza este procesul prin care plantele folosesc lumina soarelui, apa și dioxidul de carbon pentru a-și crea propria hrană. Acest proces uimitor are loc în frunzele plantelor, mai exact în structuri numite cloroplaste.
+
+## Cum Funcționează
+
+În timpul fotosintezei, plantele absorb lumina soarelui prin frunzele lor. Pigmentul verde numit clorofilă captează energia luminii. Plantele absorb de asemenea apă prin rădăcini și dioxid de carbon din aer prin deschizături mici din frunze numite stomate.
+
+## Procesul
+
+Folosind aceste ingrediente și energia de la lumina soarelui, plantele produc glucoză (un tip de zahăr) pe care o folosesc ca hrană. Ca produs secundar, plantele eliberează oxigen în aer, care este esențial pentru ca toate ființele vii să respire.
+
+## Componente Cheie
+
+- **Clorofilă**: Pigmentul verde care captează lumina soarelui
+- **Stomate**: Deschizături mici în frunze care permit schimbul de gaze
+- **Rădăcini**: Absorb apa din sol
+- **Frunze**: Unde are loc cea mai mare parte a fotosintezei`,
+      slides: [
+        {
+          id: "slide_1",
+          title: "Ce este fotosinteza?",
+          content: "- Procesul prin care plantele produc hrană\n- Folosește lumina soarelui, apa și CO2\n- Are loc în frunze",
+        },
+        {
+          id: "slide_2",
+          title: "Procesul",
+          content: "- Plantele absorb lumina soarelui\n- Absorb apă și dioxid de carbon\n- Transformă în glucoză și oxigen",
+        },
+        {
+          id: "slide_3",
+          title: "Componente Cheie",
+          content: "- Clorofila captează lumina\n- Stomatele permit schimbul de gaze\n- Rădăcinile absorb apa",
+        },
+        {
+          id: "slide_4",
+          title: "De Ce Este Importantă",
+          content: "- Plantele produc oxigenul pe care îl respirăm\n- Creează hrană pentru plantă\n- Fundația majorității lanțurilor trofice",
+        },
+      ],
+      quiz: [
+        {
+          id: "q1",
+          question: "Care este scopul principal al fotosintezei?",
+          options: [
+            "Să facă plantele verzi",
+            "Să creeze hrană pentru plantă folosind lumina soarelui",
+            "Să absoarbă apă din sol",
+            "Să producă dioxid de carbon",
+          ],
+          correctAnswer: 1,
+          explanation: "Fotosinteza este procesul prin care plantele își creează propria hrană (glucoză) folosind lumina soarelui, apa și dioxidul de carbon.",
+        },
+        {
+          id: "q2",
+          question: "Ce pigment captează lumina soarelui în plante?",
+          options: ["Stomate", "Clorofilă", "Glucoză", "Oxigen"],
+          correctAnswer: 1,
+          explanation: "Clorofila este pigmentul verde din frunzele plantelor care captează energia luminii de la soare.",
+        },
+      ],
+      keyTerms: [
+        { term: "Fotosinteză", definition: "Procesul prin care plantele produc hrană folosind lumina soarelui, apa și dioxidul de carbon." },
+        { term: "Clorofilă", definition: "Pigmentul verde din plante care captează energia luminii." },
+        { term: "Stomate", definition: "Deschizături mici în frunze care permit plantelor să schimbe gaze." },
+        { term: "Glucoză", definition: "Un tip de zahăr pe care plantele îl produc în timpul fotosintezei." },
+      ],
     },
-
-    // Teaching fields (for registration)
-    teachingFields: {
-      "Communication in Romanian": "Comunicare în limba română",
-      "Romanian Language and Literature": "Limba și literatura română",
-      "Mathematics": "Matematică",
-      "Mathematics and Environment Exploration": "Matematică și explorarea mediului",
-      "Computer Science": "Informatică",
-      "Computer Science and ICT": "Informatică și TIC",
-      "Physics": "Fizică",
-      "Chemistry": "Chimie",
-      "Biology": "Biologie",
-      "Geography": "Geografie",
-      "History": "Istorie",
-      "History of Communism in Romania": "Istoria comunismului în România",
-      "Sciences": "Științe",
-      "Natural Sciences": "Științe naturale",
-    },
-
-    // Grades
-    grades: {
-      "Grade 1": "Clasa I",
-      "Grade 2": "Clasa a II-a",
-      "Grade 3": "Clasa a III-a",
-      "Grade 4": "Clasa a IV-a",
-      "Grade 5": "Clasa a V-a",
-      "Grade 6": "Clasa a VI-a",
-      "Grade 7": "Clasa a VII-a",
-      "Grade 8": "Clasa a VIII-a",
-      "Grade 9": "Clasa a IX-a",
-      "Grade 10": "Clasa a X-a",
-      "Grade 11": "Clasa a XI-a",
-      "Grade 12": "Clasa a XII-a",
-      "University": "Universitate",
-      "Adult": "Adult",
-    },
-
-    // Subjects
-    subjects: {
-      "Science": "Științe",
-      "Mathematics": "Matematică",
-      "History": "Istorie",
-      "English": "Engleză",
-      "Geography": "Geografie",
-      "Art": "Arte",
-      "Music": "Muzică",
-      "Physical Education": "Educație fizică",
-      "Computer Science": "Informatică",
-      "Foreign Language": "Limba străină",
-      "Other": "Altele",
-    },
-
-    // Durations
-    durations: {
-      "20 minutes": "20 minute",
-      "30 minutes": "30 minute",
-      "45 minutes": "45 minute",
-      "60 minutes": "60 minute",
+    lesson2: {
+      title: "Civilizații Antice",
+      subject: "Istorie",
+      grade: "Clasa a 6-a",
+      teacherName: "Dl. Smith",
     },
   },
 };
 
-// Type for translation keys (for type safety)
-export type TranslationKey = keyof typeof translations.ro;
+// English translations (for future use)
+const en: Translations = {
+  common: {
+    appName: "EduAgent",
+    loading: "Loading...",
+    error: "Error",
+    success: "Success",
+    cancel: "Cancel",
+    save: "Save",
+    delete: "Delete",
+    edit: "Edit",
+    close: "Close",
+    back: "Back",
+    next: "Next",
+    previous: "Previous",
+    submit: "Submit",
+    search: "Search",
+    filter: "Filter",
+    noResults: "No results found",
+    welcome: "Welcome",
+    welcomeBack: (name: string) => `Welcome back, ${name}!`,
+  },
 
-// Helper function to get translation (can be extended for i18n)
-export function t(key: string, lang: "ro" = "ro"): string {
-  const keys = key.split(".");
-  let value: any = translations[lang];
-  
-  for (const k of keys) {
-    if (value && typeof value === "object" && k in value) {
-      value = value[k];
-    } else {
-      console.warn(`Translation key not found: ${key}`);
-      return key;
-    }
-  }
-  
-  return typeof value === "string" ? value : key;
+  navbar: {
+    student: {
+      dashboard: "Dashboard",
+      myLessons: "My Lessons",
+      account: "Account",
+    },
+    profile: "Profile",
+    logout: "Logout",
+    menu: "Menu",
+    toggleMenu: "Toggle menu",
+  },
+
+  student: {
+    dashboard: {
+      title: "Student Dashboard",
+      welcomeMessage: (name: string) => `Welcome back, ${name || "Student"}!`,
+      joinLesson: {
+        title: "Join a lesson",
+        description: "Enter a class code to join your teacher's lesson.",
+        button: "Join lesson",
+        ariaLabel: "Join a lesson with class code",
+      },
+      myLessons: {
+        title: "My Lessons",
+        description: "Access your assigned lessons and learning materials",
+        emptyState: "No lessons assigned yet. Your teacher will share lessons with you soon.",
+        openButton: "Open",
+        openAriaLabel: (title: string) => `Open ${title}`,
+        lessonAriaLabel: (title: string) => `Open lesson: ${title}`,
+      },
+    },
+
+    joinLesson: {
+      title: "Join your lesson",
+      description: "Enter the class code given by your teacher.",
+      classCodeLabel: "Class code",
+      classCodePlaceholder: "ABC123",
+      button: "Join lesson",
+      buttonLoading: "Joining...",
+      helperText: "Or open the link directly if your teacher shared one.",
+      errors: {
+        emptyCode: "Please enter a class code",
+        codeNotFound: "This class code couldn't be found. Check with your teacher.",
+        genericError: "Something went wrong. Please try again.",
+      },
+    },
+
+    lessons: {
+      title: "My Lessons",
+      description: "Access all your assigned lessons and learning materials",
+      allLessons: "All Lessons",
+      clickToStart: "Click on any lesson to start learning",
+      emptyState: "No lessons assigned yet. Your teacher will share lessons with you soon.",
+      openButton: "Open",
+      openAriaLabel: (title: string) => `Open ${title}`,
+      lessonAriaLabel: (title: string) => `Open lesson: ${title}`,
+    },
+
+    lessonPlayer: {
+      backToLessons: "Back to lessons",
+      tabs: {
+        summary: "Summary",
+        slides: "Slides",
+        quiz: "Quiz",
+      },
+      summary: {
+        learningObjectives: "By the end of this lesson you will be able to…",
+        fontControls: {
+          decrease: "Decrease font size",
+          increase: "Increase font size",
+          listen: "Listen",
+          listenTooltip: "Read aloud feature coming soon",
+        },
+      },
+      slides: {
+        counter: (current: number, total: number) => `Slide ${current} of ${total}`,
+        previous: "Previous",
+        next: "Next",
+        textVersion: "Slide Content (Text Version)",
+        goToSlide: (index: number) => `Go to slide ${index + 1}`,
+        emptyState: "No slides available for this lesson.",
+      },
+      quiz: {
+        questionLabel: (index: number, question: string) => `Question ${index + 1}: ${question}`,
+        answeredCount: (answered: number, total: number) => `${answered} of ${total} questions answered`,
+        submitButton: "Submit Quiz",
+        submitButtonLoading: "Submitting...",
+        submitWarning: "Please answer all questions before submitting.",
+        success: {
+          title: "Quiz Submitted Successfully!",
+          score: (correct: number, total: number, percentage: number) =>
+            `Your Score: ${correct} / ${total} (${percentage}%)`,
+          message: "Your quiz has been submitted and is waiting for teacher feedback.",
+          feedbackMessage: "Your teacher will review your answers and provide feedback soon.",
+        },
+        errors: {
+          notAllAnswered: "Please answer all questions before submitting.",
+          submitFailed: "Failed to submit quiz. Please try again.",
+        },
+        emptyState: "No quiz available for this lesson.",
+      },
+      keyTerms: {
+        title: "Key Terms",
+        footer: "This lesson was created with EduAgent and reviewed by your teacher.",
+      },
+    },
+  },
+
+  placeholders: {
+    student: "Student",
+    lessonTitle: "Lesson Title",
+    subject: "Subject",
+    grade: "Grade",
+    teacherName: "Teacher Name",
+    className: "Class",
+  },
+
+  subjects: {
+    science: "Science",
+    history: "History",
+    math: "Math",
+    language: "Language",
+    art: "Art",
+    music: "Music",
+    physicalEducation: "Physical Education",
+  },
+
+  mockLessons: {
+    lesson1: {
+      title: "Photosynthesis – Grade 5",
+      subject: "Science",
+      grade: "Grade 5",
+      teacherName: "Ms. Ionescu",
+      learningObjectives: [
+        "Understand how plants make food",
+        "Identify the key components of photosynthesis",
+        "Explain the role of sunlight in the process",
+      ],
+      studentSummary: `# Introduction to Photosynthesis
+
+Photosynthesis is the process by which plants use sunlight, water, and carbon dioxide to create their own food. This amazing process happens in the leaves of plants, specifically in structures called chloroplasts.
+
+## How It Works
+
+During photosynthesis, plants absorb sunlight through their leaves. The green pigment called chlorophyll captures the light energy. Plants also take in water through their roots and carbon dioxide from the air through tiny openings in their leaves called stomata.
+
+## The Process
+
+Using these ingredients and the energy from sunlight, plants produce glucose (a type of sugar) which they use as food. As a byproduct, plants release oxygen into the air, which is essential for all living things to breathe.
+
+## Key Components
+
+- **Chlorophyll**: The green pigment that captures sunlight
+- **Stomata**: Tiny openings in leaves that allow gas exchange
+- **Roots**: Absorb water from the soil
+- **Leaves**: Where most photosynthesis occurs`,
+      slides: [
+        {
+          id: "slide_1",
+          title: "What is Photosynthesis?",
+          content: "- Process by which plants make food\n- Uses sunlight, water, and CO2\n- Happens in leaves",
+        },
+        {
+          id: "slide_2",
+          title: "The Process",
+          content: "- Plants absorb sunlight\n- Take in water and carbon dioxide\n- Convert to glucose and oxygen",
+        },
+        {
+          id: "slide_3",
+          title: "Key Components",
+          content: "- Chlorophyll captures light\n- Stomata allow gas exchange\n- Roots absorb water",
+        },
+        {
+          id: "slide_4",
+          title: "Why It Matters",
+          content: "- Plants produce oxygen we breathe\n- Creates food for the plant\n- Foundation of most food chains",
+        },
+      ],
+      quiz: [
+        {
+          id: "q1",
+          question: "What is the main purpose of photosynthesis?",
+          options: [
+            "To make plants green",
+            "To create food for the plant using sunlight",
+            "To absorb water from the soil",
+            "To produce carbon dioxide",
+          ],
+          correctAnswer: 1,
+          explanation: "Photosynthesis is the process by which plants create their own food (glucose) using sunlight, water, and carbon dioxide.",
+        },
+        {
+          id: "q2",
+          question: "What pigment captures sunlight in plants?",
+          options: ["Stomata", "Chlorophyll", "Glucose", "Oxygen"],
+          correctAnswer: 1,
+          explanation: "Chlorophyll is the green pigment in plant leaves that captures light energy from the sun.",
+        },
+      ],
+      keyTerms: [
+        { term: "Photosynthesis", definition: "The process by which plants make food using sunlight, water, and carbon dioxide." },
+        { term: "Chlorophyll", definition: "The green pigment in plants that captures light energy." },
+        { term: "Stomata", definition: "Tiny openings in leaves that allow plants to exchange gases." },
+        { term: "Glucose", definition: "A type of sugar that plants produce during photosynthesis." },
+      ],
+    },
+    lesson2: {
+      title: "Ancient Civilizations",
+      subject: "History",
+      grade: "Grade 6",
+      teacherName: "Mr. Smith",
+    },
+  },
+};
+
+// Translation dictionary
+const translations: Record<Language, Translations> = {
+  ro,
+  en,
+};
+
+// Default language (Romanian)
+export const defaultLanguage: Language = "ro";
+
+/**
+ * Get translations for a specific language
+ * @param lang - Language code (defaults to Romanian)
+ * @returns Translations object for the specified language
+ */
+export function getTranslations(lang: Language = defaultLanguage): Translations {
+  return translations[lang] || translations[defaultLanguage];
 }
 
-// Export default Romanian translations for easy access
-export default translations.ro;
+/**
+ * Translation hook/utility - can be extended to use React Context for language switching
+ * For now, returns Romanian translations by default
+ */
+export const t = getTranslations(defaultLanguage);
 
+// Export individual language objects for direct access if needed
+export { ro as translationsRo, en as translationsEn };
+
+/**
+ * Get mock lesson data based on language
+ * @param lang - Language code
+ * @returns Mock lesson data object
+ */
+export function getMockLessonData(lang: Language = defaultLanguage) {
+  const t = getTranslations(lang);
+  
+  return {
+    id: "lesson_123",
+    title: t.mockLessons.lesson1.title,
+    subject: t.mockLessons.lesson1.subject,
+    grade: t.mockLessons.lesson1.grade,
+    teacherName: t.mockLessons.lesson1.teacherName,
+    className: "5B",
+    learningObjectives: t.mockLessons.lesson1.learningObjectives,
+    studentSummary: t.mockLessons.lesson1.studentSummary,
+    slides: t.mockLessons.lesson1.slides,
+    quiz: t.mockLessons.lesson1.quiz,
+    keyTerms: t.mockLessons.lesson1.keyTerms,
+  };
+}
+
+/**
+ * Get mock lessons list based on language
+ * @param lang - Language code
+ * @returns Array of mock lessons
+ */
+export function getMockLessonsList(lang: Language = defaultLanguage) {
+  const t = getTranslations(lang);
+  
+  return [
+    {
+      id: "lesson_123",
+      title: t.mockLessons.lesson1.title,
+      subject: t.mockLessons.lesson1.subject,
+      grade: t.mockLessons.lesson1.grade,
+      teacherName: t.mockLessons.lesson1.teacherName,
+      dateJoined: "2024-01-15",
+    },
+    {
+      id: "lesson_456",
+      title: t.mockLessons.lesson2.title,
+      subject: t.mockLessons.lesson2.subject,
+      grade: t.mockLessons.lesson2.grade,
+      teacherName: t.mockLessons.lesson2.teacherName,
+      dateJoined: "2024-01-14",
+    },
+  ];
+}
