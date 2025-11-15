@@ -36,7 +36,7 @@ interface LessonData {
   studentSummary: string;
   slides: Slide[];
   presentationFileUrl?: string;
-  presentationFileType?: "pdf" | "ppt";
+  presentationFileType?: "pdf";
   teacherGuidelines?: {
     objectives?: string;
     timing?: string;
@@ -371,24 +371,6 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
                       currentPage={currentSlideIndex}
                       onPageChange={(page) => setCurrentSlideIndex(page)}
                     />
-                  ) : lesson.presentationFileUrl && lesson.presentationFileType === "ppt" ? (
-                    <Card className="min-h-[400px] flex flex-col border-2">
-                      <CardContent className="flex-1 flex flex-col items-center justify-center p-8 sm:p-12">
-                        <div className="text-center space-y-4">
-                          <p className="text-lg text-muted-foreground">
-                            PowerPoint viewer coming soon. For now, please convert your PPT to PDF.
-                          </p>
-                          <a
-                            href={lesson.presentationFileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline"
-                          >
-                            Download presentation file
-                          </a>
-                        </div>
-                      </CardContent>
-                    </Card>
                   ) : lesson.slides && lesson.slides.length > 0 ? (
                     <>
                       {/* Slide Counter */}
@@ -532,20 +514,32 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
               {(() => {
                 // Only show slide-specific info if we're viewing text-based slides (not PDF)
                 const isViewingPDF = lesson.presentationFileUrl && lesson.presentationFileType === "pdf";
-                const isViewingPPT = lesson.presentationFileUrl && lesson.presentationFileType === "ppt";
                 
-                // If viewing PDF/PPT, show general guidelines instead of slide-specific info
-                if (isViewingPDF || isViewingPPT) {
-                  const notes = lesson.teacherGuidelines?.objectives || "";
+                // If viewing PDF, show slide-specific info based on current page
+                if (isViewingPDF) {
+                  const slideNumber = currentSlideIndex + 1;
+                  
+                  // Generate slide-specific notes based on slide number
+                  let notes = `Slide ${slideNumber}: ${lesson.teacherGuidelines?.objectives ? `Obiective: ${lesson.teacherGuidelines.objectives}` : "Informații despre acest slide"}`;
                   const tips: string[] = [];
                   const resources: string[] = [];
                   
-                  if (lesson.teacherGuidelines?.questions) {
-                    tips.push(lesson.teacherGuidelines.questions);
+                  // Add slide-specific tips based on position
+                  if (slideNumber === 1) {
+                    tips.push("Începe cu o întrebare provocatoare pentru a capta atenția elevilor");
+                    tips.push("Folosește exemple concrete din viața de zi cu zi");
+                    if (lesson.teacherGuidelines?.questions) {
+                      tips.push(lesson.teacherGuidelines.questions);
+                    }
+                  } else {
+                    tips.push("Folosește diagrame și ilustrații pentru claritate");
+                    tips.push("Permite elevilor să pună întrebări");
+                    if (lesson.teacherGuidelines?.differentiation) {
+                      tips.push(lesson.teacherGuidelines.differentiation);
+                    }
                   }
-                  if (lesson.teacherGuidelines?.differentiation) {
-                    tips.push(lesson.teacherGuidelines.differentiation);
-                  }
+                  
+                  // Add resources if available
                   if (lesson.teacherGuidelines?.assessment) {
                     resources.push(lesson.teacherGuidelines.assessment);
                   }
@@ -806,20 +800,31 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
                 (() => {
                   // Only show slide-specific info if we're viewing text-based slides (not PDF)
                   const isViewingPDF = lesson.presentationFileUrl && lesson.presentationFileType === "pdf";
-                  const isViewingPPT = lesson.presentationFileUrl && lesson.presentationFileType === "ppt";
-                  
-                  // If viewing PDF/PPT, show general guidelines instead of slide-specific info
-                  if (isViewingPDF || isViewingPPT) {
-                    const notes = lesson.teacherGuidelines?.objectives || "";
+                  // If viewing PDF, show slide-specific info based on current page
+                  if (isViewingPDF) {
+                    const slideNumber = currentSlideIndex + 1;
+                    
+                    // Generate slide-specific notes based on slide number
+                    let notes = `Slide ${slideNumber}: ${lesson.teacherGuidelines?.objectives ? `Obiective: ${lesson.teacherGuidelines.objectives}` : "Informații despre acest slide"}`;
                     const tips: string[] = [];
                     const resources: string[] = [];
                     
-                    if (lesson.teacherGuidelines?.questions) {
-                      tips.push(lesson.teacherGuidelines.questions);
+                    // Add slide-specific tips based on position
+                    if (slideNumber === 1) {
+                      tips.push("Începe cu o întrebare provocatoare pentru a capta atenția elevilor");
+                      tips.push("Folosește exemple concrete din viața de zi cu zi");
+                      if (lesson.teacherGuidelines?.questions) {
+                        tips.push(lesson.teacherGuidelines.questions);
+                      }
+                    } else {
+                      tips.push("Folosește diagrame și ilustrații pentru claritate");
+                      tips.push("Permite elevilor să pună întrebări");
+                      if (lesson.teacherGuidelines?.differentiation) {
+                        tips.push(lesson.teacherGuidelines.differentiation);
+                      }
                     }
-                    if (lesson.teacherGuidelines?.differentiation) {
-                      tips.push(lesson.teacherGuidelines.differentiation);
-                    }
+                    
+                    // Add resources if available
                     if (lesson.teacherGuidelines?.assessment) {
                       resources.push(lesson.teacherGuidelines.assessment);
                     }

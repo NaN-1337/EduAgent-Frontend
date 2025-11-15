@@ -169,7 +169,7 @@ export function ExportShareModal({
                     htmlFor="download-slides"
                     className="text-base font-medium cursor-pointer flex-1"
                   >
-                    Download slides (PPTX or PDF)
+                    Download slides (PDF)
                   </Label>
                 </div>
                 <Button

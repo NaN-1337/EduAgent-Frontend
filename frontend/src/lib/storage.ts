@@ -15,7 +15,7 @@ import { ref, uploadBytes, getDownloadURL, UploadResult, listAll } from "firebas
  * Option 2: Leave empty and the code will try to find the file automatically
  */
 export const MOCK_PRESENTATION_FILE_URL = "https://firebasestorage.googleapis.com/v0/b/innovate4ai.firebasestorage.app/o/1jTUyxRHWcN0OH9ybEuwI1K0dSD2%2F6%2FUnique%20Agentic%20AI%20Project%20Idea_%20_EduAgent_%20%E2%80%93%20The%20Autonomous%20Lesson%20Builder.pdf?alt=media&token=b8c969e1-820f-40fc-8a96-33ae76fdf5f8"; // Set the complete download URL here (with token)
-export const MOCK_PRESENTATION_FILE_TYPE: "pdf" | "ppt" = "pdf"; // Change to "ppt" if it's a PowerPoint file
+export const MOCK_PRESENTATION_FILE_TYPE: "pdf" = "pdf";
 
 /**
  * Get the mock presentation file URL by searching in the storage folder
@@ -103,11 +103,4 @@ export function isPDF(filename: string): boolean {
   return getFileExtension(filename) === "pdf";
 }
 
-/**
- * Check if file is PowerPoint
- */
-export function isPowerPoint(filename: string): boolean {
-  const ext = getFileExtension(filename);
-  return ext === "ppt" || ext === "pptx";
-}
 

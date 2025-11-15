@@ -176,13 +176,11 @@ service firebase.storage {
       // 1. User is authenticated
       // 2. The teacherUid matches the authenticated user's UID
       // 3. User is a teacher
-      // 4. File name is "presentation.pdf" or "presentation.pptx" or "presentation.ppt"
+      // 4. File name is "presentation.pdf"
       allow write: if isAuthenticated() && 
                       request.auth.uid == teacherUid &&
                       isTeacher() &&
-                      (fileName == "presentation.pdf" || 
-                       fileName == "presentation.pptx" || 
-                       fileName == "presentation.ppt");
+                      fileName == "presentation.pdf";
       
       // Allow delete if user owns the file and is a teacher
       allow delete: if isAuthenticated() && 

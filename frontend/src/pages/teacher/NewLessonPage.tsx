@@ -168,7 +168,7 @@ export default function NewLessonPage() {
       
       // MOCK: Use the same presentation file for all lessons
       let presentationFileUrl: string | undefined;
-      let presentationFileType: "pdf" | "ppt" | undefined;
+      let presentationFileType: "pdf" | undefined;
       
       if (MOCK_PRESENTATION_FILE_URL) {
         // Use the mock URL directly (must include the token)
@@ -208,13 +208,11 @@ export default function NewLessonPage() {
       
       // Original upload logic (commented out for now - using mock instead)
       // if (step2Data.presentationFile) {
-      //   const fileExtension = step2Data.presentationFile.name.split(".").pop()?.toLowerCase();
-      //   const fileType = isPDF(step2Data.presentationFile.name) ? "pdf" : 
-      //                   (fileExtension === "ppt" || fileExtension === "pptx") ? "ppt" : undefined;
+      //   const fileType = isPDF(step2Data.presentationFile.name) ? "pdf" : undefined;
       //   
       //   if (fileType && gradeStorage !== null) {
-      //     // Storage path: {teacherUid}/{grade}/{lessonId}/presentation.{ext}
-      //     const filePath = `${user.uid}/${gradeStorage}/${finalLessonId}/presentation.${fileExtension}`;
+      //     // Storage path: {teacherUid}/{grade}/{lessonId}/presentation.pdf
+      //     const filePath = `${user.uid}/${gradeStorage}/${finalLessonId}/presentation.pdf`;
       //     presentationFileUrl = await uploadFile(step2Data.presentationFile, filePath);
       //     presentationFileType = fileType;
       //     

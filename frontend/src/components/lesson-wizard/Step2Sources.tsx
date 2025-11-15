@@ -10,7 +10,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 interface Step2Data {
   files: File[];
   textContent: string;
-  presentationFile?: File | null; // PDF or PPT file for slide viewer
+  presentationFile?: File | null; // PDF file for slide viewer
 }
 
 interface Step2SourcesProps {
@@ -147,13 +147,13 @@ export function Step2Sources({ data, onChange }: Step2SourcesProps) {
             />
           </div>
 
-          {/* Presentation file upload (PDF/PPT) */}
+          {/* Presentation file upload (PDF) */}
           <div className="space-y-2">
             <Label className="text-base font-semibold">
-              {t.teacher.newLesson.step2.presentationLabel || "Presentation File (PDF/PPT)"}
+              {t.teacher.newLesson.step2.presentationLabel || "Presentation File (PDF)"}
             </Label>
             <p className="text-sm text-muted-foreground">
-              {t.teacher.newLesson.step2.presentationDescription || "Upload a PDF or PowerPoint file to display slide-by-slide"}
+              {t.teacher.newLesson.step2.presentationDescription || "Upload a PDF file to display slide-by-slide"}
             </p>
             <div className="border-2 border-dashed rounded-lg p-6 text-center">
               {data.presentationFile ? (
@@ -181,7 +181,7 @@ export function Step2Sources({ data, onChange }: Step2SourcesProps) {
                 <>
                   <Upload className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground mb-3">
-                    {t.teacher.newLesson.step2.presentationPlaceholder || "Upload PDF or PowerPoint file"}
+                    {t.teacher.newLesson.step2.presentationPlaceholder || "Upload PDF file"}
                   </p>
                   <Button
                     type="button"
@@ -194,7 +194,7 @@ export function Step2Sources({ data, onChange }: Step2SourcesProps) {
                   <input
                     ref={presentationFileInputRef}
                     type="file"
-                    accept=".pdf,.ppt,.pptx"
+                    accept=".pdf"
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
