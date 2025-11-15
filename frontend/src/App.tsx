@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { LanguageProvider } from './contexts/LanguageContext'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ProfilePage from './pages/ProfilePage'
@@ -9,13 +10,17 @@ import NewLessonPage from './pages/teacher/NewLessonPage'
 import FactCheckPanel from './pages/teacher/FactCheckPanel'
 import LessonEditor from './pages/teacher/LessonEditor'
 import StudentDashboard from './pages/student/StudentDashboard'
+import StudentLessonsPage from './pages/student/StudentLessonsPage'
+import JoinLessonPage from './pages/student/JoinLessonPage'
+import StudentLessonPlayer from './pages/student/StudentLessonPlayer'
 import IndividualDashboard from './pages/individual/IndividualDashboard'
 
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <Routes>
+      <LanguageProvider>
+        <AuthProvider>
+          <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -25,9 +30,13 @@ function App() {
           <Route path="/teacher/lessons/:lessonId/edit" element={<LessonEditor />} />
           <Route path="/teacher/lessons/:lessonId/fact-check" element={<FactCheckPanel />} />
           <Route path="/student/dashboard" element={<StudentDashboard />} />
+          <Route path="/student/lessons" element={<StudentLessonsPage />} />
+          <Route path="/lesson/join" element={<JoinLessonPage />} />
+          <Route path="/lesson/:id" element={<StudentLessonPlayer />} />
           <Route path="/individual/dashboard" element={<IndividualDashboard />} />
         </Routes>
-      </AuthProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </ThemeProvider>
   )
 }

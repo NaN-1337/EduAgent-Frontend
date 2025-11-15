@@ -1,5 +1,6 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -14,6 +15,7 @@ import { Menu, X, User, LogOut } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageToggle } from "@/components/language-toggle";
 
 interface NavbarProps {
   role?: "teacher" | "student";
@@ -21,6 +23,7 @@ interface NavbarProps {
 
 export function Navbar({ role = "teacher" }: NavbarProps) {
   const { user, userData, signOut } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -40,9 +43,9 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
   ];
 
   const studentLinks = [
-    { path: "/student/dashboard", label: "Dashboard" },
-    { path: "/student/lessons", label: "My Lessons" },
-    { path: "/profile", label: "Account" },
+    { path: "/student/dashboard", label: t.navbar.student.dashboard },
+    { path: "/student/lessons", label: t.navbar.student.myLessons },
+    { path: "/profile", label: t.navbar.student.account },
   ];
 
   const links = role === "teacher" ? teacherLinks : studentLinks;
@@ -83,8 +86,11 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
             <NavLinks />
           </div>
 
-          {/* Right side: Theme toggle, Avatar */}
+          {/* Right side: Language toggle, Theme toggle, Avatar */}
           <div className="flex items-center space-x-3">
+            <div className="hidden md:block">
+              <LanguageToggle />
+            </div>
             <div className="hidden md:block">
               <ThemeToggle />
             </div>
@@ -116,13 +122,13 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
                   <DropdownMenuItem asChild>
                     <Link to="/profile" className="cursor-pointer">
                       <User className="mr-2 h-4 w-4" />
-                      Profile
+                      {t.navbar.profile}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive focus:text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
-                    Logout
+                    {t.navbar.logout}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -139,8 +145,11 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
                 <div className="flex flex-col space-y-4 mt-8">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold">Menu</h2>
-                    <ThemeToggle />
+                    <h2 className="text-lg font-semibold">{t.navbar.menu}</h2>
+                    <div className="flex items-center gap-2">
+                      <LanguageToggle />
+                      <ThemeToggle />
+                    </div>
                   </div>
                   <div className="flex flex-col space-y-2">
                     <NavLinks />
@@ -166,7 +175,7 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
                           className="w-full justify-start"
                         >
                           <LogOut className="mr-2 h-4 w-4" />
-                          Logout
+                          {t.navbar.logout}
                         </Button>
                       </div>
                     </>
