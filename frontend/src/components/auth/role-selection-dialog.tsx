@@ -7,13 +7,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { GraduationCap, User, Users } from "lucide-react";
+import { t, translations } from "@/lib/translations";
 
 type Role = "student" | "teacher" | "individual";
 
 interface RoleSelectionDialogProps {
   open: boolean;
-  onRoleSelect: (role: Role) => void;
+  onRoleSelect: (role: Role, grade?: string, teachingField?: string) => void;
 }
 
 export function RoleSelectionDialog({
@@ -21,32 +30,36 @@ export function RoleSelectionDialog({
   onRoleSelect,
 }: RoleSelectionDialogProps) {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [selectedGrade, setSelectedGrade] = useState<string>("");
+  const [selectedTeachingField, setSelectedTeachingField] = useState<string>("");
 
-  // Reset selected role when dialog opens
+  // Reset selected role, grade, and teaching field when dialog opens
   useEffect(() => {
     if (open) {
       setSelectedRole(null);
+      setSelectedGrade("");
+      setSelectedTeachingField("");
     }
   }, [open]);
 
   const roles = [
     {
       value: "student" as Role,
-      label: "Student",
+      label: t("auth.roleSelection.student.label"),
       icon: GraduationCap,
-      description: "I'm a student looking to join events",
+      description: t("auth.roleSelection.student.description"),
     },
     {
       value: "teacher" as Role,
-      label: "Teacher",
+      label: t("auth.roleSelection.teacher.label"),
       icon: User,
-      description: "I'm a teacher organizing events",
+      description: t("auth.roleSelection.teacher.description"),
     },
     {
       value: "individual" as Role,
-      label: "Individual",
+      label: t("auth.roleSelection.individual.label"),
       icon: Users,
-      description: "I'm an individual participant",
+      description: t("auth.roleSelection.individual.description"),
     },
   ];
 
@@ -54,8 +67,8 @@ export function RoleSelectionDialog({
     <Dialog 
       open={open} 
       onOpenChange={(isOpen) => {
-        // Prevent closing without selecting a role
-        if (!isOpen && !selectedRole) {
+        // Prevent closing without selecting a role (and grade for students, teachingField for teachers)
+        if (!isOpen && (!selectedRole || (selectedRole === "student" && !selectedGrade) || (selectedRole === "teacher" && !selectedTeachingField))) {
           return;
         }
       }}
@@ -64,24 +77,23 @@ export function RoleSelectionDialog({
         className="sm:max-w-[500px] shadow-2xl border-2 dark:border-primary/20 backdrop-blur-sm bg-card/95 dark:bg-card/95" 
         onPointerDownOutside={(e) => {
           // Prevent closing by clicking outside
-          if (!selectedRole) {
+          if (!selectedRole || (selectedRole === "student" && !selectedGrade) || (selectedRole === "teacher" && !selectedTeachingField)) {
             e.preventDefault();
           }
         }}
         onEscapeKeyDown={(e) => {
           // Prevent closing with ESC key
-          if (!selectedRole) {
+          if (!selectedRole || (selectedRole === "student" && !selectedGrade) || (selectedRole === "teacher" && !selectedTeachingField)) {
             e.preventDefault();
           }
         }}
       >
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            Select Your Role
+            {t("auth.roleSelection.title")}
           </DialogTitle>
           <DialogDescription className="text-base">
-            Please choose your role to continue. This helps us personalize your
-            experience.
+            {t("auth.roleSelection.description")}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -116,17 +128,77 @@ export function RoleSelectionDialog({
             );
           })}
         </div>
+        
+        {/* Grade selector for students */}
+        {selectedRole === "student" && (
+          <div className="space-y-2 pt-2">
+            <Label htmlFor="grade" className="text-base font-semibold">
+              {t("auth.roleSelection.gradeRequired").replace("Te rugăm să selectezi clasa", "Selectează clasa")} <span className="text-destructive">*</span>
+            </Label>
+            <Select value={selectedGrade} onValueChange={setSelectedGrade}>
+              <SelectTrigger id="grade" className="h-12">
+                <SelectValue placeholder={t("auth.register.gradeLabel")} />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((grade) => {
+                  const gradeKey = `Grade ${grade}`;
+                  return (
+                    <SelectItem key={grade} value={gradeKey}>
+                      {translations.ro.grades[gradeKey as keyof typeof translations.ro.grades]}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        
+        {/* Teaching field selector for teachers */}
+        {selectedRole === "teacher" && (
+          <div className="space-y-2 pt-2">
+            <Label htmlFor="teachingField" className="text-base font-semibold">
+              {t("auth.roleSelection.teachingFieldRequired").replace("Te rugăm să selectezi domeniul de predare", "Selectează domeniul de predare")} <span className="text-destructive">*</span>
+            </Label>
+            <Select value={selectedTeachingField} onValueChange={setSelectedTeachingField}>
+              <SelectTrigger id="teachingField" className="h-12">
+                <SelectValue placeholder={t("auth.register.teachingFieldLabel")} />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(translations.ro.teachingFields).map(([key, value]) => (
+                  <SelectItem key={key} value={key}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        
         <div className="flex justify-end gap-2">
           <Button
             onClick={() => {
               if (selectedRole) {
-                onRoleSelect(selectedRole);
+                if (selectedRole === "student" && !selectedGrade) {
+                  return;
+                }
+                if (selectedRole === "teacher" && !selectedTeachingField) {
+                  return;
+                }
+                onRoleSelect(
+                  selectedRole,
+                  selectedGrade || undefined,
+                  selectedTeachingField || undefined
+                );
               }
             }}
-            disabled={!selectedRole}
+            disabled={
+              !selectedRole ||
+              (selectedRole === "student" && !selectedGrade) ||
+              (selectedRole === "teacher" && !selectedTeachingField)
+            }
             className="w-full sm:w-auto"
           >
-            Continue
+            {t("auth.roleSelection.continueButton")}
           </Button>
         </div>
       </DialogContent>

@@ -5,60 +5,37 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, BookOpen, Clock, TrendingUp, Lightbulb, ArrowRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { db } from "@/lib/firebaseConfig";
+import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { t } from "@/lib/translations";
 
-// Mock data - replace with actual data fetching
-const recentLessons = [
-  {
-    id: "1",
-    title: "Introduction to Photosynthesis",
-    subject: "Science",
-    grade: "Grade 5",
-    dateModified: "2024-01-15",
-    status: "Ready" as const,
-  },
-  {
-    id: "2",
-    title: "Ancient Civilizations",
-    subject: "History",
-    grade: "Grade 6",
-    dateModified: "2024-01-14",
-    status: "Fact-check needed" as const,
-  },
-  {
-    id: "3",
-    title: "Basic Algebra",
-    subject: "Mathematics",
-    grade: "Grade 7",
-    dateModified: "2024-01-13",
-    status: "Draft" as const,
-  },
-  {
-    id: "4",
-    title: "Shakespeare's Sonnets",
-    subject: "English",
-    grade: "Grade 9",
-    dateModified: "2024-01-12",
-    status: "Ready" as const,
-  },
-];
-
-const analytics = {
-  hoursSaved: 12,
-  lessonsGenerated: 8,
-  mostFrequentSubject: "Science",
-};
-
-const tips = [
-  "Specify grade level clearly in your prompt",
-  "Add 1–3 learning objectives for better results",
-  "Include preferred teaching style or format",
-  "Mention any specific topics to emphasize or avoid",
-];
+interface Lesson {
+  id: string;
+  title: string;
+  subject: string;
+  grade: string;
+  dateModified: any;
+  status: "draft" | "fact-check needed" | "ready";
+}
 
 export default function TeacherDashboard() {
   const navigate = useNavigate();
   const { user, userData, loading } = useAuth();
+  const [recentLessons, setRecentLessons] = useState<Lesson[]>([]);
+  const [loadingLessons, setLoadingLessons] = useState(true);
+  const [analytics, setAnalytics] = useState({
+    hoursSaved: 0,
+    lessonsGenerated: 0,
+    mostFrequentSubject: t("common.messages.noData"),
+  });
+
+  const tips = [
+    t("teacherDashboard.tips.tip1"),
+    t("teacherDashboard.tips.tip2"),
+    t("teacherDashboard.tips.tip3"),
+    t("teacherDashboard.tips.tip4"),
+  ];
 
   useEffect(() => {
     if (!loading && (!user || userData?.role !== "teacher")) {
@@ -66,7 +43,130 @@ export default function TeacherDashboard() {
     }
   }, [user, userData, loading, navigate]);
 
-  if (loading) {
+  useEffect(() => {
+    const fetchLessons = async () => {
+      if (!user || userData?.role !== "teacher") {
+        setLoadingLessons(false);
+        return;
+      }
+
+      try {
+        setLoadingLessons(true);
+        
+        // Query lessons for this teacher
+        const lessonsRef = collection(db, "lessons");
+        const q = query(
+          lessonsRef,
+          where("teacherId", "==", user.uid),
+          orderBy("lastModified", "desc")
+        );
+
+        const querySnapshot = await getDocs(q);
+        const lessonsData: Lesson[] = [];
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          lessonsData.push({
+            id: doc.id,
+            title: data.title || "Untitled Lesson",
+            subject: data.subject || "Unknown",
+            grade: data.grade || "Unknown",
+            dateModified: data.lastModified || data.createdAt || new Date(),
+            status: data.status || "draft",
+          });
+        });
+
+        // Get last 5 lessons for recent lessons
+        const recent = lessonsData.slice(0, 5);
+        setRecentLessons(recent);
+
+        // Calculate analytics
+        const lessonsGenerated = lessonsData.length;
+        // Estimate hours saved: assume 1.5 hours per lesson
+        const hoursSaved = Math.round(lessonsGenerated * 1.5);
+        
+        // Find most frequent subject
+        const subjectCounts: Record<string, number> = {};
+        lessonsData.forEach((lesson) => {
+          const subject = lesson.subject;
+          subjectCounts[subject] = (subjectCounts[subject] || 0) + 1;
+        });
+        
+        const mostFrequentSubject = Object.entries(subjectCounts).reduce((a, b) =>
+          subjectCounts[a[0]] > subjectCounts[b[0]] ? a : b,
+          ["N/A", 0]
+        )[0];
+
+        setAnalytics({
+          hoursSaved,
+          lessonsGenerated,
+          mostFrequentSubject,
+        });
+      } catch (error) {
+        console.error("Error fetching lessons:", error);
+        // If query fails (e.g., missing index), try without orderBy
+        try {
+          const lessonsRef = collection(db, "lessons");
+          const q = query(lessonsRef, where("teacherId", "==", user.uid));
+          const querySnapshot = await getDocs(q);
+          const lessonsData: Lesson[] = [];
+
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            lessonsData.push({
+              id: doc.id,
+              title: data.title || "Untitled Lesson",
+              subject: data.subject || "Unknown",
+              grade: data.grade || "Unknown",
+              dateModified: data.lastModified || data.createdAt || new Date(),
+              status: data.status || "draft",
+            });
+          });
+
+          // Sort by lastModified manually
+          lessonsData.sort((a, b) => {
+            const dateA = a.dateModified?.toDate?.() || new Date(a.dateModified) || new Date(0);
+            const dateB = b.dateModified?.toDate?.() || new Date(b.dateModified) || new Date(0);
+            return dateB.getTime() - dateA.getTime();
+          });
+
+          const recent = lessonsData.slice(0, 5);
+          setRecentLessons(recent);
+
+          // Calculate analytics
+          const lessonsGenerated = lessonsData.length;
+          const hoursSaved = Math.round(lessonsGenerated * 1.5);
+          
+          const subjectCounts: Record<string, number> = {};
+          lessonsData.forEach((lesson) => {
+            const subject = lesson.subject;
+            subjectCounts[subject] = (subjectCounts[subject] || 0) + 1;
+          });
+          
+          const mostFrequentSubject = Object.entries(subjectCounts).reduce((a, b) =>
+            subjectCounts[a[0]] > subjectCounts[b[0]] ? a : b,
+            ["N/A", 0]
+          )[0];
+
+          setAnalytics({
+            hoursSaved,
+            lessonsGenerated,
+            mostFrequentSubject,
+          });
+        } catch (fallbackError) {
+          console.error("Error in fallback query:", fallbackError);
+        }
+      } finally {
+        setLoadingLessons(false);
+      }
+    };
+
+    if (user && userData && userData.role === "teacher") {
+      fetchLessons();
+    }
+  }, [user, userData]);
+
+  if (loading || loadingLessons) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -74,37 +174,43 @@ export default function TeacherDashboard() {
     );
   }
 
-  const getStatusColor = (status: "Draft" | "Fact-check needed" | "Ready") => {
+  const getStatusColor = (status: "draft" | "fact-check needed" | "ready") => {
     switch (status) {
-      case "Ready":
+      case "ready":
         return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800";
-      case "Fact-check needed":
+      case "fact-check needed":
         return "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800";
-      case "Draft":
+      case "draft":
         return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800/30 dark:text-gray-300 dark:border-gray-700";
       default:
         return "";
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const getStatusLabel = (status: "draft" | "fact-check needed" | "ready") => {
+    const statusKey = status.replace(/\s+/g, "").replace(/-/g, "");
+    return t(`common.status.${statusKey}` as any) || status;
+  };
+
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return t("common.messages.notFound");
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     
     if (date.toDateString() === today.toDateString()) {
-      return "Today";
+      return t("common.messages.today");
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return "Yesterday";
+      return t("common.messages.yesterday");
     } else {
-      return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      return date.toLocaleDateString("ro-RO", { month: "short", day: "numeric", year: "numeric" });
     }
   };
 
   const handleLessonClick = (lessonId: string) => {
     // Navigate to lesson editor
-    navigate(`/teacher/lessons/${lessonId}`);
+    navigate(`/teacher/lessons/${lessonId}/edit`);
   };
 
   return (
@@ -121,9 +227,9 @@ export default function TeacherDashboard() {
               {/* Create new lesson card */}
               <Card className="border-2 shadow-sm hover:shadow-md transition-shadow duration-200">
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-2xl font-semibold">Create new lesson</CardTitle>
+                  <CardTitle className="text-2xl font-semibold">{t("teacherDashboard.createNewLesson.title")}</CardTitle>
                   <CardDescription className="text-base mt-2">
-                    Generate summary, slides, and teaching guidelines with built-in fact checking.
+                    {t("teacherDashboard.createNewLesson.description")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -131,10 +237,10 @@ export default function TeacherDashboard() {
                     onClick={() => navigate("/teacher/new-lesson")}
                     size="lg"
                     className="w-full sm:w-auto text-base px-6 py-6 h-auto font-medium"
-                    aria-label="Create a new lesson"
+                    aria-label={t("teacherDashboard.createNewLesson.title")}
                   >
                     <Plus className="mr-2 h-5 w-5" aria-hidden="true" />
-                    New lesson
+                    {t("teacherDashboard.createNewLesson.button")}
                   </Button>
                 </CardContent>
               </Card>
@@ -142,12 +248,12 @@ export default function TeacherDashboard() {
               {/* Recent lessons card */}
               <Card className="border-2 shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-2xl font-semibold">Recent lessons</CardTitle>
+                  <CardTitle className="text-2xl font-semibold">{t("teacherDashboard.recentLessons.title")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {recentLessons.length === 0 ? (
                     <p className="text-muted-foreground text-center py-8">
-                      No lessons yet. Create your first lesson to get started.
+                      {t("teacherDashboard.recentLessons.empty")}
                     </p>
                   ) : (
                     recentLessons.map((lesson) => (
@@ -178,9 +284,9 @@ export default function TeacherDashboard() {
                         <div className="flex items-center gap-3">
                           <Badge 
                             className={`${getStatusColor(lesson.status)} border`}
-                            aria-label={`Status: ${lesson.status}`}
+                            aria-label={`${t("common.labels.status")}: ${getStatusLabel(lesson.status)}`}
                           >
-                            {lesson.status}
+                            {getStatusLabel(lesson.status)}
                           </Badge>
                           <Button
                             variant="ghost"
@@ -190,9 +296,9 @@ export default function TeacherDashboard() {
                               e.stopPropagation();
                               handleLessonClick(lesson.id);
                             }}
-                            aria-label={`Open ${lesson.title}`}
+                            aria-label={`${t("common.buttons.open")} ${lesson.title}`}
                           >
-                            Open
+                            {t("common.buttons.open")}
                             <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
                           </Button>
                         </div>
@@ -210,14 +316,14 @@ export default function TeacherDashboard() {
                 <CardHeader>
                   <CardTitle className="text-xl font-semibold flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-primary" />
-                    Insights
+                    {t("teacherDashboard.insights.title")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Clock className="h-4 w-4" />
-                      <span className="text-sm">Hours saved</span>
+                      <span className="text-sm">{t("teacherDashboard.insights.hoursSaved")}</span>
                     </div>
                     <p className="text-3xl font-semibold">{analytics.hoursSaved}h</p>
                   </div>
@@ -225,7 +331,7 @@ export default function TeacherDashboard() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <BookOpen className="h-4 w-4" />
-                      <span className="text-sm">Lessons generated</span>
+                      <span className="text-sm">{t("teacherDashboard.insights.lessonsGenerated")}</span>
                     </div>
                     <p className="text-3xl font-semibold">{analytics.lessonsGenerated}</p>
                   </div>
@@ -233,7 +339,7 @@ export default function TeacherDashboard() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <TrendingUp className="h-4 w-4" />
-                      <span className="text-sm">Most frequent subject</span>
+                      <span className="text-sm">{t("teacherDashboard.insights.mostFrequentSubject")}</span>
                     </div>
                     <p className="text-2xl font-semibold">{analytics.mostFrequentSubject}</p>
                   </div>
@@ -245,7 +351,7 @@ export default function TeacherDashboard() {
                 <CardHeader>
                   <CardTitle className="text-xl font-semibold flex items-center gap-2">
                     <Lightbulb className="h-5 w-5 text-primary" />
-                    Tips for better lessons
+                    {t("teacherDashboard.tips.title")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>

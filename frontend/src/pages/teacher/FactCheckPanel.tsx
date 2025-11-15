@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { SummaryCard } from "@/components/fact-check/SummaryCard";
@@ -6,90 +6,8 @@ import { FilterControls, FilterType } from "@/components/fact-check/FilterContro
 import { ClaimItem, FlaggedClaim } from "@/components/fact-check/ClaimItem";
 import { ContentPreview } from "@/components/fact-check/ContentPreview";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
-
-// Mock data - replace with actual data fetching from Firestore
-const mockClaims: FlaggedClaim[] = [
-  {
-    id: "claim_1",
-    claim: "Photosynthesis occurs only during daylight hours",
-    fullText: "Photosynthesis occurs only during daylight hours when sunlight is available.",
-    severity: "warning",
-    location: {
-      section: "studentSummary",
-      position: 150,
-    },
-    reason: "Oversimplification - Some plants can perform limited photosynthesis at night.",
-    sources: [
-      { title: "Encyclopedia Britannica - Photosynthesis", url: "https://example.com" },
-      { title: "Science Journal - Plant Biology", url: "https://example.com" },
-    ],
-  },
-  {
-    id: "claim_2",
-    claim: "Chlorophyll is the only pigment involved in photosynthesis",
-    fullText: "Chlorophyll is the only pigment involved in the process of photosynthesis.",
-    severity: "critical",
-    location: {
-      section: "slides",
-      slideNumber: 3,
-      position: 200,
-    },
-    reason: "Missing source - Other pigments like carotenoids also play a role.",
-    sources: [
-      { title: "Biology Textbook - Chapter 5" },
-      { title: "National Science Foundation", url: "https://example.com" },
-    ],
-  },
-  {
-    id: "claim_3",
-    claim: "Plants produce oxygen as a byproduct",
-    fullText: "During photosynthesis, plants produce oxygen as a byproduct that is released into the atmosphere.",
-    severity: "warning",
-    location: {
-      section: "teacherGuidelines",
-      position: 300,
-    },
-    reason: "Possibly incorrect - While true, this oversimplifies the process.",
-    sources: [
-      { title: "Curriculum Standards - Grade 5 Science" },
-    ],
-  },
-];
-
-const mockContent = {
-  studentSummary: `Photosynthesis is the process by which plants use sunlight, water, and carbon dioxide to create their own food. This amazing process happens in the leaves of plants, specifically in structures called chloroplasts.
-
-During photosynthesis, plants absorb sunlight through their leaves. The green pigment called chlorophyll captures the light energy. Plants also take in water through their roots and carbon dioxide from the air through tiny openings in their leaves called stomata.
-
-Using these ingredients and the energy from sunlight, plants produce glucose (a type of sugar) which they use as food. As a byproduct, plants release oxygen into the air, which is essential for all living things to breathe.
-
-Photosynthesis occurs only during daylight hours when sunlight is available. This is why plants need to be in well-lit areas to grow properly. Without sunlight, plants cannot make their own food and will eventually die.`,
-
-  slides: [
-    {
-      title: "What is Photosynthesis?",
-      content: "Photosynthesis is how plants make food using sunlight, water, and carbon dioxide.",
-    },
-    {
-      title: "The Process",
-      content: "1. Plants absorb sunlight\n2. Take in water and carbon dioxide\n3. Convert to glucose and oxygen",
-    },
-    {
-      title: "Key Components",
-      content: "Chlorophyll is the only pigment involved in the process of photosynthesis. It captures light energy.",
-    },
-  ],
-
-  teacherGuidelines: `Begin the lesson by asking students what they know about how plants grow. Use the provided slides to explain the process step by step.
-
-Key points to emphasize:
-- Photosynthesis is essential for plant survival
-- Plants need sunlight, water, and carbon dioxide
-- During photosynthesis, plants produce oxygen as a byproduct that is released into the atmosphere
-
-Activity suggestion: Have students draw and label a diagram of the photosynthesis process.`,
-};
+import { db } from "@/lib/firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function FactCheckPanel() {
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -99,6 +17,13 @@ export default function FactCheckPanel() {
   const [selectedClaim, setSelectedClaim] = useState<FlaggedClaim | null>(null);
   const [fixingClaimId, setFixingClaimId] = useState<string | null>(null);
   const [acceptedClaimIds, setAcceptedClaimIds] = useState<Set<string>>(new Set());
+  const [claims, setClaims] = useState<FlaggedClaim[]>([]);
+  const [content, setContent] = useState({
+    studentSummary: "",
+    slides: [] as Array<{ title: string; content: string }>,
+    teacherGuidelines: "",
+  });
+  const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
     if (!loading && (!user || userData?.role !== "teacher")) {
@@ -106,9 +31,97 @@ export default function FactCheckPanel() {
     }
   }, [user, userData, loading, navigate]);
 
+  useEffect(() => {
+    const fetchLessonData = async () => {
+      if (!lessonId || !user) {
+        setLoadingData(false);
+        return;
+      }
+
+      try {
+        setLoadingData(true);
+        const lessonDocRef = doc(db, "lessons", lessonId);
+        const lessonDocSnap = await getDoc(lessonDocRef);
+
+        if (!lessonDocSnap.exists()) {
+          console.error("Lesson not found");
+          navigate("/teacher/dashboard");
+          return;
+        }
+
+        const data = lessonDocSnap.data();
+
+        // Fetch flagged issues
+        const flaggedIssues = data.flaggedIssues || [];
+        const claimsData: FlaggedClaim[] = flaggedIssues.map((issue: any) => ({
+          id: issue.id || `claim_${Math.random()}`,
+          claim: issue.claim || "",
+          fullText: issue.fullText || issue.claim || "",
+          severity: issue.severity || "warning",
+          location: issue.location || {
+            section: issue.section || "studentSummary",
+            position: issue.position || 0,
+            slideNumber: issue.slideNumber,
+          },
+          reason: issue.reason || issue.explanation || "",
+          sources: issue.sources || [],
+        }));
+
+        setClaims(claimsData);
+
+        // Fetch content
+        let slides: Array<{ title: string; content: string }> = [];
+        if (data.slides) {
+          if (Array.isArray(data.slides)) {
+            slides = data.slides.map((slide: any) => ({
+              title: slide.title || "",
+              content: slide.content || "",
+            }));
+          } else if (typeof data.slides === 'object') {
+            slides = Object.values(data.slides).map((slide: any) => ({
+              title: slide.title || "",
+              content: slide.content || "",
+            }));
+          }
+        }
+
+        let teacherGuidelines = "";
+        if (data.teacherGuidelines) {
+          if (typeof data.teacherGuidelines === 'string') {
+            teacherGuidelines = data.teacherGuidelines;
+          } else {
+            // If it's an object, combine all fields
+            const parts: string[] = [];
+            if (data.teacherGuidelines.objectives) parts.push(data.teacherGuidelines.objectives);
+            if (data.teacherGuidelines.timing) parts.push(data.teacherGuidelines.timing);
+            if (data.teacherGuidelines.questions) parts.push(data.teacherGuidelines.questions);
+            if (data.teacherGuidelines.differentiation) parts.push(data.teacherGuidelines.differentiation);
+            if (data.teacherGuidelines.assessment) parts.push(data.teacherGuidelines.assessment);
+            teacherGuidelines = parts.join("\n\n");
+          }
+        }
+
+        setContent({
+          studentSummary: data.studentSummary || "",
+          slides: slides,
+          teacherGuidelines: teacherGuidelines,
+        });
+      } catch (error) {
+        console.error("Error fetching lesson data:", error);
+        navigate("/teacher/dashboard");
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    if (lessonId && user) {
+      fetchLessonData();
+    }
+  }, [lessonId, user, navigate]);
+
   // Filter claims based on selected filter
   const filteredClaims = useMemo(() => {
-    let filtered = mockClaims.filter((claim) => !acceptedClaimIds.has(claim.id));
+    let filtered = claims.filter((claim) => !acceptedClaimIds.has(claim.id));
 
     if (selectedFilter === "warnings") {
       filtered = filtered.filter((claim) => claim.severity === "warning");
@@ -117,22 +130,22 @@ export default function FactCheckPanel() {
     }
 
     return filtered;
-  }, [selectedFilter, acceptedClaimIds]);
+  }, [selectedFilter, acceptedClaimIds, claims]);
 
   // Calculate stats
   const stats = useMemo(() => {
-    const activeClaims = mockClaims.filter((claim) => !acceptedClaimIds.has(claim.id));
+    const activeClaims = claims.filter((claim) => !acceptedClaimIds.has(claim.id));
     const warnings = activeClaims.filter((c) => c.severity === "warning").length;
     const critical = activeClaims.filter((c) => c.severity === "critical").length;
-    const verified = mockClaims.length - activeClaims.length;
+    const verified = claims.length - activeClaims.length;
 
     return {
       claimsVerified: verified,
-      totalClaims: mockClaims.length,
+      totalClaims: claims.length,
       outdatedFacts: warnings,
       unsupportedStatements: critical,
     };
-  }, [acceptedClaimIds]);
+  }, [acceptedClaimIds, claims]);
 
   const status: "High confidence" | "Needs review" | "Critical issues found" =
     stats.unsupportedStatements > 0
@@ -163,7 +176,7 @@ export default function FactCheckPanel() {
     // You could use a ref or state to trigger scrolling in ContentPreview
   };
 
-  if (loading) {
+  if (loading || loadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -203,7 +216,9 @@ export default function FactCheckPanel() {
                 {filteredClaims.length === 0 ? (
                   <div className="p-6 text-center border rounded-lg">
                     <p className="text-sm text-muted-foreground">
-                      {acceptedClaimIds.size === mockClaims.length
+                      {claims.length === 0
+                        ? "No flagged issues found for this lesson."
+                        : acceptedClaimIds.size === claims.length
                         ? "All claims have been reviewed!"
                         : "No claims match the selected filter."}
                     </p>
@@ -228,9 +243,9 @@ export default function FactCheckPanel() {
             {/* Right side - Content Preview */}
             <div className="lg:col-span-2 min-h-[600px]">
               <ContentPreview
-                studentSummary={mockContent.studentSummary}
-                slides={mockContent.slides}
-                teacherGuidelines={mockContent.teacherGuidelines}
+                studentSummary={content.studentSummary}
+                slides={content.slides}
+                teacherGuidelines={content.teacherGuidelines}
                 selectedClaim={selectedClaim}
               />
             </div>

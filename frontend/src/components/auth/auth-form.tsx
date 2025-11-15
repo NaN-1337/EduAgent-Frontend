@@ -14,6 +14,7 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebaseConfig";
 import { useAuth } from "@/contexts/AuthContext";
 import { getDashboardRoute } from "@/lib/routes";
+import { generateTeacherCode } from "@/lib/teacherCode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,34 +22,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RoleSelectionDialog } from "./role-selection-dialog";
 import { Loader2 } from "lucide-react";
+import { t, translations } from "@/lib/translations";
 
-const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
+type LoginFormData = {
+  email: string;
+  password: string;
+};
 
-// Strong password validation
-const passwordSchema = z
-  .string()
-  .min(8, "Password must be at least 8 characters")
-  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-  .regex(/[0-9]/, "Password must contain at least one number")
-  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
-
-const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email address"),
-  password: passwordSchema,
-  confirmPassword: z.string().min(8, "Password must be at least 8 characters"),
-  role: z.enum(["student", "teacher", "individual"]),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
-type RegisterFormData = z.infer<typeof registerSchema>;
+type RegisterFormData = {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  role: "student" | "teacher" | "individual";
+  grade?: string;
+  teachingField?: string;
+};
 
 interface AuthFormProps {
   mode: "login" | "register";
@@ -63,6 +52,49 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [showRoleDialog, setShowRoleDialog] = useState(false);
   const [pendingGoogleUser, setPendingGoogleUser] = useState<any>(null);
 
+  // Define schemas inside component to use translations
+  const loginSchema = z.object({
+    email: z.string().email(t("auth.login.errors.invalidEmail")),
+    password: z.string().min(6, t("auth.login.errors.wrongPassword")),
+  });
+
+  const passwordSchema = z
+    .string()
+    .min(8, t("auth.register.passwordRequirements.minLength"))
+    .regex(/[A-Z]/, t("auth.register.passwordRequirements.uppercase"))
+    .regex(/[a-z]/, t("auth.register.passwordRequirements.lowercase"))
+    .regex(/[0-9]/, t("auth.register.passwordRequirements.number"))
+    .regex(/[^A-Za-z0-9]/, t("auth.register.passwordRequirements.special"));
+
+  const registerSchema = z.object({
+    name: z.string().min(2, t("common.labels.name")),
+    email: z.string().email(t("auth.login.errors.invalidEmail")),
+    password: passwordSchema,
+    confirmPassword: z.string().min(8, t("auth.register.passwordRequirements.minLength")),
+    role: z.enum(["student", "teacher", "individual"]),
+    grade: z.string().optional(),
+    teachingField: z.string().optional(),
+  }).refine((data) => data.password === data.confirmPassword, {
+    message: t("auth.register.errors.passwordsDontMatch"),
+    path: ["confirmPassword"],
+  }).refine((data) => {
+    if (data.role === "student") {
+      return data.grade && data.grade.trim() !== "";
+    }
+    return true;
+  }, {
+    message: t("auth.register.errors.gradeRequired"),
+    path: ["grade"],
+  }).refine((data) => {
+    if (data.role === "teacher") {
+      return data.teachingField && data.teachingField.trim() !== "";
+    }
+    return true;
+  }, {
+    message: t("auth.register.errors.teachingFieldRequired"),
+    path: ["teachingField"],
+  });
+
   const {
     register,
     handleSubmit,
@@ -72,7 +104,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     trigger,
   } = useForm<LoginFormData | RegisterFormData>({
     resolver: zodResolver(mode === "login" ? loginSchema : registerSchema),
-    mode: "onChange", // Validate on change for better UX
+    mode: "onChange",
   });
   
   const passwordValue = watch("password");
@@ -83,7 +115,9 @@ export function AuthForm({ mode }: AuthFormProps) {
     uid: string,
     email: string,
     name: string,
-    role: "student" | "teacher" | "individual"
+    role: "student" | "teacher" | "individual",
+    grade?: string,
+    teachingField?: string
   ) => {
     try {
       // Use uid as document ID
@@ -94,13 +128,28 @@ export function AuthForm({ mode }: AuthFormProps) {
       
       if (!userDocSnap.exists()) {
         // Create new user document with uid as doc ID and as a field
-        const userData = {
+        const userData: any = {
           uid: uid, // Store uid as a field
           email: email,
           name: name,
           role: role,
           createdAt: new Date(),
         };
+        
+        // Add grade if user is a student
+        if (role === "student" && grade) {
+          userData.grade = grade;
+        }
+        
+        // Add teaching field and generate teacher code if user is a teacher
+        if (role === "teacher") {
+          if (teachingField) {
+            userData.teachingField = teachingField;
+          }
+          // Generate unique teacher code
+          userData.teacherCode = generateTeacherCode();
+          userData.enrolledStudents = []; // Initialize empty array for enrolled students
+        }
         
         console.log("Creating user document:", userData);
         await setDoc(userDocRef, userData);
@@ -151,7 +200,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           }
         }
       } else {
-        const { email, password, name, role } = data as RegisterFormData;
+        const { email, password, name, role, grade, teachingField } = data as RegisterFormData;
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           email,
@@ -162,13 +211,13 @@ export function AuthForm({ mode }: AuthFormProps) {
         // Send email verification
         await sendEmailVerification(user);
         
-        // Save user to Firestore
-        await saveUserToFirestore(user.uid, email, name, role);
+        // Save user to Firestore (include grade if student, teachingField if teacher)
+        await saveUserToFirestore(user.uid, email, name, role, grade, teachingField);
         
         // Refresh user data in context
         await refreshUserData();
         
-        setSuccessMessage("Account created! Please check your email to verify your account.");
+        setSuccessMessage(t("auth.register.emailVerification"));
         
         // Wait a bit for Firestore to be ready, then navigate to dashboard
         setTimeout(() => {
@@ -179,11 +228,11 @@ export function AuthForm({ mode }: AuthFormProps) {
     } catch (err: any) {
       console.error("Auth error:", err);
       if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
-        setError("Invalid email or password");
+        setError(t("auth.login.errors.invalidCredentials"));
       } else if (err.code === "auth/email-already-in-use") {
-        setError("This email is already registered");
+        setError(t("auth.register.errors.emailExists"));
       } else {
-        setError(err.message || "An error occurred. Please try again.");
+        setError(err.message || t("common.messages.error"));
       }
     } finally {
       setIsLoading(false);
@@ -225,17 +274,17 @@ export function AuthForm({ mode }: AuthFormProps) {
       console.error("Google auth error:", err);
       setIsLoading(false);
       if (err.code === "auth/popup-closed-by-user") {
-        setError("Sign-in was cancelled");
+        setError(t("auth.login.errors.networkError"));
       } else {
-        setError(err.message || "An error occurred. Please try again.");
+        setError(err.message || t("common.messages.error"));
       }
     }
   };
 
-  const handleRoleSelect = async (role: "student" | "teacher" | "individual") => {
+  const handleRoleSelect = async (role: "student" | "teacher" | "individual", grade?: string, teachingField?: string) => {
     if (!pendingGoogleUser) {
       console.error("No pending user for role selection");
-      setError("No user data available. Please try signing in again.");
+      setError(t("common.messages.error"));
       return;
     }
 
@@ -243,7 +292,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       setIsLoading(true);
       setError(null);
       setSuccessMessage(null);
-      console.log("Saving user to Firestore with role:", role);
+      console.log("Saving user to Firestore with role:", role, "grade:", grade);
       console.log("User details:", {
         uid: pendingGoogleUser.uid,
         email: pendingGoogleUser.email,
@@ -254,7 +303,9 @@ export function AuthForm({ mode }: AuthFormProps) {
         pendingGoogleUser.uid,
         pendingGoogleUser.email || "",
         pendingGoogleUser.displayName || "User",
-        role
+        role,
+        grade,
+        teachingField
       );
       
       console.log("User saved to Firestore, refreshing context...");
@@ -270,7 +321,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       const verifyDoc = await getDoc(verifyDocRef);
       
       if (!verifyDoc.exists()) {
-        throw new Error("User document was not created. Please try again.");
+        throw new Error(t("common.messages.error"));
       }
       
       console.log("User data verified, closing dialog and navigating...");
@@ -283,7 +334,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       navigate(dashboardRoute);
     } catch (err: any) {
       console.error("Error saving user:", err);
-      setError(err.message || "Failed to save user data. Please try again.");
+      setError(err.message || t("common.messages.error"));
       setIsLoading(false);
     }
   };
@@ -293,12 +344,12 @@ export function AuthForm({ mode }: AuthFormProps) {
       <Card className="w-full max-w-md mx-auto shadow-2xl border-2 dark:border-primary/20 backdrop-blur-sm bg-card/95 dark:bg-card/95 transition-all duration-300 hover:shadow-primary/10">
         <CardHeader className="space-y-2 pb-6">
           <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            {mode === "login" ? "Welcome back" : "Create an account"}
+            {mode === "login" ? t("auth.login.title") : t("auth.register.title")}
           </CardTitle>
           <CardDescription className="text-center text-base">
             {mode === "login"
-              ? "Enter your credentials to sign in"
-              : "Enter your information to get started"}
+              ? t("auth.login.description")
+              : t("auth.register.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -306,7 +357,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             {mode === "register" && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="name">{t("common.labels.name")}</Label>
                   <Input
                     id="name"
                     placeholder="John Doe"
@@ -320,19 +371,27 @@ export function AuthForm({ mode }: AuthFormProps) {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
+                  <Label htmlFor="role">{t("common.labels.role")}</Label>
                   <Select
                     value={selectedRole || ""}
-                    onValueChange={(value) => setValue("role", value as "student" | "teacher" | "individual")}
+                    onValueChange={(value) => {
+                      setValue("role", value as "student" | "teacher" | "individual");
+                      if (value !== "student") {
+                        setValue("grade", "");
+                      }
+                      if (value !== "teacher") {
+                        setValue("teachingField", "");
+                      }
+                    }}
                     disabled={isLoading}
                   >
                     <SelectTrigger id="role">
-                      <SelectValue placeholder="Select a role" />
+                      <SelectValue placeholder={t("auth.register.roleLabel")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="student">Student</SelectItem>
-                      <SelectItem value="teacher">Teacher</SelectItem>
-                      <SelectItem value="individual">Individual</SelectItem>
+                      <SelectItem value="student">{t("auth.roleSelection.student.label")}</SelectItem>
+                      <SelectItem value="teacher">{t("auth.roleSelection.teacher.label")}</SelectItem>
+                      <SelectItem value="individual">{t("auth.roleSelection.individual.label")}</SelectItem>
                     </SelectContent>
                   </Select>
                   {errors.role && (
@@ -341,11 +400,72 @@ export function AuthForm({ mode }: AuthFormProps) {
                     </p>
                   )}
                 </div>
+                
+                {selectedRole === "student" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="grade">
+                      {t("common.labels.grade")} <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={watch("grade") || ""}
+                      onValueChange={(value) => setValue("grade", value)}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger id="grade">
+                        <SelectValue placeholder={t("auth.register.gradeLabel")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map((grade) => {
+                          const gradeKey = `Grade ${grade}`;
+                          return (
+                            <SelectItem key={grade} value={gradeKey}>
+                              {translations.ro.grades[gradeKey as keyof typeof translations.ro.grades]}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    {errors.grade && (
+                      <p className="text-sm text-destructive">
+                        {errors.grade.message as string}
+                      </p>
+                    )}
+                  </div>
+                )}
+                
+                {selectedRole === "teacher" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="teachingField">
+                      {t("auth.register.teachingFieldLabel")} <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={watch("teachingField") || ""}
+                      onValueChange={(value) => setValue("teachingField", value)}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger id="teachingField">
+                        <SelectValue placeholder={t("auth.register.teachingFieldLabel")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(translations.ro.teachingFields).map(([key, value]) => (
+                          <SelectItem key={key} value={key}>
+                            {value}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.teachingField && (
+                      <p className="text-sm text-destructive">
+                        {errors.teachingField.message as string}
+                      </p>
+                    )}
+                  </div>
+                )}
               </>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t("common.labels.email")}</Label>
               <Input
                 id="email"
                 type="email"
@@ -361,7 +481,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("common.labels.password")}</Label>
               <Input
                 id="password"
                 type="password"
@@ -383,23 +503,23 @@ export function AuthForm({ mode }: AuthFormProps) {
               {mode === "register" && (
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">
-                    Password must contain:
+                    {t("auth.register.passwordRequirements.title")}
                   </p>
                   <ul className="text-xs space-y-0.5 ml-4 list-disc">
                     <li className={passwordValue && passwordValue.length >= 8 ? "text-green-600" : "text-muted-foreground"}>
-                      At least 8 characters
+                      {t("auth.register.passwordRequirements.minLength")}
                     </li>
                     <li className={passwordValue && /[A-Z]/.test(passwordValue) ? "text-green-600" : "text-muted-foreground"}>
-                      One uppercase letter
+                      {t("auth.register.passwordRequirements.uppercase")}
                     </li>
                     <li className={passwordValue && /[a-z]/.test(passwordValue) ? "text-green-600" : "text-muted-foreground"}>
-                      One lowercase letter
+                      {t("auth.register.passwordRequirements.lowercase")}
                     </li>
                     <li className={passwordValue && /[0-9]/.test(passwordValue) ? "text-green-600" : "text-muted-foreground"}>
-                      One number
+                      {t("auth.register.passwordRequirements.number")}
                     </li>
                     <li className={passwordValue && /[^A-Za-z0-9]/.test(passwordValue) ? "text-green-600" : "text-muted-foreground"}>
-                      One special character
+                      {t("auth.register.passwordRequirements.special")}
                     </li>
                   </ul>
                 </div>
@@ -408,7 +528,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
             {mode === "register" && (
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">{t("common.labels.confirmPassword")}</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -425,7 +545,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                   </p>
                 )}
                 {watch("confirmPassword") && watch("password") && watch("confirmPassword") === watch("password") && !errors.confirmPassword && (
-                  <p className="text-xs text-green-600">✓ Passwords match</p>
+                  <p className="text-xs text-green-600">{t("auth.register.passwordMatch")}</p>
                 )}
               </div>
             )}
@@ -444,7 +564,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {mode === "login" ? "Sign In" : "Sign Up"}
+              {mode === "login" ? t("auth.login.submitButton") : t("auth.register.submitButton")}
             </Button>
           </form>
 
@@ -454,7 +574,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
+                {t("auth.login.orContinueWith")}
               </span>
             </div>
           </div>
@@ -494,22 +614,22 @@ export function AuthForm({ mode }: AuthFormProps) {
           <p className="mt-4 text-center text-sm text-muted-foreground">
             {mode === "login" ? (
               <>
-                Don't have an account?{" "}
+                {t("auth.login.noAccount")}{" "}
                 <Link
                   to="/register"
                   className="text-primary hover:underline font-medium"
                 >
-                  Sign up
+                  {t("auth.login.signUpLink")}
                 </Link>
               </>
             ) : (
               <>
-                Already have an account?{" "}
+                {t("auth.register.hasAccount")}{" "}
                 <Link
                   to="/login"
                   className="text-primary hover:underline font-medium"
                 >
-                  Sign in
+                  {t("auth.register.signInLink")}
                 </Link>
               </>
             )}

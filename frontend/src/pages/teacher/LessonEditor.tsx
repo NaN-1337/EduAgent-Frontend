@@ -20,55 +20,34 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { CheckCircle2, AlertTriangle, FileCheck, Trash2, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { db } from "@/lib/firebaseConfig";
+import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 
-// Mock data - replace with actual data fetching from Firestore
-const mockLessonData = {
-  id: "lesson_123",
-  title: "Introduction to Photosynthesis",
-  subject: "Science",
-  grade: "Grade 5",
-  duration: "45 minutes",
-  status: "draft" as "draft" | "fact-check pending" | "ready",
-  studentSummary: `Photosynthesis is the process by which plants use sunlight, water, and carbon dioxide to create their own food. This amazing process happens in the leaves of plants, specifically in structures called chloroplasts.
-
-During photosynthesis, plants absorb sunlight through their leaves. The green pigment called chlorophyll captures the light energy. Plants also take in water through their roots and carbon dioxide from the air through tiny openings in their leaves called stomata.
-
-Using these ingredients and the energy from sunlight, plants produce glucose (a type of sugar) which they use as food. As a byproduct, plants release oxygen into the air, which is essential for all living things to breathe.`,
-  slides: [
-    {
-      id: "slide_1",
-      title: "What is Photosynthesis?",
-      content: "- Process by which plants make food\n- Uses sunlight, water, and CO2\n- Happens in leaves",
-      hasIssue: false,
-    },
-    {
-      id: "slide_2",
-      title: "The Process",
-      content: "- Plants absorb sunlight\n- Take in water and carbon dioxide\n- Convert to glucose and oxygen",
-      hasIssue: false,
-    },
-    {
-      id: "slide_3",
-      title: "Key Components",
-      content: "- Chlorophyll captures light\n- Stomata allow gas exchange\n- Roots absorb water",
-      hasIssue: true,
-    },
-  ] as Slide[],
+interface LessonData {
+  id: string;
+  title: string;
+  subject: string;
+  grade: string;
+  duration: string;
+  status: "draft" | "fact-check pending" | "ready";
+  studentSummary: string;
+  slides: Slide[];
   teacherGuidelines: {
-    objectives: "Students will understand how plants make food and identify key components of photosynthesis.",
-    timing: "0-10 min: Introduction and hook\n10-25 min: Main content presentation\n25-40 min: Hands-on activity\n40-45 min: Wrap-up and assessment",
-    questions: "What do you think plants need to grow?\nHow do you think plants make their food?\nWhat would happen if plants couldn't perform photosynthesis?",
-    differentiation: "For struggling students: Provide visual aids and simplified explanations.\nFor advanced students: Discuss the chemical equation and deeper concepts.",
-    assessment: "Exit ticket: Draw and label the photosynthesis process.\nQuick check: Ask students to explain in their own words.",
-  },
-};
+    objectives: string;
+    timing: string;
+    questions: string;
+    differentiation: string;
+    assessment: string;
+  };
+}
 
 export default function LessonEditor() {
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
   const { user, userData, loading } = useAuth();
 
-  const [lesson, setLesson] = useState(mockLessonData);
+  const [lesson, setLesson] = useState<LessonData | null>(null);
+  const [loadingLesson, setLoadingLesson] = useState(true);
   const [activeTab, setActiveTab] = useState("studentSummary");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showExportShareModal, setShowExportShareModal] = useState(false);
@@ -79,6 +58,92 @@ export default function LessonEditor() {
       navigate("/login");
     }
   }, [user, userData, loading, navigate]);
+
+  useEffect(() => {
+    const fetchLesson = async () => {
+      if (!lessonId || !user) {
+        setLoadingLesson(false);
+        return;
+      }
+
+      try {
+        setLoadingLesson(true);
+        const lessonDocRef = doc(db, "lessons", lessonId);
+        const lessonDocSnap = await getDoc(lessonDocRef);
+
+        if (!lessonDocSnap.exists()) {
+          console.error("Lesson not found");
+          navigate("/teacher/dashboard");
+          return;
+        }
+
+        const data = lessonDocSnap.data();
+        
+        // Parse slides from Firestore (could be array or object)
+        let slides: Slide[] = [];
+        if (data.slides) {
+          if (Array.isArray(data.slides)) {
+            slides = data.slides;
+          } else if (typeof data.slides === 'object') {
+            slides = Object.values(data.slides);
+          }
+        }
+
+        // Parse teacher guidelines
+        let teacherGuidelines = {
+          objectives: "",
+          timing: "",
+          questions: "",
+          differentiation: "",
+          assessment: "",
+        };
+        
+        if (data.teacherGuidelines) {
+          if (typeof data.teacherGuidelines === 'string') {
+            // If it's a string, try to parse it or use as is
+            teacherGuidelines = {
+              objectives: data.learningObjectives?.[0] || "",
+              timing: "",
+              questions: "",
+              differentiation: "",
+              assessment: "",
+            };
+          } else {
+            teacherGuidelines = {
+              objectives: data.teacherGuidelines.objectives || data.learningObjectives?.[0] || "",
+              timing: data.teacherGuidelines.timing || "",
+              questions: data.teacherGuidelines.questions || "",
+              differentiation: data.teacherGuidelines.differentiation || "",
+              assessment: data.teacherGuidelines.assessment || "",
+            };
+          }
+        }
+
+        const lessonData: LessonData = {
+          id: lessonDocSnap.id,
+          title: data.title || "Untitled Lesson",
+          subject: data.subject || "Unknown",
+          grade: data.grade || "Unknown",
+          duration: data.duration || "",
+          status: data.status || "draft",
+          studentSummary: data.studentSummary || "",
+          slides: slides,
+          teacherGuidelines: teacherGuidelines,
+        };
+
+        setLesson(lessonData);
+      } catch (error) {
+        console.error("Error fetching lesson:", error);
+        navigate("/teacher/dashboard");
+      } finally {
+        setLoadingLesson(false);
+      }
+    };
+
+    if (lessonId && user) {
+      fetchLesson();
+    }
+  }, [lessonId, user, navigate]);
 
   const handleTitleChange = (title: string) => {
     setLesson({ ...lesson, title });
@@ -92,16 +157,37 @@ export default function LessonEditor() {
   };
 
   const handleSave = async () => {
+    if (!lesson || !lessonId) return;
+    
     setIsSaving(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    // In a real app, save to Firestore
+    try {
+      const lessonDocRef = doc(db, "lessons", lessonId);
+      await updateDoc(lessonDocRef, {
+        title: lesson.title,
+        status: lesson.status,
+        studentSummary: lesson.studentSummary,
+        slides: lesson.slides,
+        teacherGuidelines: lesson.teacherGuidelines,
+        updatedAt: new Date(),
+        lastModified: new Date(),
+      });
+    } catch (error) {
+      console.error("Error saving lesson:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async () => {
-    // In a real app, delete from Firestore
-    navigate("/teacher/dashboard");
+    if (!lessonId) return;
+    
+    try {
+      const lessonDocRef = doc(db, "lessons", lessonId);
+      await deleteDoc(lessonDocRef);
+      navigate("/teacher/dashboard");
+    } catch (error) {
+      console.error("Error deleting lesson:", error);
+    }
   };
 
   const handleRunFactCheck = () => {
@@ -121,7 +207,7 @@ export default function LessonEditor() {
     }
   };
 
-  if (loading) {
+  if (loading || loadingLesson || !lesson) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

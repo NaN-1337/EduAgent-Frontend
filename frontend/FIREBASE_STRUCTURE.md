@@ -18,18 +18,40 @@ Stores user account information for all roles (student, teacher, individual).
 | `email` | string | Yes | User's email address |
 | `name` | string | Yes | User's full name |
 | `role` | string | Yes | User role: `"student"`, `"teacher"`, or `"individual"` |
+| `grade` | string | Conditional | Grade level (e.g., "Grade 5"). Required only for students. |
+| `teachingField` | string | Conditional | Field of teaching (e.g., "Mathematics"). Required only for teachers. |
+| `teacherCode` | string | Conditional | Unique 6-character code for teacher enrollment. Auto-generated for teachers. |
+| `enrolledStudents` | array<string> | Conditional | Array of student UIDs enrolled to this teacher. Only for teachers. |
 | `photoURL` | string | No | URL to user's profile picture (from Google sign-in) |
 | `createdAt` | timestamp | Yes | Account creation timestamp |
 | `updatedAt` | timestamp | Yes | Last update timestamp |
 | `emailVerified` | boolean | No | Whether email is verified |
 
-**Example Document**:
+**Example Document (Teacher)**:
 ```json
 {
   "uid": "abc123xyz789",
   "email": "teacher@example.com",
   "name": "John Doe",
   "role": "teacher",
+  "teachingField": "Mathematics",
+  "teacherCode": "ABC123",
+  "enrolledStudents": ["student_uid_1", "student_uid_2"],
+  "photoURL": "https://lh3.googleusercontent.com/...",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z",
+  "emailVerified": true
+}
+```
+
+**Example Document (Student)**:
+```json
+{
+  "uid": "def456uvw012",
+  "email": "student@example.com",
+  "name": "Jane Smith",
+  "role": "student",
+  "grade": "Grade 5",
   "photoURL": "https://lh3.googleusercontent.com/...",
   "createdAt": "2024-01-15T10:30:00Z",
   "updatedAt": "2024-01-15T10:30:00Z",

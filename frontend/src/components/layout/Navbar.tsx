@@ -14,6 +14,7 @@ import { Menu, X, User, LogOut } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { t } from "@/lib/translations";
 
 interface NavbarProps {
   role?: "teacher" | "student";
@@ -33,16 +34,16 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
   const isActive = (path: string) => location.pathname === path;
 
   const teacherLinks = [
-    { path: "/teacher/dashboard", label: "Dashboard" },
-    { path: "/teacher/lessons", label: "My Lessons" },
-    { path: "/teacher/students", label: "Students View" },
-    { path: "/profile", label: "Account" },
+    { path: "/teacher/dashboard", label: t("nav.dashboard") },
+    { path: "/teacher/lessons", label: t("nav.myLessons") },
+    { path: "/teacher/students", label: t("nav.studentsView") },
+    { path: "/profile", label: t("nav.account") },
   ];
 
   const studentLinks = [
-    { path: "/student/dashboard", label: "Dashboard" },
-    { path: "/student/lessons", label: "My Lessons" },
-    { path: "/profile", label: "Account" },
+    { path: "/student/dashboard", label: t("nav.dashboard") },
+    { path: "/student/lessons", label: t("nav.myLessons") },
+    { path: "/profile", label: t("nav.account") },
   ];
 
   const links = role === "teacher" ? teacherLinks : studentLinks;
@@ -102,28 +103,28 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {userData?.name || "User"}
-                      </p>
-                      <p className="text-xs leading-none text-muted-foreground capitalize">
-                        {userData?.role || "User"}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile" className="cursor-pointer">
-                      <User className="mr-2 h-4 w-4" />
-                      Profile
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive focus:text-destructive">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout
-                  </DropdownMenuItem>
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {userData?.name || "User"}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground capitalize">
+                          {userData?.role || "User"}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/profile" className="cursor-pointer">
+                        <User className="mr-2 h-4 w-4" />
+                        {t("nav.profile")}
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive focus:text-destructive">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      {t("nav.logout")}
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -136,12 +137,12 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
                   <span className="sr-only">Toggle menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <div className="flex flex-col space-y-4 mt-8">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold">Menu</h2>
-                    <ThemeToggle />
-                  </div>
+                <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                  <div className="flex flex-col space-y-4 mt-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-semibold">{t("nav.menu")}</h2>
+                      <ThemeToggle />
+                    </div>
                   <div className="flex flex-col space-y-2">
                     <NavLinks />
                   </div>
