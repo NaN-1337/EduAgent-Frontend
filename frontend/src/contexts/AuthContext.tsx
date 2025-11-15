@@ -7,6 +7,8 @@ import {
 import { auth } from "@/lib/firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
+import { gradeFromStorage, teachingFieldFromStorage } from "@/lib/dataConverters";
+import { translations } from "@/lib/translations";
 
 interface UserData {
   uid: string;
@@ -18,6 +20,7 @@ interface UserData {
   teacherCode?: string;
   enrolledStudents?: string[];
   enrolledTeachers?: string[];
+  completedLessons?: string[];
   createdAt?: any;
 }
 
@@ -60,7 +63,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (!isMounted) return;
             
             if (userDocSnap.exists()) {
-              const data = userDocSnap.data() as UserData;
+              const rawData = userDocSnap.data();
+              // Convert from storage format to display format
+              const data: UserData = {
+                ...rawData,
+                grade: rawData.grade !== undefined 
+                  ? (typeof rawData.grade === "number" 
+                      ? gradeFromStorage(rawData.grade) 
+                      : rawData.grade) 
+                  : undefined,
+                teachingField: rawData.teachingField 
+                  ? (() => {
+                      const englishKey = teachingFieldFromStorage(rawData.teachingField);
+                      return englishKey ? (translations.ro.teachingFields[englishKey] || rawData.teachingField) : rawData.teachingField;
+                    })()
+                  : undefined,
+              } as UserData;
               console.log("AuthContext: User data found", data);
               setUserData(data);
               setLoading(false);
@@ -121,7 +139,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userDocSnap = await getDoc(userDocRef);
       
       if (userDocSnap.exists()) {
-        setUserData(userDocSnap.data() as UserData);
+        const rawData = userDocSnap.data();
+        // Convert from storage format to display format
+        const data: UserData = {
+          ...rawData,
+          grade: rawData.grade !== undefined 
+            ? (typeof rawData.grade === "number" 
+                ? gradeFromStorage(rawData.grade) 
+                : rawData.grade) 
+            : undefined,
+          teachingField: rawData.teachingField 
+            ? (() => {
+                const englishKey = teachingFieldFromStorage(rawData.teachingField);
+                return englishKey ? (translations.ro.teachingFields[englishKey] || rawData.teachingField) : rawData.teachingField;
+              })()
+            : undefined,
+        } as UserData;
+        setUserData(data);
       } else {
         setUserData(null);
       }

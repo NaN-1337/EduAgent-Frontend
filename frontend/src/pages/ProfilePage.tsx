@@ -137,7 +137,7 @@ export default function ProfilePage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">Loading profile...</p>
+          <p className="text-sm text-muted-foreground">{t.common.profile.loadingProfile || "Loading profile..."}</p>
         </div>
       </div>
     );
@@ -169,22 +169,22 @@ export default function ProfilePage() {
       <div className="min-h-screen flex items-center justify-center">
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center space-y-4">
-            <p className="text-muted-foreground font-semibold">No profile data found.</p>
+            <p className="text-muted-foreground font-semibold">{t.common.profile.noProfileData || "No profile data found."}</p>
             <p className="text-sm text-muted-foreground">
               {user 
-                ? `User ID: ${user.uid.substring(0, 8)}...`
-                : "Not authenticated"}
+                ? `${t.common.profile.userId || "User ID"}: ${user.uid.substring(0, 8)}...`
+                : t.common.profile.notAuthenticated || "Not authenticated"}
             </p>
             <p className="text-xs text-muted-foreground">
-              If you just signed in with Google, make sure you selected a role.
+              {t.common.profile.roleSelectionHint || "If you just signed in with Google, make sure you selected a role."}
             </p>
             <div className="flex flex-col gap-2">
               <Button onClick={handleManualRefresh} variant="default" className="w-full">
-                Try Again
+                {t.common.profile.tryAgain || "Try Again"}
               </Button>
               <div className="flex gap-2">
                 <Button onClick={() => window.location.reload()} variant="outline" className="flex-1">
-                  Refresh Page
+                  {t.common.profile.refreshPage || "Refresh Page"}
                 </Button>
                 {user && (
                   <Button 
@@ -195,7 +195,7 @@ export default function ProfilePage() {
                     variant="ghost"
                     className="flex-1"
                   >
-                    Sign Out
+                    {t.navbar.logout}
                   </Button>
                 )}
               </div>
@@ -281,7 +281,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="uid">User ID</Label>
+                  <Label htmlFor="uid">{t.common.profile.userId || "User ID"}</Label>
                   <Input
                     id="uid"
                     value={profileData.uid}
@@ -294,7 +294,7 @@ export default function ProfilePage() {
                   <Label htmlFor="role">{t.common.labels.role}</Label>
                   <Input
                     id="role"
-                    value={roleLabels[profileData.role]}
+                    value={t.common.profile.roles?.[profileData.role] || roleLabels[profileData.role]}
                     disabled
                     className="bg-muted"
                   />
@@ -336,7 +336,7 @@ export default function ProfilePage() {
                       {saving && (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       )}
-                      Save Changes
+                      {t.common.profile.saveChanges || "Save Changes"}
                     </Button>
                     <Button
                       variant="outline"
@@ -346,7 +346,7 @@ export default function ProfilePage() {
                       }}
                       disabled={saving}
                     >
-                      Cancel
+                      {t.common.cancel}
                     </Button>
                   </>
                 ) : (
@@ -354,7 +354,7 @@ export default function ProfilePage() {
                     onClick={() => setEditing(true)}
                     className="w-full"
                   >
-                    Edit Profile
+                    {t.common.profile.editProfile || "Edit Profile"}
                   </Button>
                 )}
               </div>
@@ -364,7 +364,7 @@ export default function ProfilePage() {
               <Card className="shadow-xl border-2 dark:border-primary/20 backdrop-blur-sm bg-card/95 dark:bg-card/95 transition-all duration-300 hover:shadow-primary/10">
                 <CardHeader>
                   <CardTitle className="text-xl font-semibold">{t.common.profile.accountDetails}</CardTitle>
-                  <CardDescription>Additional information</CardDescription>
+                  <CardDescription>{t.common.profile.additionalInfo || "Additional information"}</CardDescription>
                 </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">

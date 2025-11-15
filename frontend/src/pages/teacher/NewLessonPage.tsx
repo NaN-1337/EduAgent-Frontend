@@ -11,21 +11,21 @@ import { Step5Review } from "@/components/lesson-wizard/Step5Review";
 import { ChevronLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { db } from "@/lib/firebaseConfig";
+import { collection, addDoc, serverTimestamp, updateDoc, doc } from "firebase/firestore";
+import { uploadFile, isPDF, MOCK_PRESENTATION_FILE_URL, MOCK_PRESENTATION_FILE_TYPE, getMockPresentationFileURL } from "@/lib/storage";
+import { gradeToStorage, teachingFieldToStorage } from "@/lib/dataConverters";
 
 interface Step1Data {
   title: string;
   grade: string;
   subject: string;
-  duration: string;
-  objectives: string[];
 }
 
 interface Step2Data {
   files: File[];
   textContent: string;
-  useCurriculumStandards: boolean;
-  useReputableSites: boolean;
-  customUrls: string;
+  presentationFile?: File | null;
 }
 
 export default function NewLessonPage() {
@@ -35,6 +35,7 @@ export default function NewLessonPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [generationComplete, setGenerationComplete] = useState(false);
   const [lessonId, setLessonId] = useState<string | null>(null);
+  const [isCreatingLesson, setIsCreatingLesson] = useState(false);
 
   const steps = [
     { number: 1, label: t.teacher.newLesson.steps.defineLesson },
@@ -48,16 +49,12 @@ export default function NewLessonPage() {
     title: "",
     grade: "",
     subject: "",
-    duration: "",
-    objectives: [],
   });
 
   const [step2Data, setStep2Data] = useState<Step2Data>({
     files: [],
     textContent: "",
-    useCurriculumStandards: false,
-    useReputableSites: false,
-    customUrls: "",
+    presentationFile: null,
   });
 
   useEffect(() => {
@@ -100,30 +97,159 @@ export default function NewLessonPage() {
     }
   };
 
-  const handleGenerationComplete = () => {
-    setGenerationComplete(true);
-    // In a real app, this would create the lesson and get an ID
-    setLessonId("mock-lesson-id-" + Date.now());
-    // Auto-advance to fact-check after a brief delay
-    setTimeout(() => {
-      setCurrentStep(4);
-    }, 1000);
-  };
+  const handleGenerationComplete = async () => {
+    // Prevent duplicate lesson creation
+    if (lessonId || isCreatingLesson) {
+      setGenerationComplete(true);
+      return;
+    }
 
-  const handleOpenEditor = () => {
-    if (lessonId) {
-      navigate(`/teacher/lessons/${lessonId}/edit`);
-    } else {
-      navigate("/teacher/dashboard");
+    setGenerationComplete(true);
+    setIsCreatingLesson(true);
+    
+    // Create the lesson in Firestore
+    if (!user || !userData) {
+      console.error("User not authenticated");
+      setIsCreatingLesson(false);
+      return;
+    }
+
+    try {
+      // Convert grade to integer and subject to storage key
+      const gradeStorage = gradeToStorage(step1Data.grade);
+      const subjectStorage = teachingFieldToStorage(step1Data.subject);
+
+      // Generate mock slides based on the lesson data
+      const mockSlides = [
+        {
+          id: `slide-${Date.now()}-0`,
+          title: step1Data.title,
+          content: `Introducere în ${step1Data.subject}\n\n- Concepte de bază\n- Importanța subiectului\n- Obiectivele lecției`,
+        },
+        {
+          id: `slide-${Date.now()}-1`,
+          title: "Dezvoltarea conceptului",
+          content: `Dezvoltarea principală a subiectului\n\n- Explicații detaliate\n- Exemple practice\n- Aplicații în viața reală`,
+        },
+        {
+          id: `slide-${Date.now()}-2`,
+          title: "Consolidare și aplicare",
+          content: `Recapitulare și aplicare\n\n- Rezumatul conceptelor\n- Exerciții practice\n- Întrebări de verificare`,
+        },
+      ];
+
+      // Create lesson document in Firestore first to get the lessonId
+      const lessonData: any = {
+        teacherId: user.uid,
+        title: step1Data.title,
+        grade: gradeStorage !== null ? gradeStorage : step1Data.grade,
+        subject: subjectStorage || step1Data.subject,
+        status: "draft",
+        studentSummary: `Rezumat pentru elevi despre ${step1Data.title}. ${step2Data.textContent || "Conținut generat automat."}`,
+        slides: mockSlides,
+        teacherGuidelines: {
+          objectives: `Obiectivele lecției pentru ${step1Data.title}`,
+          timing: "45 minute",
+          questions: "Întrebări de discuție și verificare",
+          differentiation: "Strategii de diferențiere",
+          assessment: "Modalități de evaluare",
+        },
+        sources: {
+          files: [],
+          textContent: step2Data.textContent,
+        },
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        lastModified: serverTimestamp(),
+      };
+
+      const docRef = await addDoc(collection(db, "lessons"), lessonData);
+      const finalLessonId = docRef.id;
+      
+      // MOCK: Use the same presentation file for all lessons
+      let presentationFileUrl: string | undefined;
+      let presentationFileType: "pdf" | undefined;
+      
+      if (MOCK_PRESENTATION_FILE_URL) {
+        // Use the mock URL directly (must include the token)
+        presentationFileUrl = MOCK_PRESENTATION_FILE_URL;
+        presentationFileType = MOCK_PRESENTATION_FILE_TYPE;
+      } else {
+        // Try to automatically find the PDF file in the folder
+        try {
+          const foundURL = await getMockPresentationFileURL();
+          if (foundURL) {
+            presentationFileUrl = foundURL;
+            presentationFileType = MOCK_PRESENTATION_FILE_TYPE;
+            console.log("Found mock presentation file:", foundURL);
+          } else {
+            console.warn("No PDF file found in the mock folder. Skipping presentation file.");
+            console.warn("To use a mock presentation file:");
+            console.warn("1. Go to Firebase Console → Storage");
+            console.warn("2. Navigate to: 1jTUyxRHWcN0OH9ybEuwI1K0dSD2/6/");
+            console.warn("3. Click on the PDF file");
+            console.warn("4. Copy the COMPLETE download URL (must include ?alt=media&token=...)");
+            console.warn("5. Paste it into MOCK_PRESENTATION_FILE_URL in frontend/src/lib/storage.ts");
+          }
+        } catch (error) {
+          console.warn("Could not automatically find mock presentation file:", error);
+          console.warn("Please set MOCK_PRESENTATION_FILE_URL in storage.ts with the complete download URL");
+        }
+      }
+      
+      // If we have a mock URL, always add it to the lesson
+      if (presentationFileUrl) {
+        await updateDoc(docRef, {
+          presentationFileUrl,
+          presentationFileType,
+          updatedAt: serverTimestamp(),
+        });
+      }
+      
+      // Original upload logic (commented out for now - using mock instead)
+      // if (step2Data.presentationFile) {
+      //   const fileType = isPDF(step2Data.presentationFile.name) ? "pdf" : undefined;
+      //   
+      //   if (fileType && gradeStorage !== null) {
+      //     // Storage path: {teacherUid}/{grade}/{lessonId}/presentation.pdf
+      //     const filePath = `${user.uid}/${gradeStorage}/${finalLessonId}/presentation.pdf`;
+      //     presentationFileUrl = await uploadFile(step2Data.presentationFile, filePath);
+      //     presentationFileType = fileType;
+      //     
+      //     // Update the lesson document with the file URL
+      //     await updateDoc(docRef, {
+      //       presentationFileUrl,
+      //       presentationFileType,
+      //       updatedAt: serverTimestamp(),
+      //     });
+      //   }
+      // }
+      
+      setLessonId(finalLessonId);
+      setIsCreatingLesson(false);
+      
+      // Auto-advance to fact-check after a brief delay
+      setTimeout(() => {
+        setCurrentStep(4);
+      }, 1000);
+    } catch (error) {
+      console.error("Error creating lesson:", error);
+      setIsCreatingLesson(false);
+      // Still set a mock ID so the flow can continue
+      setLessonId("mock-lesson-id-" + Date.now());
+      setTimeout(() => {
+        setCurrentStep(4);
+      }, 1000);
     }
   };
 
+  const handleLessonComplete = () => {
+    // Navigate to dashboard when lesson is marked as ready
+    navigate("/teacher/dashboard");
+  };
+
   const isStep1Valid = step1Data.title.trim() && step1Data.grade && step1Data.subject;
-  const isStep2Valid =
-    step2Data.files.length > 0 ||
-    step2Data.textContent.trim() ||
-    step2Data.useCurriculumStandards ||
-    step2Data.useReputableSites;
+  const isStep2Valid = step2Data.files.length > 0 || step2Data.textContent.trim();
 
   const canProceed =
     (currentStep === 1 && isStep1Valid) ||
@@ -175,7 +301,7 @@ export default function NewLessonPage() {
               />
             )}
             {currentStep === 5 && (
-              <Step5Review lessonId={lessonId || ""} onOpenEditor={handleOpenEditor} />
+              <Step5Review lessonId={lessonId || ""} onComplete={handleLessonComplete} />
             )}
           </div>
 

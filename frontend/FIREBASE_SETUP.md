@@ -135,7 +135,106 @@ service cloud.firestore {
 firebase deploy --only firestore:rules
 ```
 
-### 5. Get Firebase Configuration
+### 5. Set Up Firebase Storage
+
+1. In Firebase Console, click on **"Storage"** in the left sidebar
+2. Click **"Get started"** if you see it
+3. Choose **"Start in test mode"** (for development)
+   - ⚠️ **Important**: For production, you'll need to set up proper security rules
+4. Select a **location** for your storage bucket (should match your Firestore location)
+5. Click **"Done"**
+
+#### Set Up Storage Security Rules
+
+1. In the Storage section, go to the **"Rules"** tab
+2. Replace the default rules with the rules from `storage.rules` file in the project root, or copy the following:
+
+```javascript
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is a teacher
+    function isTeacher() {
+      return isAuthenticated() && 
+             firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    }
+    
+    // Storage structure: {teacherUid}/{grade}/{lessonId}/presentation.{ext}
+    // Teachers can upload files to their own folder structure
+    match /{teacherUid}/{grade}/{lessonId}/{fileName} {
+      // Allow read if user is authenticated
+      allow read: if isAuthenticated();
+      
+      // Allow write (upload/delete) if:
+      // 1. User is authenticated
+      // 2. The teacherUid matches the authenticated user's UID
+      // 3. User is a teacher
+      // 4. File name is "presentation.pdf"
+      allow write: if isAuthenticated() && 
+                      request.auth.uid == teacherUid &&
+                      isTeacher() &&
+                      fileName == "presentation.pdf";
+      
+      // Allow delete if user owns the file and is a teacher
+      allow delete: if isAuthenticated() && 
+                       request.auth.uid == teacherUid &&
+                       isTeacher();
+    }
+    
+    // Deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+```
+
+3. Click **"Publish"**
+
+**Note**: If you're using Firebase CLI, you can also deploy the rules from the `storage.rules` file:
+```bash
+firebase deploy --only storage:rules
+```
+
+#### Configure CORS for Storage (REQUIRED for PDF viewing)
+
+The PDF viewer requires CORS headers to fetch files from Firebase Storage. To configure CORS:
+
+1. **Install Google Cloud SDK** (if not already installed):
+   - Download from: https://cloud.google.com/sdk/docs/install
+   - Follow the installation instructions for your operating system
+
+2. **Authenticate and set your project**:
+   ```bash
+   gcloud auth login
+   gcloud config set project innovate4ai
+   ```
+
+3. **Apply CORS configuration**:
+   ```bash
+   gsutil cors set cors.json gs://innovate4ai.firebasestorage.app
+   ```
+
+4. **Verify CORS is configured**:
+   ```bash
+   gsutil cors get gs://innovate4ai.firebasestorage.app
+   ```
+
+   You should see output similar to:
+   ```json
+   [{"origin": ["*"], "method": ["GET", "HEAD"], "responseHeader": ["Content-Type", "Content-Length", "Content-Range"], "maxAgeSeconds": 3600}]
+   ```
+
+**Important**: The `cors.json` file is in your project root. It allows GET and HEAD requests from any origin, which is necessary for the PDF viewer to work. For production, you may want to restrict the `origin` array to your specific domain(s).
+
+### 6. Get Firebase Configuration
 
 1. Click on the **gear icon** (⚙️) next to "Project Overview" in the left sidebar
 2. Select **"Project settings"**
@@ -147,7 +246,7 @@ firebase deploy --only firestore:rules
    - Click **"Register app"**
 6. Copy the Firebase configuration object that appears
 
-### 6. Configure Environment Variables
+### 7. Configure Environment Variables
 
 1. In your project root (`frontend/` directory), create a file named `.env`
 2. Add the following variables with your Firebase config values:
@@ -173,7 +272,7 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789012
 NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789012:web:abcdef123456
 ```
 
-### 7. Configure Authorized Domains (for Google Sign-In)
+### 8. Configure Authorized Domains (for Google Sign-In)
 
 1. Go to **Authentication** > **Settings** > **Authorized domains**
 2. Make sure `localhost` is listed (it should be by default)

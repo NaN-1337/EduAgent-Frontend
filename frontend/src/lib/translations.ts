@@ -195,6 +195,50 @@ export interface Translations {
       };
       back: string;
       next: string;
+      step1: {
+        titleLabel: string;
+        titlePlaceholder: string;
+        titleRequired: string;
+        gradeLabel: string;
+        gradePlaceholder: string;
+        gradeRequired: string;
+        subjectLabel: string;
+        subjectPlaceholder: string;
+        subjectRequired: string;
+        exampleTitle: string;
+        exampleTitleLabel: string;
+        exampleTitleText: string;
+      };
+      step2: {
+        title: string;
+        description: string;
+        dragDrop: string;
+        or: string;
+        browseFiles: string;
+        promptLabel: string;
+        promptPlaceholder: string;
+        aboutTitle: string;
+        aboutDescription: string;
+        promptTipsTitle: string;
+        promptTipsDescription: string;
+      };
+      step3: {
+        title: string;
+        description: string;
+        continueButton: string;
+      };
+      step4: {
+        title: string;
+        description: string;
+        back: string;
+        regenerate: string;
+        continue: string;
+      };
+      step5: {
+        title: string;
+        description: string;
+        button: string;
+      };
     };
     factCheck: {
       title: string;
@@ -223,6 +267,18 @@ export interface Translations {
       saving: string;
       saveDraft: string;
       markReadyForStudents: string;
+    };
+    lessonViewer: {
+      slideCounter: (current: number, total: number) => string;
+      noSlides: string;
+      previous: string;
+      next: string;
+      slideInfo: {
+        title: string;
+        notes: string;
+        tips: string;
+        resources: string;
+      };
     };
   };
 
@@ -263,6 +319,7 @@ export interface Translations {
         openButton: string;
         openAriaLabel: (title: string) => string;
         lessonAriaLabel: (title: string) => string;
+        completed?: string;
       };
     };
 
@@ -293,6 +350,7 @@ export interface Translations {
       openButton: string;
       openAriaLabel: (title: string) => string;
       lessonAriaLabel: (title: string) => string;
+      completed?: string;
     };
 
     // Lesson Player
@@ -460,6 +518,21 @@ const ro: Translations = {
       authenticationMethod: "Metodă de autentificare",
       shareCodeMessage: "Distribuie acest cod elevilor pentru a-i înscrie în clasa ta",
       studentsEnrolled: "elevi înscriși",
+      userId: "ID utilizator",
+      additionalInfo: "Informații suplimentare",
+      saveChanges: "Salvează modificările",
+      editProfile: "Editează profilul",
+      loadingProfile: "Se încarcă profilul...",
+      noProfileData: "Nu s-au găsit date de profil.",
+      notAuthenticated: "Nu ești autentificat",
+      roleSelectionHint: "Dacă tocmai te-ai conectat cu Google, asigură-te că ai selectat un rol.",
+      tryAgain: "Încearcă din nou",
+      refreshPage: "Reîncarcă pagina",
+      roles: {
+        student: "Elev",
+        teacher: "Profesor",
+        individual: "Individual",
+      },
     },
   },
 
@@ -560,6 +633,12 @@ const ro: Translations = {
       tip3: "Include stilul de predare preferat sau formatul",
       tip4: "Menționează orice subiecte specifice de evidențiat sau de evitat",
     },
+    deleteLesson: {
+      title: "Șterge lecția?",
+      description: (title: string) => `Ești sigur că vrei să ștergi "${title}"? Această acțiune nu poate fi anulată.`,
+      deleting: "Se șterge...",
+    },
+    completed: "finalizate",
   },
 
   teacher: {
@@ -583,6 +662,7 @@ const ro: Translations = {
       lessons: "lecții",
       open: "Deschide",
       unknownDate: "Dată necunoscută",
+      unknownTitle: "Lecție fără titlu",
     },
     newLesson: {
       steps: {
@@ -594,6 +674,66 @@ const ro: Translations = {
       },
       back: "Înapoi",
       next: "Următorul",
+      step1: {
+        titleLabel: "Titlul lecției",
+        titlePlaceholder: "ex: Fotosinteză – Clasa a 5-a",
+        titleRequired: "Titlul lecției este obligatoriu",
+        gradeLabel: "Clasă/Nivel",
+        gradePlaceholder: "Selectează clasa",
+        gradeRequired: "Clasa este obligatorie",
+        subjectLabel: "Materie",
+        subjectPlaceholder: "Selectează materia",
+        subjectRequired: "Materia este obligatorie",
+        exampleTitle: "Exemplu de configurare bună a lecției",
+        exampleTitleLabel: "Titlu",
+        exampleTitleText: "\"Introducere în Fotosinteză – Clasa a 5-a\"",
+      },
+      step2: {
+        title: "Materiale de referință",
+        description: "Încarcă fișiere sau introdu promptul",
+        dragDrop: "Trage și plasează fișiere PDF sau DOCX aici",
+        or: "sau",
+        browseFiles: "Răsfoiește fișiere",
+        promptLabel: "Introdu promptul",
+        promptPlaceholder: "Introdu promptul tău aici...",
+        aboutTitle: "Despre surse",
+        aboutDescription: "EduAgent folosește aceste surse pentru a genera și verifica conținutul. Cu cât mai multe surse relevante furnizezi, cu atât lecția ta va fi mai precisă și aliniată.",
+        promptTipsTitle: "Sfaturi pentru un prompt bun",
+        promptTipsDescription: "Un prompt bun este clar și specific. Include detalii despre subiect, nivelul clasei, și ce vrei să acoperi lecția. Acest conținut va fi modificat ulterior.",
+      },
+      step3: {
+        title: "Generează lecția ta…",
+        description: "Acest proces poate dura câteva momente. Te rugăm să nu închizi această pagină.",
+        continueButton: "Continuă la rezumatul verificării faptelor",
+        steps: {
+          understanding: "Înțelegerea cererii",
+          researching: "Căutarea subiectului",
+          drafting: "Redactarea rezumatului pentru elevi",
+          slides: "Crearea structurii slide-urilor",
+          guidelines: "Scrierea ghidurilor pentru profesor",
+          factcheck: "Rularea verificărilor de fapte",
+        },
+        descriptions: {
+          understanding: "Analizarea cerințelor și obiectivelor lecției tale...",
+          researching: "Scanarea PDF-ului încărcat și a surselor de încredere...",
+          drafting: "Crearea unui rezumat clar, potrivit vârstei pentru elevi...",
+          slides: "Organizarea conținutului în slide-uri de prezentare structurate...",
+          guidelines: "Pregătirea notițelor de predare și a sugestiilor de activități...",
+          factcheck: "Verificarea faptelor față de surse de încredere...",
+        },
+      },
+      step4: {
+        title: "Rezumat verificare fapte",
+        description: "Revizuiește prezentarea generală a calității înainte de a intra în editorul detaliat",
+        back: "Înapoi",
+        regenerate: "Regenerează cu surse diferite",
+        continue: "Continuă la revizuire",
+      },
+      step5: {
+        title: "Ciorna lecției tale este gata",
+        description: "Încă poți edita conținutul și rula detalii de verificare a faptelor pe ecranul următor.",
+        button: "Deschide în editor",
+      },
     },
     factCheck: {
       title: "Verificare fapte și revizuire calitate",
@@ -622,6 +762,18 @@ const ro: Translations = {
       saving: "Se salvează...",
       saveDraft: "Salvează ciorna",
       markReadyForStudents: "Marchează ca gata pentru elevi",
+    },
+    lessonViewer: {
+      slideCounter: (current: number, total: number) => `Slide ${current} din ${total}`,
+      noSlides: "Nu sunt slide-uri disponibile",
+      previous: "Anterior",
+      next: "Următorul",
+      slideInfo: {
+        title: "Informații slide",
+        notes: "Notițe",
+        tips: "Sfaturi",
+        resources: "Resurse",
+      },
     },
   },
 
@@ -660,6 +812,7 @@ const ro: Translations = {
         openButton: "Deschide",
         openAriaLabel: (title: string) => `Deschide ${title}`,
         lessonAriaLabel: (title: string) => `Deschide lecția: ${title}`,
+        completed: "Finalizată",
       },
     },
 
@@ -688,6 +841,7 @@ const ro: Translations = {
       openButton: "Deschide",
       openAriaLabel: (title: string) => `Deschide ${title}`,
       lessonAriaLabel: (title: string) => `Deschide lecția: ${title}`,
+      completed: "Finalizată",
     },
 
     lessonPlayer: {
@@ -941,6 +1095,21 @@ const en: Translations = {
       authenticationMethod: "Authentication Method",
       shareCodeMessage: "Share this code with students to enroll them in your class",
       studentsEnrolled: "students enrolled",
+      userId: "User ID",
+      additionalInfo: "Additional information",
+      saveChanges: "Save Changes",
+      editProfile: "Edit Profile",
+      loadingProfile: "Loading profile...",
+      noProfileData: "No profile data found.",
+      notAuthenticated: "Not authenticated",
+      roleSelectionHint: "If you just signed in with Google, make sure you selected a role.",
+      tryAgain: "Try Again",
+      refreshPage: "Refresh Page",
+      roles: {
+        student: "Student",
+        teacher: "Teacher",
+        individual: "Individual",
+      },
     },
   },
 
@@ -1041,6 +1210,12 @@ const en: Translations = {
       tip3: "Include your preferred teaching style or format",
       tip4: "Mention any specific topics to highlight or avoid",
     },
+    deleteLesson: {
+      title: "Delete Lesson?",
+      description: (title: string) => `Are you sure you want to delete "${title}"? This action cannot be undone.`,
+      deleting: "Deleting...",
+    },
+    completed: "completed",
   },
 
   teacher: {
@@ -1064,6 +1239,7 @@ const en: Translations = {
       lessons: "lessons",
       open: "Open",
       unknownDate: "Unknown date",
+      unknownTitle: "Untitled Lesson",
     },
     newLesson: {
       steps: {
@@ -1075,6 +1251,66 @@ const en: Translations = {
       },
       back: "Back",
       next: "Next",
+      step1: {
+        titleLabel: "Lesson title",
+        titlePlaceholder: "e.g., Photosynthesis – Grade 5",
+        titleRequired: "Lesson title is required",
+        gradeLabel: "Grade/Level",
+        gradePlaceholder: "Select grade",
+        gradeRequired: "Grade is required",
+        subjectLabel: "Subject",
+        subjectPlaceholder: "Select subject",
+        subjectRequired: "Subject is required",
+        exampleTitle: "Example of a good lesson setup",
+        exampleTitleLabel: "Title",
+        exampleTitleText: "\"Introduction to Photosynthesis – Grade 5\"",
+      },
+      step2: {
+        title: "Reference materials",
+        description: "Upload files or enter your prompt",
+        dragDrop: "Drag and drop PDF or DOCX files here",
+        or: "or",
+        browseFiles: "Browse files",
+        promptLabel: "Enter your prompt",
+        promptPlaceholder: "Enter your prompt here...",
+        aboutTitle: "About sources",
+        aboutDescription: "EduAgent uses these sources to generate and fact-check content. The more relevant sources you provide, the more accurate and aligned your lesson will be.",
+        promptTipsTitle: "Tips for a good prompt",
+        promptTipsDescription: "A good prompt is clear and specific. Include details about the subject, grade level, and what you want the lesson to cover. This content will be modified later.",
+      },
+      step3: {
+        title: "Generating your lesson…",
+        description: "This may take a few moments. Please don't close this page.",
+        continueButton: "Continue to fact-check summary",
+        steps: {
+          understanding: "Understanding request",
+          researching: "Researching topic",
+          drafting: "Drafting student summary",
+          slides: "Creating slides outline",
+          guidelines: "Writing teacher guidelines",
+          factcheck: "Running fact-check checks",
+        },
+        descriptions: {
+          understanding: "Analyzing your lesson requirements and objectives...",
+          researching: "Scanning your uploaded PDF and trusted sources...",
+          drafting: "Creating a clear, age-appropriate summary for students...",
+          slides: "Organizing content into structured presentation slides...",
+          guidelines: "Preparing teaching notes and activity suggestions...",
+          factcheck: "Verifying facts against trusted sources...",
+        },
+      },
+      step4: {
+        title: "Fact-checking summary",
+        description: "Review the quality overview before entering the detailed editor",
+        back: "Back",
+        regenerate: "Regenerate with different sources",
+        continue: "Continue to review",
+      },
+      step5: {
+        title: "Your lesson draft is ready",
+        description: "You can still edit content and run fact-check details on the next screen.",
+        button: "Open in editor",
+      },
     },
     factCheck: {
       title: "Fact-checking & quality review",
@@ -1103,6 +1339,18 @@ const en: Translations = {
       saving: "Saving...",
       saveDraft: "Save draft",
       markReadyForStudents: "Mark as ready for students",
+    },
+    lessonViewer: {
+      slideCounter: (current: number, total: number) => `Slide ${current} of ${total}`,
+      noSlides: "No slides available",
+      previous: "Previous",
+      next: "Next",
+      slideInfo: {
+        title: "Slide Information",
+        notes: "Notes",
+        tips: "Tips",
+        resources: "Resources",
+      },
     },
   },
 
@@ -1141,6 +1389,7 @@ const en: Translations = {
         openButton: "Open",
         openAriaLabel: (title: string) => `Open ${title}`,
         lessonAriaLabel: (title: string) => `Open lesson: ${title}`,
+        completed: "Completed",
       },
     },
 
@@ -1169,6 +1418,7 @@ const en: Translations = {
       openButton: "Open",
       openAriaLabel: (title: string) => `Open ${title}`,
       lessonAriaLabel: (title: string) => `Open lesson: ${title}`,
+      completed: "Completed",
     },
 
     lessonPlayer: {

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle2, AlertCircle, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface FlaggedIssue {
   id: string;
@@ -43,6 +44,7 @@ const mockFactCheckData = {
 };
 
 export function Step4FactCheck({ onContinue, onRegenerate, onBack }: Step4FactCheckProps) {
+  const { t } = useLanguage();
   const data = mockFactCheckData;
 
   const getStatusColor = (status: string) => {
@@ -70,9 +72,9 @@ export function Step4FactCheck({ onContinue, onRegenerate, onBack }: Step4FactCh
     <div className="max-w-4xl mx-auto">
       <Card className="border-2 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold">Fact-checking summary</CardTitle>
+          <CardTitle className="text-2xl font-semibold">{t.teacher.newLesson.step4.title}</CardTitle>
           <CardDescription>
-            Review the quality overview before entering the detailed editor
+            {t.teacher.newLesson.step4.description}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -168,7 +170,7 @@ export function Step4FactCheck({ onContinue, onRegenerate, onBack }: Step4FactCh
                 className="w-full sm:w-auto flex items-center gap-2"
               >
                 <ChevronLeft className="h-4 w-4" />
-                Back
+                {t.teacher.newLesson.step4.back}
               </Button>
               <div className="flex flex-col sm:flex-row gap-4">
                 {onRegenerate && (
@@ -177,7 +179,7 @@ export function Step4FactCheck({ onContinue, onRegenerate, onBack }: Step4FactCh
                     onClick={onRegenerate}
                     className="w-full sm:w-auto"
                   >
-                    Regenerate with different sources
+                    {t.teacher.newLesson.step4.regenerate}
                   </Button>
                 )}
                 <Button
@@ -185,7 +187,7 @@ export function Step4FactCheck({ onContinue, onRegenerate, onBack }: Step4FactCh
                   size="lg"
                   className="w-full sm:w-auto"
                 >
-                  Continue to review
+                  {t.teacher.newLesson.step4.continue}
                 </Button>
               </div>
             </div>

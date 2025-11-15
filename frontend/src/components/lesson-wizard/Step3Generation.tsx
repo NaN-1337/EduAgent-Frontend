@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface GenerationStep {
   id: string;
@@ -16,51 +18,59 @@ interface Step3GenerationProps {
   canContinue?: boolean;
 }
 
-const initialSteps: GenerationStep[] = [
-  {
-    id: "understanding",
-    label: "Understanding request",
-    status: "pending",
-  },
-  {
-    id: "researching",
-    label: "Researching topic",
-    status: "pending",
-  },
-  {
-    id: "drafting",
-    label: "Drafting student summary",
-    status: "pending",
-  },
-  {
-    id: "slides",
-    label: "Creating slides outline",
-    status: "pending",
-  },
-  {
-    id: "guidelines",
-    label: "Writing teacher guidelines",
-    status: "pending",
-  },
-  {
-    id: "factcheck",
-    label: "Running fact-check checks",
-    status: "pending",
-  },
-];
-
-const stepDescriptions: Record<string, string> = {
-  understanding: "Analyzing your lesson requirements and objectives...",
-  researching: "Scanning your uploaded PDF and trusted sources...",
-  drafting: "Creating a clear, age-appropriate summary for students...",
-  slides: "Organizing content into structured presentation slides...",
-  guidelines: "Preparing teaching notes and activity suggestions...",
-  factcheck: "Verifying facts against trusted sources...",
-};
-
 export function Step3Generation({ onComplete, onContinue, canContinue }: Step3GenerationProps) {
+  const { t } = useLanguage();
+  
+  const initialSteps = useMemo<GenerationStep[]>(() => [
+    {
+      id: "understanding",
+      label: t.teacher.newLesson.step3.steps?.understanding || "Understanding request",
+      status: "pending",
+    },
+    {
+      id: "researching",
+      label: t.teacher.newLesson.step3.steps?.researching || "Researching topic",
+      status: "pending",
+    },
+    {
+      id: "drafting",
+      label: t.teacher.newLesson.step3.steps?.drafting || "Drafting student summary",
+      status: "pending",
+    },
+    {
+      id: "slides",
+      label: t.teacher.newLesson.step3.steps?.slides || "Creating slides outline",
+      status: "pending",
+    },
+    {
+      id: "guidelines",
+      label: t.teacher.newLesson.step3.steps?.guidelines || "Writing teacher guidelines",
+      status: "pending",
+    },
+    {
+      id: "factcheck",
+      label: t.teacher.newLesson.step3.steps?.factcheck || "Running fact-check checks",
+      status: "pending",
+    },
+  ], [t]);
+
+  const stepDescriptions = useMemo<Record<string, string>>(() => ({
+    understanding: t.teacher.newLesson.step3.descriptions?.understanding || "Analyzing your lesson requirements and objectives...",
+    researching: t.teacher.newLesson.step3.descriptions?.researching || "Scanning your uploaded PDF and trusted sources...",
+    drafting: t.teacher.newLesson.step3.descriptions?.drafting || "Creating a clear, age-appropriate summary for students...",
+    slides: t.teacher.newLesson.step3.descriptions?.slides || "Organizing content into structured presentation slides...",
+    guidelines: t.teacher.newLesson.step3.descriptions?.guidelines || "Preparing teaching notes and activity suggestions...",
+    factcheck: t.teacher.newLesson.step3.descriptions?.factcheck || "Verifying facts against trusted sources...",
+  }), [t]);
+
   const [steps, setSteps] = useState<GenerationStep[]>(initialSteps);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [hasCompleted, setHasCompleted] = useState(false);
+
+  // Update steps when language changes
+  useEffect(() => {
+    setSteps(initialSteps);
+  }, [initialSteps]);
 
   useEffect(() => {
     if (currentStepIndex >= initialSteps.length) {
@@ -104,10 +114,13 @@ export function Step3Generation({ onComplete, onContinue, canContinue }: Step3Ge
           };
           setCurrentStepIndex(nextIndex);
         } else {
-          // All steps completed
-          setTimeout(() => {
-            onComplete();
-          }, 500);
+          // All steps completed - only call onComplete once
+          if (!hasCompleted) {
+            setHasCompleted(true);
+            setTimeout(() => {
+              onComplete();
+            }, 500);
+          }
         }
 
         return newSteps;
@@ -115,7 +128,7 @@ export function Step3Generation({ onComplete, onContinue, canContinue }: Step3Ge
     }, 2000);
 
     return () => clearTimeout(timeout);
-  }, [currentStepIndex, onComplete]);
+  }, [currentStepIndex, onComplete, initialSteps.length, stepDescriptions, hasCompleted]);
 
   const getStepIcon = (status: GenerationStep["status"]) => {
     switch (status) {
@@ -137,10 +150,10 @@ export function Step3Generation({ onComplete, onContinue, canContinue }: Step3Ge
       <Card className="border-2 shadow-sm">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold text-center">
-            Generating your lesson…
+            {t.teacher.newLesson.step3.title}
           </CardTitle>
           <CardDescription className="text-center">
-            This may take a few moments. Please don't close this page.
+            {t.teacher.newLesson.step3.description}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -182,7 +195,7 @@ export function Step3Generation({ onComplete, onContinue, canContinue }: Step3Ge
               {onContinue && (
                 <div className="mt-6 flex justify-end">
                   <Button onClick={onContinue} size="lg" disabled={!canContinue}>
-                    Continue to fact-check summary
+                    {t.teacher.newLesson.step3.continueButton}
                   </Button>
                 </div>
               )}

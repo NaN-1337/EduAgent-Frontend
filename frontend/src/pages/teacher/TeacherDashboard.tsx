@@ -3,12 +3,22 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen, Clock, TrendingUp, Lightbulb, ArrowRight, Copy, Check, Users } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Plus, BookOpen, Clock, TrendingUp, Lightbulb, ArrowRight, Copy, Check, Users, Trash2, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/lib/translations";
+import { convertLessonFromStorage } from "@/lib/dataConverters";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebaseConfig";
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { collection, query, where, getDocs, orderBy, deleteDoc, doc, getDoc } from "firebase/firestore";
 
 interface Lesson {
   id: string;
@@ -17,15 +27,20 @@ interface Lesson {
   grade: string;
   dateModified: any;
   status: "draft" | "fact-check needed" | "ready";
+  completedCount?: number;
+  totalStudents?: number;
 }
 
 export default function TeacherDashboard() {
   const navigate = useNavigate();
   const { user, userData, loading } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [recentLessons, setRecentLessons] = useState<Lesson[]>([]);
   const [loadingLessons, setLoadingLessons] = useState(true);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [lessonToDelete, setLessonToDelete] = useState<Lesson | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [analytics, setAnalytics] = useState({
     hoursSaved: 0,
     lessonsGenerated: 0,
@@ -68,15 +83,50 @@ export default function TeacherDashboard() {
 
         querySnapshot.forEach((doc) => {
           const data = doc.data();
+          // Convert from storage format to display format
+          const converted = convertLessonFromStorage(data, {
+            grades: translations[language].grades,
+            teachingFields: translations[language].teachingFields,
+          });
           lessonsData.push({
             id: doc.id,
-            title: data.title || "Untitled Lesson",
-            subject: data.subject || "Unknown",
-            grade: data.grade || "Unknown",
+            title: converted.title || t.teacher.myLessons.unknownTitle || "Untitled Lesson",
+            subject: converted.subject || t.common.messages.noData,
+            grade: converted.grade || t.common.messages.noData,
             dateModified: data.lastModified || data.createdAt || new Date(),
             status: data.status || "draft",
           });
         });
+
+        // Fetch completion data for each lesson
+        if (userData?.enrolledStudents && userData.enrolledStudents.length > 0) {
+          const completionPromises = lessonsData.map(async (lesson) => {
+            let completedCount = 0;
+            const studentPromises = userData.enrolledStudents!.map(async (studentId) => {
+              try {
+                const studentDocRef = doc(db, "users", studentId);
+                const studentDocSnap = await getDoc(studentDocRef);
+                if (studentDocSnap.exists()) {
+                  const studentData = studentDocSnap.data();
+                  const completedLessons = studentData.completedLessons || [];
+                  if (completedLessons.includes(lesson.id)) {
+                    completedCount++;
+                  }
+                }
+              } catch (error) {
+                console.error(`Error fetching student ${studentId}:`, error);
+              }
+            });
+            await Promise.all(studentPromises);
+            return {
+              ...lesson,
+              completedCount,
+              totalStudents: userData.enrolledStudents!.length,
+            };
+          });
+          const lessonsWithCompletion = await Promise.all(completionPromises);
+          lessonsData.splice(0, lessonsData.length, ...lessonsWithCompletion);
+        }
 
         // Get last 5 lessons for recent lessons
         const recent = lessonsData.slice(0, 5);
@@ -104,8 +154,18 @@ export default function TeacherDashboard() {
           lessonsGenerated,
           mostFrequentSubject,
         });
-      } catch (error) {
-        console.error("Error fetching lessons:", error);
+      } catch (error: any) {
+        // Check if error is about missing index
+        const isIndexError = error?.code === "failed-precondition" || 
+                            error?.message?.includes("index") ||
+                            error?.message?.includes("requires an index");
+        
+        if (isIndexError) {
+          console.warn("Firestore index not found, falling back to query without orderBy. Create the index at:", error?.message?.match(/https:\/\/[^\s]+/)?.[0]);
+        } else {
+          console.error("Error fetching lessons:", error);
+        }
+        
         // If query fails (e.g., missing index), try without orderBy
         try {
           const lessonsRef = collection(db, "lessons");
@@ -115,11 +175,16 @@ export default function TeacherDashboard() {
 
           querySnapshot.forEach((doc) => {
             const data = doc.data();
+            // Convert from storage format to display format
+            const converted = convertLessonFromStorage(data, {
+              grades: translations[language].grades,
+              teachingFields: translations[language].teachingFields,
+            });
             lessonsData.push({
               id: doc.id,
-              title: data.title || "Untitled Lesson",
-              subject: data.subject || "Unknown",
-              grade: data.grade || "Unknown",
+              title: converted.title || t.teacher.myLessons.unknownTitle || "Untitled Lesson",
+              subject: converted.subject || t.common.messages.noData,
+              grade: converted.grade || t.common.messages.noData,
               dateModified: data.lastModified || data.createdAt || new Date(),
               status: data.status || "draft",
             });
@@ -131,6 +196,36 @@ export default function TeacherDashboard() {
             const dateB = b.dateModified?.toDate?.() || new Date(b.dateModified) || new Date(0);
             return dateB.getTime() - dateA.getTime();
           });
+
+          // Fetch completion data for each lesson
+          if (userData?.enrolledStudents && userData.enrolledStudents.length > 0) {
+            const completionPromises = lessonsData.map(async (lesson) => {
+              let completedCount = 0;
+              const studentPromises = userData.enrolledStudents!.map(async (studentId) => {
+                try {
+                  const studentDocRef = doc(db, "users", studentId);
+                  const studentDocSnap = await getDoc(studentDocRef);
+                  if (studentDocSnap.exists()) {
+                    const studentData = studentDocSnap.data();
+                    const completedLessons = studentData.completedLessons || [];
+                    if (completedLessons.includes(lesson.id)) {
+                      completedCount++;
+                    }
+                  }
+                } catch (error) {
+                  console.error(`Error fetching student ${studentId}:`, error);
+                }
+              });
+              await Promise.all(studentPromises);
+              return {
+                ...lesson,
+                completedCount,
+                totalStudents: userData.enrolledStudents!.length,
+              };
+            });
+            const lessonsWithCompletion = await Promise.all(completionPromises);
+            lessonsData.splice(0, lessonsData.length, ...lessonsWithCompletion);
+          }
 
           const recent = lessonsData.slice(0, 5);
           setRecentLessons(recent);
@@ -206,13 +301,46 @@ export default function TeacherDashboard() {
     } else if (date.toDateString() === yesterday.toDateString()) {
       return t.common.messages.yesterday;
     } else {
-      return date.toLocaleDateString("ro-RO", { month: "short", day: "numeric", year: "numeric" });
+      return date.toLocaleDateString(language === "ro" ? "ro-RO" : "en-US", { month: "short", day: "numeric", year: "numeric" });
     }
   };
 
   const handleLessonClick = (lessonId: string) => {
     // Navigate to lesson editor
     navigate(`/teacher/lessons/${lessonId}/edit`);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, lesson: Lesson) => {
+    e.stopPropagation();
+    setLessonToDelete(lesson);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!lessonToDelete || !user) return;
+
+    try {
+      setIsDeleting(true);
+      const lessonDocRef = doc(db, "lessons", lessonToDelete.id);
+      await deleteDoc(lessonDocRef);
+      
+      // Remove from recent lessons
+      setRecentLessons((prev) => prev.filter((l) => l.id !== lessonToDelete.id));
+      
+      // Update analytics
+      setAnalytics((prev) => ({
+        ...prev,
+        lessonsGenerated: Math.max(0, prev.lessonsGenerated - 1),
+        hoursSaved: Math.max(0, Math.round((prev.lessonsGenerated - 1) * 1.5)),
+      }));
+
+      setDeleteDialogOpen(false);
+      setLessonToDelete(null);
+    } catch (error) {
+      console.error("Error deleting lesson:", error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleCopyCode = async () => {
@@ -288,11 +416,19 @@ export default function TeacherDashboard() {
                         <div className="flex-1 space-y-1">
                           <h3 className="font-semibold text-lg">{lesson.title}</h3>
                           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                            <span>{lesson.subject}</span>
+                            <span>{translations[language].teachingFields[lesson.subject as keyof typeof translations.ro.teachingFields] || lesson.subject}</span>
                             <span>·</span>
-                            <span>{lesson.grade}</span>
+                            <span>{translations[language].grades[lesson.grade as keyof typeof translations.ro.grades] || lesson.grade}</span>
                             <span>·</span>
                             <span>{formatDate(lesson.dateModified)}</span>
+                            {lesson.status === "ready" && lesson.totalStudents !== undefined && lesson.totalStudents > 0 && (
+                              <>
+                                <span>·</span>
+                                <span className="text-green-600 dark:text-green-400 font-medium">
+                                  {lesson.completedCount || 0}/{lesson.totalStudents} {t.teacherDashboard.completed || "completed"}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -302,6 +438,15 @@ export default function TeacherDashboard() {
                           >
                             {getStatusLabel(lesson.status)}
                           </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => handleDeleteClick(e, lesson)}
+                            aria-label={`${t.common.delete} ${lesson.title}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -425,6 +570,45 @@ export default function TeacherDashboard() {
           </div>
         </div>
       </main>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.teacherDashboard.deleteLesson?.title || "Delete Lesson"}</DialogTitle>
+            <DialogDescription>
+              {lessonToDelete && (t.teacherDashboard.deleteLesson?.description(lessonToDelete.title) || 
+                `Are you sure you want to delete "${lessonToDelete.title}"? This action cannot be undone.`)}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setLessonToDelete(null);
+              }}
+              disabled={isDeleting}
+            >
+              {t.common.cancel}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t.teacherDashboard.deleteLesson?.deleting || "Deleting..."}
+                </>
+              ) : (
+                t.common.delete
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
