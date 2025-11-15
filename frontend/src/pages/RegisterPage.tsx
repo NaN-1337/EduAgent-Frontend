@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { getDashboardRoute } from "@/lib/routes";
 
 export default function RegisterPage() {
   const { user, userData, loading } = useAuth();
@@ -11,7 +12,8 @@ export default function RegisterPage() {
   useEffect(() => {
     // Only navigate if user is authenticated AND has userData
     if (!loading && user && userData) {
-      navigate("/profile");
+      const dashboardRoute = getDashboardRoute(userData.role);
+      navigate(dashboardRoute);
     }
   }, [user, userData, loading, navigate]);
 

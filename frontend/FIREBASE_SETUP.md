@@ -1,5 +1,7 @@
 # Firebase Setup Guide
 
+> **Note**: For detailed information about the Firestore database structure, see [FIREBASE_STRUCTURE.md](./FIREBASE_STRUCTURE.md)
+
 This guide will walk you through setting up Firebase for the Innovate4AI frontend application.
 
 ## Prerequisites

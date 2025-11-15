@@ -6,6 +6,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { RoleSelectionDialog } from "@/components/auth/role-selection-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { getDashboardRoute } from "@/lib/routes";
 
 export default function LoginPage() {
   const { user, userData, loading, refreshUserData } = useAuth();
@@ -19,10 +20,11 @@ export default function LoginPage() {
       return;
     }
 
-    // If user is authenticated and has userData, navigate to profile
+    // If user is authenticated and has userData, navigate to their dashboard
     if (user && userData) {
       const timer = setTimeout(() => {
-        navigate("/profile");
+        const dashboardRoute = getDashboardRoute(userData.role);
+        navigate(dashboardRoute);
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -45,7 +47,10 @@ export default function LoginPage() {
             await refreshUserData();
             // Wait a bit before navigating to prevent flicker
             setTimeout(() => {
-              navigate("/profile");
+              // Get the role from the document to determine dashboard
+              const role = userDocSnap.data()?.role;
+              const dashboardRoute = getDashboardRoute(role);
+              navigate(dashboardRoute);
             }, 200);
           }
         } catch (error) {
@@ -73,7 +78,9 @@ export default function LoginPage() {
 
       await refreshUserData();
       setShowRoleDialog(false);
-      navigate("/profile");
+      // Navigate to the appropriate dashboard based on selected role
+      const dashboardRoute = getDashboardRoute(role);
+      navigate(dashboardRoute);
     } catch (error) {
       console.error("Error saving user role:", error);
     }

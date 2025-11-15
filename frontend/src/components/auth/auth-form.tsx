@@ -13,6 +13,7 @@ import {
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebaseConfig";
 import { useAuth } from "@/contexts/AuthContext";
+import { getDashboardRoute } from "@/lib/routes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -136,7 +137,19 @@ export function AuthForm({ mode }: AuthFormProps) {
         await signInWithEmailAndPassword(auth, email, password);
         // Refresh user data after login
         await refreshUserData();
-        navigate("/profile");
+        // Get user data to determine dashboard route
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          const userDocRef = doc(db, "users", currentUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
+          if (userDocSnap.exists()) {
+            const role = userDocSnap.data()?.role;
+            const dashboardRoute = getDashboardRoute(role);
+            navigate(dashboardRoute);
+          } else {
+            navigate("/profile");
+          }
+        }
       } else {
         const { email, password, name, role } = data as RegisterFormData;
         const userCredential = await createUserWithEmailAndPassword(
@@ -157,9 +170,10 @@ export function AuthForm({ mode }: AuthFormProps) {
         
         setSuccessMessage("Account created! Please check your email to verify your account.");
         
-        // Wait a bit for Firestore to be ready, then navigate
+        // Wait a bit for Firestore to be ready, then navigate to dashboard
         setTimeout(() => {
-          navigate("/profile");
+          const dashboardRoute = getDashboardRoute(role);
+          navigate(dashboardRoute);
         }, 1500);
       }
     } catch (err: any) {
@@ -194,10 +208,12 @@ export function AuthForm({ mode }: AuthFormProps) {
       console.log("User exists in Firestore:", userDocSnap.exists());
 
       if (userDocSnap.exists()) {
-        // User exists, refresh user data and proceed to profile
+        // User exists, refresh user data and proceed to dashboard
         console.log("Existing user, refreshing data...");
         await refreshUserData();
-        navigate("/profile");
+        const role = userDocSnap.data()?.role;
+        const dashboardRoute = getDashboardRoute(role);
+        navigate(dashboardRoute);
       } else {
         // New user, show role selection
         console.log("New user, showing role selection dialog...");
@@ -262,8 +278,9 @@ export function AuthForm({ mode }: AuthFormProps) {
       setShowRoleDialog(false);
       setPendingGoogleUser(null);
       
-      // Navigate to profile
-      navigate("/profile");
+      // Navigate to the appropriate dashboard based on selected role
+      const dashboardRoute = getDashboardRoute(role);
+      navigate(dashboardRoute);
     } catch (err: any) {
       console.error("Error saving user:", err);
       setError(err.message || "Failed to save user data. Please try again.");
