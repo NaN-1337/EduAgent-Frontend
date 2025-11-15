@@ -9,6 +9,8 @@ import TeacherDashboard from './pages/teacher/TeacherDashboard'
 import NewLessonPage from './pages/teacher/NewLessonPage'
 import FactCheckPanel from './pages/teacher/FactCheckPanel'
 import LessonEditor from './pages/teacher/LessonEditor'
+import StudentsView from './pages/teacher/StudentsView'
+import MyLessons from './pages/teacher/MyLessons'
 import StudentDashboard from './pages/student/StudentDashboard'
 import StudentLessonsPage from './pages/student/StudentLessonsPage'
 import JoinLessonPage from './pages/student/JoinLessonPage'
@@ -27,6 +29,8 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/teacher/dashboard" element={<TeacherDashboard />} />
           <Route path="/teacher/new-lesson" element={<NewLessonPage />} />
+          <Route path="/teacher/lessons" element={<MyLessons />} />
+          <Route path="/teacher/students" element={<StudentsView />} />
           <Route path="/teacher/lessons/:lessonId/edit" element={<LessonEditor />} />
           <Route path="/teacher/lessons/:lessonId/fact-check" element={<FactCheckPanel />} />
           <Route path="/student/dashboard" element={<StudentDashboard />} />

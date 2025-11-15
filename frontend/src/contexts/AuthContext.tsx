@@ -13,6 +13,11 @@ interface UserData {
   email: string;
   name: string;
   role: "student" | "teacher" | "individual";
+  grade?: string;
+  teachingField?: string;
+  teacherCode?: string;
+  enrolledStudents?: string[];
+  enrolledTeachers?: string[];
   createdAt?: any;
 }
 

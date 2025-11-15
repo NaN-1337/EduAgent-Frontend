@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Menu, X, User, LogOut } from "lucide-react";
+import { Menu, User, LogOut } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -36,10 +36,10 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
   const isActive = (path: string) => location.pathname === path;
 
   const teacherLinks = [
-    { path: "/teacher/dashboard", label: "Dashboard" },
-    { path: "/teacher/lessons", label: "My Lessons" },
-    { path: "/teacher/students", label: "Students View" },
-    { path: "/profile", label: "Account" },
+    { path: "/teacher/dashboard", label: t.navbar.student.dashboard },
+    { path: "/teacher/lessons", label: t.navbar.student.myLessons },
+    { path: "/teacher/students", label: "Elevii" },
+    { path: "/profile", label: t.navbar.student.account },
   ];
 
   const studentLinks = [

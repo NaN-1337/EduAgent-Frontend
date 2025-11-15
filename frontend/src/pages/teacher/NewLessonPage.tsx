@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
@@ -10,15 +10,7 @@ import { Step4FactCheck } from "@/components/lesson-wizard/Step4FactCheck";
 import { Step5Review } from "@/components/lesson-wizard/Step5Review";
 import { ChevronLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
-
-const steps = [
-  { number: 1, label: "Define lesson" },
-  { number: 2, label: "Sources" },
-  { number: 3, label: "Generation" },
-  { number: 4, label: "Fact-check" },
-  { number: 5, label: "Review & finish" },
-];
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Step1Data {
   title: string;
@@ -39,9 +31,18 @@ interface Step2Data {
 export default function NewLessonPage() {
   const navigate = useNavigate();
   const { user, userData, loading } = useAuth();
+  const { t } = useLanguage();
   const [currentStep, setCurrentStep] = useState(1);
   const [generationComplete, setGenerationComplete] = useState(false);
   const [lessonId, setLessonId] = useState<string | null>(null);
+
+  const steps = [
+    { number: 1, label: t.teacher.newLesson.steps.defineLesson },
+    { number: 2, label: t.teacher.newLesson.steps.sources },
+    { number: 3, label: t.teacher.newLesson.steps.generation },
+    { number: 4, label: t.teacher.newLesson.steps.factCheck },
+    { number: 5, label: t.teacher.newLesson.steps.reviewFinish },
+  ];
 
   const [step1Data, setStep1Data] = useState<Step1Data>({
     title: "",
@@ -188,7 +189,7 @@ export default function NewLessonPage() {
                 className="flex items-center gap-2"
               >
                 <ChevronLeft className="h-4 w-4" />
-                Back
+                {t.teacher.newLesson.back}
               </Button>
 
               <Button
@@ -196,7 +197,7 @@ export default function NewLessonPage() {
                 disabled={!canProceed}
                 className="ml-auto"
               >
-                Next
+                {t.teacher.newLesson.next}
               </Button>
             </div>
           )}

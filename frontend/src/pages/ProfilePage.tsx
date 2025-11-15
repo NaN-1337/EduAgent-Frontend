@@ -1,27 +1,34 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
+import { Navbar } from "@/components/layout/Navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, LogOut, User as UserIcon } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Loader2, User as UserIcon } from "lucide-react";
+import { translations } from "@/lib/translations";
 
 interface UserData {
   uid: string;
   email: string;
   name: string;
   role: "student" | "teacher" | "individual";
+  grade?: string;
+  teachingField?: string;
+  teacherCode?: string;
+  enrolledStudents?: string[];
   createdAt?: any;
 }
 
 export default function ProfilePage() {
   const { user, userData, loading: authLoading, signOut, refreshUserData } = useAuth();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [profileData, setProfileData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -215,33 +222,26 @@ export default function ProfilePage() {
     individual: "Individual",
   };
 
+      // Determine navbar role based on user role
+      const navbarRole = profileData.role === "teacher" ? "teacher" : "student";
+
       return (
-        <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 dark:from-background dark:via-background dark:to-primary/10 p-4 relative overflow-hidden">
-          {/* Animated background elements */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-          </div>
+        <div className="min-h-screen bg-background">
+          <Navbar role={navbarRole} />
           
-          <div className="max-w-4xl mx-auto py-8 relative z-10">
-            <div className="flex justify-between items-center mb-8">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                Profile
-              </h1>
-              <div className="flex gap-2">
-                <ThemeToggle />
-                <Button variant="outline" onClick={handleSignOut} className="shadow-sm">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
-                </Button>
+          <main className="pt-16">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+              <div className="mb-8">
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                  {t.common.profile.title}
+                </h1>
               </div>
-            </div>
 
             <div className="grid gap-6 md:grid-cols-2">
               <Card className="shadow-xl border-2 dark:border-primary/20 backdrop-blur-sm bg-card/95 dark:bg-card/95 transition-all duration-300 hover:shadow-primary/10">
                 <CardHeader>
-                  <CardTitle className="text-xl font-semibold">Profile Information</CardTitle>
-                  <CardDescription>Your account details</CardDescription>
+                  <CardTitle className="text-xl font-semibold">{t.common.profile.profileInformation}</CardTitle>
+                  <CardDescription>{t.common.profile.accountDetails}</CardDescription>
                 </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center gap-4">
@@ -261,7 +261,7 @@ export default function ProfilePage() {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="name">{t.common.labels.name}</Label>
                   <Input
                     id="name"
                     value={name}
@@ -271,7 +271,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t.common.labels.email}</Label>
                   <Input
                     id="email"
                     value={profileData.email}
@@ -291,7 +291,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
+                  <Label htmlFor="role">{t.common.labels.role}</Label>
                   <Input
                     id="role"
                     value={roleLabels[profileData.role]}
@@ -299,6 +299,30 @@ export default function ProfilePage() {
                     className="bg-muted"
                   />
                 </div>
+
+                {profileData.role === "student" && profileData.grade && (
+                  <div className="space-y-2">
+                    <Label htmlFor="grade">{t.common.labels.grade}</Label>
+                    <Input
+                      id="grade"
+                      value={translations[language].grades[profileData.grade as keyof typeof translations.ro.grades] || profileData.grade}
+                      disabled
+                      className="bg-muted"
+                    />
+                  </div>
+                )}
+
+                {profileData.role === "teacher" && profileData.teachingField && (
+                  <div className="space-y-2">
+                    <Label htmlFor="teachingField">{t.auth.register.teachingFieldLabel}</Label>
+                    <Input
+                      id="teachingField"
+                      value={translations[language].teachingFields[profileData.teachingField as keyof typeof translations.ro.teachingFields] || profileData.teachingField}
+                      disabled
+                      className="bg-muted"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2">
@@ -339,12 +363,12 @@ export default function ProfilePage() {
 
               <Card className="shadow-xl border-2 dark:border-primary/20 backdrop-blur-sm bg-card/95 dark:bg-card/95 transition-all duration-300 hover:shadow-primary/10">
                 <CardHeader>
-                  <CardTitle className="text-xl font-semibold">Account Details</CardTitle>
+                  <CardTitle className="text-xl font-semibold">{t.common.profile.accountDetails}</CardTitle>
                   <CardDescription>Additional information</CardDescription>
                 </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Account Created</Label>
+                <Label>{t.common.profile.accountCreated}</Label>
                 <p className="text-sm text-muted-foreground">
                   {profileData.createdAt
                     ? new Date(
@@ -355,18 +379,42 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Authentication Method</Label>
+                <Label>{t.common.profile.authenticationMethod}</Label>
                 <p className="text-sm text-muted-foreground">
                   {user?.providerData[0]?.providerId === "google.com"
                     ? "Google"
                     : "Email/Password"}
                 </p>
               </div>
+
+              {profileData.role === "teacher" && profileData.teacherCode && (
+                <div className="space-y-2">
+                  <Label>{t.common.labels.teacherCode}</Label>
+                  <div className="p-3 bg-muted rounded-md border">
+                    <p className="text-lg font-bold text-primary font-mono text-center">
+                      {profileData.teacherCode}
+                    </p>
+                    <p className="text-xs text-muted-foreground text-center mt-1">
+                      {t.common.profile.shareCodeMessage}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {profileData.role === "teacher" && profileData.enrolledStudents && (
+                <div className="space-y-2">
+                  <Label>{t.common.labels.enrolledStudents}</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {profileData.enrolledStudents.length} {t.common.profile.studentsEnrolled}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
+            </div>
+            </div>
+          </main>
         </div>
-      </div>
-    </div>
-  );
-}
+      );
+    }
 

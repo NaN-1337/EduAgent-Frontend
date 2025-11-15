@@ -2,6 +2,7 @@ import { AuthForm } from "@/components/auth/auth-form";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { RoleSelectionDialog } from "@/components/auth/role-selection-dialog";
@@ -10,6 +11,7 @@ import { getDashboardRoute } from "@/lib/routes";
 
 export default function LoginPage() {
   const { user, userData, loading, refreshUserData } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [showRoleDialog, setShowRoleDialog] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
@@ -62,19 +64,37 @@ export default function LoginPage() {
     }
   }, [user, userData, loading, navigate, hasChecked, refreshUserData]);
 
-  const handleRoleSelect = async (role: "student" | "teacher" | "individual") => {
+  const handleRoleSelect = async (role: "student" | "teacher" | "individual", grade?: string, teachingField?: string) => {
     if (!user) return;
 
     try {
       const userDocRef = doc(db, "users", user.uid);
       
-      await setDoc(userDocRef, {
+      const userData: any = {
         uid: user.uid,
         email: user.email || "",
         name: user.displayName || "User",
         role: role,
         createdAt: new Date(),
-      });
+      };
+      
+      // Add grade if user is a student
+      if (role === "student" && grade) {
+        userData.grade = grade;
+      }
+      
+      // Add teaching field and generate teacher code if user is a teacher
+      if (role === "teacher") {
+        if (teachingField) {
+          userData.teachingField = teachingField;
+        }
+        // Generate unique teacher code
+        const { generateTeacherCode } = await import("@/lib/teacherCode");
+        userData.teacherCode = generateTeacherCode();
+        userData.enrolledStudents = []; // Initialize empty array for enrolled students
+      }
+      
+      await setDoc(userDocRef, userData);
 
       await refreshUserData();
       setShowRoleDialog(false);
@@ -92,7 +112,7 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <p className="text-sm text-muted-foreground">{t.common.loading}</p>
         </div>
       </div>
     );
@@ -104,7 +124,7 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-sm text-muted-foreground">Redirecting...</p>
+          <p className="text-sm text-muted-foreground">{t.common.loading}</p>
         </div>
       </div>
     );
