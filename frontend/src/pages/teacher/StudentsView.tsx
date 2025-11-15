@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { db } from "@/lib/firebaseConfig";
 import { doc, getDoc, getDocs, collection, query, where } from "firebase/firestore";
 import { Users, GraduationCap } from "lucide-react";
@@ -19,6 +20,7 @@ interface Student {
 export default function StudentsView() {
   const navigate = useNavigate();
   const { user, userData, loading } = useAuth();
+  const { t } = useLanguage();
   const [students, setStudents] = useState<Student[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [studentsByGrade, setStudentsByGrade] = useState<Record<string, Student[]>>({});
@@ -124,9 +126,9 @@ export default function StudentsView() {
       <main className="pt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Students View</h1>
+            <h1 className="text-3xl font-bold mb-2">{t.teacher.studentsView.title}</h1>
             <p className="text-muted-foreground">
-              View all students enrolled to your classes, organized by grade level.
+              {t.teacher.studentsView.description}
             </p>
           </div>
 
@@ -134,13 +136,13 @@ export default function StudentsView() {
             <Card className="border-2">
               <CardContent className="flex flex-col items-center justify-center py-16">
                 <Users className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No students enrolled</h3>
+                <h3 className="text-xl font-semibold mb-2">{t.teacher.studentsView.emptyTitle}</h3>
                 <p className="text-muted-foreground text-center max-w-md">
-                  You don't have any students enrolled yet. Share your teacher code with students so they can join your class.
+                  {t.teacher.studentsView.emptyDescription}
                 </p>
                 {userData?.teacherCode && (
                   <div className="mt-6 p-4 bg-muted rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-2">Your teacher code:</p>
+                    <p className="text-sm text-muted-foreground mb-2">{t.teacher.studentsView.teacherCodeLabel}</p>
                     <p className="text-2xl font-bold text-primary font-mono">{userData.teacherCode}</p>
                   </div>
                 )}
@@ -155,7 +157,7 @@ export default function StudentsView() {
                       <GraduationCap className="h-5 w-5 text-primary" />
                       {grade}
                       <span className="text-base font-normal text-muted-foreground">
-                        ({studentsByGrade[grade].length} {studentsByGrade[grade].length === 1 ? "student" : "students"})
+                        ({studentsByGrade[grade].length} {studentsByGrade[grade].length === 1 ? t.teacher.studentsView.student : t.teacher.studentsView.students})
                       </span>
                     </CardTitle>
                   </CardHeader>

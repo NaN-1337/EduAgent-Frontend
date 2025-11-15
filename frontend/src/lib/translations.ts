@@ -162,6 +162,81 @@ export interface Translations {
     };
   };
 
+  // Teacher pages
+  teacher: {
+    studentsView: {
+      title: string;
+      description: string;
+      emptyTitle: string;
+      emptyDescription: string;
+      teacherCodeLabel: string;
+      student: string;
+      students: string;
+    };
+    myLessons: {
+      title: string;
+      description: string;
+      newLesson: string;
+      emptyTitle: string;
+      emptyDescription: string;
+      createFirst: string;
+      lesson: string;
+      lessons: string;
+      open: string;
+      unknownDate: string;
+    };
+    newLesson: {
+      steps: {
+        defineLesson: string;
+        sources: string;
+        generation: string;
+        factCheck: string;
+        reviewFinish: string;
+      };
+      back: string;
+      next: string;
+    };
+    factCheck: {
+      title: string;
+      description: string;
+      flaggedClaims: string;
+      noIssues: string;
+      allReviewed: string;
+      noMatches: string;
+      status: {
+        highConfidence: string;
+        needsReview: string;
+        criticalIssues: string;
+      };
+    };
+    lessonEditor: {
+      placeholder: string;
+      runFactCheck: string;
+      markAsReady: string;
+      tabs: {
+        studentSummary: string;
+        slides: string;
+        teacherGuidelines: string;
+      };
+      deleteTitle: string;
+      deleteDescription: (title: string) => string;
+      saving: string;
+      saveDraft: string;
+      markReadyForStudents: string;
+    };
+  };
+
+  // Individual Dashboard
+  individual: {
+    dashboard: {
+      title: string;
+      welcome: (name: string) => string;
+      accountTitle: string;
+      accountDescription: string;
+      comingSoon: string;
+    };
+  };
+
   // Student Dashboard
   student: {
     dashboard: {
@@ -172,6 +247,14 @@ export interface Translations {
         description: string;
         button: string;
         ariaLabel: string;
+      };
+      myInfo: {
+        title: string;
+      };
+      myTeachers: {
+        title: string;
+        description: string;
+        emptyState: string;
       };
       myLessons: {
         title: string;
@@ -195,6 +278,7 @@ export interface Translations {
       errors: {
         emptyCode: string;
         codeNotFound: string;
+        invalidCode?: string;
         genericError: string;
       };
     };
@@ -478,15 +562,96 @@ const ro: Translations = {
     },
   },
 
+  teacher: {
+    studentsView: {
+      title: "Vizualizare elevi",
+      description: "Vezi toți elevii înscriși la clasele tale, organizați pe niveluri de clasă.",
+      emptyTitle: "Niciun elev înscris",
+      emptyDescription: "Nu ai încă elevi înscriși. Distribuie codul tău de profesor elevilor pentru ca aceștia să se alăture clasei tale.",
+      teacherCodeLabel: "Codul tău de profesor:",
+      student: "elev",
+      students: "elevi",
+    },
+    myLessons: {
+      title: "Lecțiile mele",
+      description: "Vezi și gestionează toate lecțiile tale, organizate pe niveluri de clasă.",
+      newLesson: "Lecție nouă",
+      emptyTitle: "Nicio lecție încă",
+      emptyDescription: "Nu ai creat încă nicio lecție. Creează prima ta lecție pentru a începe cu EduAgent.",
+      createFirst: "Creează prima ta lecție",
+      lesson: "lecție",
+      lessons: "lecții",
+      open: "Deschide",
+      unknownDate: "Dată necunoscută",
+    },
+    newLesson: {
+      steps: {
+        defineLesson: "Definește lecția",
+        sources: "Surse",
+        generation: "Generare",
+        factCheck: "Verificare fapte",
+        reviewFinish: "Revizuire și finalizare",
+      },
+      back: "Înapoi",
+      next: "Următorul",
+    },
+    factCheck: {
+      title: "Verificare fapte și revizuire calitate",
+      description: "Revizuiește afirmațiile marcate înainte de a publica această lecție.",
+      flaggedClaims: "Afirmații marcate",
+      noIssues: "Nu s-au găsit probleme marcate pentru această lecție.",
+      allReviewed: "Toate afirmațiile au fost revizuite!",
+      noMatches: "Nicio afirmație nu se potrivește filtrului selectat.",
+      status: {
+        highConfidence: "Încredere ridicată",
+        needsReview: "Necesită revizuire",
+        criticalIssues: "Probleme critice găsite",
+      },
+    },
+    lessonEditor: {
+      placeholder: "Titlul lecției...",
+      runFactCheck: "Rulează verificarea faptelor din nou",
+      markAsReady: "Marchează ca gata",
+      tabs: {
+        studentSummary: "Rezumat elev",
+        slides: "Slide-uri",
+        teacherGuidelines: "Ghiduri profesor",
+      },
+      deleteTitle: "Șterge lecția?",
+      deleteDescription: (title: string) => `Această acțiune nu poate fi anulată. Aceasta va șterge permanent lecția "${title}".`,
+      saving: "Se salvează...",
+      saveDraft: "Salvează ciorna",
+      markReadyForStudents: "Marchează ca gata pentru elevi",
+    },
+  },
+
+  individual: {
+    dashboard: {
+      title: "Panou",
+      welcome: (name: string) => `Bine ai venit, ${name || "Utilizator"}!`,
+      accountTitle: "Cont individual",
+      accountDescription: "Panoul tău personalizat de învățare",
+      comingSoon: "Conținut în curând.",
+    },
+  },
+
   student: {
     dashboard: {
       title: "Panou Student",
       welcomeMessage: (name: string) => `Bine ai revenit, ${name || "Student"}!`,
-      joinLesson: {
-        title: "Alătură-te unei lecții",
-        description: "Introdu codul clasei pentru a te alătura lecției profesorului tău.",
-        button: "Alătură-te lecției",
-        ariaLabel: "Alătură-te unei lecții cu codul clasei",
+    joinLesson: {
+      title: "Înscrie-te la profesor",
+      description: "Introdu codul profesorului pentru a te înscrie la clasa lui.",
+      button: "Înscrie-te la profesor",
+      ariaLabel: "Înscrie-te la un profesor cu codul de înscriere",
+    },
+      myInfo: {
+        title: "Informațiile mele",
+      },
+      myTeachers: {
+        title: "Profesorii mei",
+        description: "Profesorii la care ești înscris",
+        emptyState: "Nu ești înscris la niciun profesor încă.",
       },
       myLessons: {
         title: "Lecțiile mele",
@@ -499,16 +664,17 @@ const ro: Translations = {
     },
 
     joinLesson: {
-      title: "Alătură-te lecției",
-      description: "Introdu codul clasei dat de profesorul tău.",
-      classCodeLabel: "Cod clasă",
+      title: "Înscrie-te la profesor",
+      description: "Introdu codul profesorului pentru a te înscrie la clasa lui.",
+      classCodeLabel: "Cod profesor",
       classCodePlaceholder: "ABC123",
-      button: "Alătură-te lecției",
-      buttonLoading: "Te alăturăm...",
-      helperText: "Sau deschide link-ul direct dacă profesorul tău ți l-a partajat.",
+      button: "Înscrie-te la profesor",
+      buttonLoading: "Te înscriem...",
+      helperText: "Cere profesorului tău codul de înscriere format din 6 caractere.",
       errors: {
-        emptyCode: "Te rugăm să introduci un cod clasă",
-        codeNotFound: "Acest cod clasă nu a putut fi găsit. Verifică cu profesorul tău.",
+        emptyCode: "Te rugăm să introduci un cod profesor",
+        codeNotFound: "Acest cod profesor nu a putut fi găsit. Verifică cu profesorul tău.",
+        invalidCode: "Format cod invalid. Codul trebuie să fie format din 6 caractere alfanumerice.",
         genericError: "Ceva nu a mers bine. Te rugăm să încerci din nou.",
       },
     },
@@ -877,8 +1043,81 @@ const en: Translations = {
     },
   },
 
-  student: {
+  teacher: {
+    studentsView: {
+      title: "Students View",
+      description: "View all students enrolled to your classes, organized by grade level.",
+      emptyTitle: "No students enrolled",
+      emptyDescription: "You don't have any students enrolled yet. Share your teacher code with students so they can join your class.",
+      teacherCodeLabel: "Your teacher code:",
+      student: "student",
+      students: "students",
+    },
+    myLessons: {
+      title: "My Lessons",
+      description: "View and manage all your lessons, organized by grade level.",
+      newLesson: "New Lesson",
+      emptyTitle: "No lessons yet",
+      emptyDescription: "You haven't created any lessons yet. Create your first lesson to get started with EduAgent.",
+      createFirst: "Create Your First Lesson",
+      lesson: "lesson",
+      lessons: "lessons",
+      open: "Open",
+      unknownDate: "Unknown date",
+    },
+    newLesson: {
+      steps: {
+        defineLesson: "Define lesson",
+        sources: "Sources",
+        generation: "Generation",
+        factCheck: "Fact-check",
+        reviewFinish: "Review & finish",
+      },
+      back: "Back",
+      next: "Next",
+    },
+    factCheck: {
+      title: "Fact-checking & quality review",
+      description: "Review flagged claims before publishing this lesson.",
+      flaggedClaims: "Flagged claims",
+      noIssues: "No flagged issues found for this lesson.",
+      allReviewed: "All claims have been reviewed!",
+      noMatches: "No claims match the selected filter.",
+      status: {
+        highConfidence: "High confidence",
+        needsReview: "Needs review",
+        criticalIssues: "Critical issues found",
+      },
+    },
+    lessonEditor: {
+      placeholder: "Lesson title...",
+      runFactCheck: "Run fact-check again",
+      markAsReady: "Mark as ready",
+      tabs: {
+        studentSummary: "Student summary",
+        slides: "Slides",
+        teacherGuidelines: "Teacher guidelines",
+      },
+      deleteTitle: "Delete lesson?",
+      deleteDescription: (title: string) => `This action cannot be undone. This will permanently delete the lesson "${title}".`,
+      saving: "Saving...",
+      saveDraft: "Save draft",
+      markReadyForStudents: "Mark as ready for students",
+    },
+  },
+
+  individual: {
     dashboard: {
+      title: "Dashboard",
+      welcome: (name: string) => `Welcome, ${name || "User"}!`,
+      accountTitle: "Individual Account",
+      accountDescription: "Your personalized learning dashboard",
+      comingSoon: "Content coming soon.",
+    },
+  },
+
+  student: {
+      dashboard: {
       title: "Student Dashboard",
       welcomeMessage: (name: string) => `Welcome back, ${name || "Student"}!`,
       joinLesson: {
@@ -886,6 +1125,14 @@ const en: Translations = {
         description: "Enter a class code to join your teacher's lesson.",
         button: "Join lesson",
         ariaLabel: "Join a lesson with class code",
+      },
+      myInfo: {
+        title: "My Information",
+      },
+      myTeachers: {
+        title: "My Teachers",
+        description: "Teachers you are enrolled with",
+        emptyState: "You are not enrolled with any teachers yet.",
       },
       myLessons: {
         title: "My Lessons",
@@ -898,16 +1145,17 @@ const en: Translations = {
     },
 
     joinLesson: {
-      title: "Join your lesson",
-      description: "Enter the class code given by your teacher.",
-      classCodeLabel: "Class code",
+      title: "Enroll with Teacher",
+      description: "Enter your teacher's code to join their class.",
+      classCodeLabel: "Teacher Code",
       classCodePlaceholder: "ABC123",
-      button: "Join lesson",
-      buttonLoading: "Joining...",
-      helperText: "Or open the link directly if your teacher shared one.",
+      button: "Enroll with Teacher",
+      buttonLoading: "Enrolling...",
+      helperText: "Ask your teacher for their 6-character enrollment code.",
       errors: {
-        emptyCode: "Please enter a class code",
-        codeNotFound: "This class code couldn't be found. Check with your teacher.",
+        emptyCode: "Please enter a teacher code",
+        codeNotFound: "This teacher code could not be found. Check with your teacher.",
+        invalidCode: "Invalid code format. Code must be 6 alphanumeric characters.",
         genericError: "Something went wrong. Please try again.",
       },
     },

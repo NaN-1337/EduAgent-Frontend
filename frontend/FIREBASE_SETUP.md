@@ -70,6 +70,13 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
     }
     
+    // Helper function to check if user is a student
+    function isStudent() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student';
+    }
+    
     // Users collection
     match /users/{userId} {
       // Allow users to read their own data or any authenticated user to read (for teacher-student relationships)
@@ -80,8 +87,22 @@ service cloud.firestore {
                        request.auth.uid == userId &&
                        request.resource.data.uid == userId;
       
-      allow update: if isAuthenticated() && 
-                       request.auth.uid == userId;
+      // Allow users to update their own data
+      // OR allow students to update teacher documents to enroll themselves
+      allow update: if isAuthenticated() && (
+                       // User updating their own document
+                       request.auth.uid == userId ||
+                       // Student enrolling with a teacher (only modifying enrolledStudents field)
+                       (isStudent() && 
+                        resource.data.role == 'teacher' &&
+                        // Only allow changes to enrolledStudents field
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['enrolledStudents']) &&
+                        // Ensure the new array contains all old values (no removals)
+                        (resource.data.enrolledStudents == null || 
+                         request.resource.data.enrolledStudents.hasAll(resource.data.enrolledStudents)) &&
+                        // Ensure the student's UID is being added
+                        request.resource.data.enrolledStudents.hasAny([request.auth.uid]))
+                     );
       
       allow delete: if isAuthenticated() && 
                        request.auth.uid == userId;

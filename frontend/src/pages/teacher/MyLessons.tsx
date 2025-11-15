@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { db } from "@/lib/firebaseConfig";
 import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { BookOpen, GraduationCap, ArrowRight, Plus } from "lucide-react";
@@ -23,6 +24,7 @@ interface Lesson {
 export default function MyLessons() {
   const navigate = useNavigate();
   const { user, userData, loading } = useAuth();
+  const { t, language } = useLanguage();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loadingLessons, setLoadingLessons] = useState(true);
   const [lessonsByGrade, setLessonsByGrade] = useState<Record<string, Lesson[]>>({});
@@ -163,18 +165,18 @@ export default function MyLessons() {
   };
 
   const formatDate = (timestamp: any) => {
-    if (!timestamp) return "Unknown date";
+    if (!timestamp) return t.teacher.myLessons.unknownDate;
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
     if (date.toDateString() === today.toDateString()) {
-      return "Today";
+      return t.common.messages.today;
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return "Yesterday";
+      return t.common.messages.yesterday;
     } else {
-      return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      return date.toLocaleDateString(language === "ro" ? "ro-RO" : "en-US", { month: "short", day: "numeric", year: "numeric" });
     }
   };
 
@@ -196,14 +198,14 @@ export default function MyLessons() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
           <div className="mb-8 flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold mb-2">My Lessons</h1>
+              <h1 className="text-3xl font-bold mb-2">{t.teacher.myLessons.title}</h1>
               <p className="text-muted-foreground">
-                View and manage all your lessons, organized by grade level.
+                {t.teacher.myLessons.description}
               </p>
             </div>
             <Button onClick={() => navigate("/teacher/new-lesson")} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
-              New Lesson
+              {t.teacher.myLessons.newLesson}
             </Button>
           </div>
 
@@ -211,13 +213,13 @@ export default function MyLessons() {
             <Card className="border-2">
               <CardContent className="flex flex-col items-center justify-center py-16">
                 <BookOpen className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No lessons yet</h3>
+                <h3 className="text-xl font-semibold mb-2">{t.teacher.myLessons.emptyTitle}</h3>
                 <p className="text-muted-foreground text-center max-w-md mb-6">
-                  You haven't created any lessons yet. Create your first lesson to get started with EduAgent.
+                  {t.teacher.myLessons.emptyDescription}
                 </p>
                 <Button onClick={() => navigate("/teacher/new-lesson")} className="flex items-center gap-2">
                   <Plus className="h-4 w-4" />
-                  Create Your First Lesson
+                  {t.teacher.myLessons.createFirst}
                 </Button>
               </CardContent>
             </Card>
@@ -230,7 +232,7 @@ export default function MyLessons() {
                       <GraduationCap className="h-5 w-5 text-primary" />
                       {grade}
                       <span className="text-base font-normal text-muted-foreground">
-                        ({lessonsByGrade[grade].length} {lessonsByGrade[grade].length === 1 ? "lesson" : "lessons"})
+                        ({lessonsByGrade[grade].length} {lessonsByGrade[grade].length === 1 ? t.teacher.myLessons.lesson : t.teacher.myLessons.lessons})
                       </span>
                     </CardTitle>
                   </CardHeader>
@@ -270,7 +272,7 @@ export default function MyLessons() {
                             <Badge
                               className={`${getStatusColor(lesson.status)} border capitalize`}
                             >
-                              {lesson.status}
+                              {t.common.status[lesson.status as keyof typeof t.common.status] || lesson.status}
                             </Badge>
                             <Button
                               variant="ghost"
@@ -281,7 +283,7 @@ export default function MyLessons() {
                                 handleLessonClick(lesson.uid);
                               }}
                             >
-                              Open
+                              {t.teacher.myLessons.open}
                               <ArrowRight className="ml-2 h-4 w-4" />
                             </Button>
                           </div>

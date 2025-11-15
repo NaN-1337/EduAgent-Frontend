@@ -17,6 +17,7 @@ interface UserData {
   teachingField?: string;
   teacherCode?: string;
   enrolledStudents?: string[];
+  enrolledTeachers?: string[];
   createdAt?: any;
 }
 

@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { CheckCircle2, AlertTriangle, FileCheck, Trash2, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/firebaseConfig";
@@ -45,6 +46,7 @@ export default function LessonEditor() {
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
   const { user, userData, loading } = useAuth();
+  const { t } = useLanguage();
 
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [loadingLesson, setLoadingLesson] = useState(true);
@@ -229,7 +231,7 @@ export default function LessonEditor() {
                   value={lesson.title}
                   onChange={(e) => handleTitleChange(e.target.value)}
                   className="text-2xl font-bold border-none shadow-none p-0 h-auto focus-visible:ring-0"
-                  placeholder="Lesson title..."
+                  placeholder={t.teacher.lessonEditor.placeholder}
                 />
                 <p className="text-sm text-muted-foreground mt-1">
                   {lesson.subject} · {lesson.grade} · {lesson.duration}
@@ -241,11 +243,11 @@ export default function LessonEditor() {
                   {lesson.status === "fact-check pending" && (
                     <AlertTriangle className="h-3 w-3 mr-1" />
                   )}
-                  {lesson.status.charAt(0).toUpperCase() + lesson.status.slice(1)}
+                  {t.common.status[lesson.status as keyof typeof t.common.status] || (lesson.status.charAt(0).toUpperCase() + lesson.status.slice(1))}
                 </Badge>
                 <Button variant="outline" onClick={handleRunFactCheck} size="sm">
                   <FileCheck className="h-4 w-4 mr-2" />
-                  Run fact-check again
+                  {t.teacher.lessonEditor.runFactCheck}
                 </Button>
                 <Button
                   onClick={() => {
@@ -255,7 +257,7 @@ export default function LessonEditor() {
                   disabled={lesson.status === "ready"}
                   size="sm"
                 >
-                  Mark as ready
+                  {t.teacher.lessonEditor.markAsReady}
                 </Button>
               </div>
             </div>
@@ -265,13 +267,13 @@ export default function LessonEditor() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="w-full">
               <TabsTrigger value="studentSummary" className="flex-1">
-                Student summary
+                {t.teacher.lessonEditor.tabs.studentSummary}
               </TabsTrigger>
               <TabsTrigger value="slides" className="flex-1">
-                Slides
+                {t.teacher.lessonEditor.tabs.slides}
               </TabsTrigger>
               <TabsTrigger value="teacherGuidelines" className="flex-1">
-                Teacher guidelines
+                {t.teacher.lessonEditor.tabs.teacherGuidelines}
               </TabsTrigger>
             </TabsList>
 
@@ -310,12 +312,12 @@ export default function LessonEditor() {
               className="text-destructive hover:text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Delete lesson
+              {t.common.delete} {t.teacher.myLessons.lesson}
             </Button>
             <div className="flex gap-3">
               <Button variant="outline" onClick={handleSave} disabled={isSaving}>
                 <Save className="h-4 w-4 mr-2" />
-                {isSaving ? "Saving..." : "Save draft"}
+                {isSaving ? t.teacher.lessonEditor.saving : t.teacher.lessonEditor.saveDraft}
               </Button>
               <Button
                 onClick={() => {
@@ -325,7 +327,7 @@ export default function LessonEditor() {
                 disabled={lesson.status === "ready"}
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
-                Mark as ready for students
+                {t.teacher.lessonEditor.markReadyForStudents}
               </Button>
             </div>
           </div>
@@ -336,17 +338,17 @@ export default function LessonEditor() {
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete lesson?</DialogTitle>
+            <DialogTitle>{t.teacher.lessonEditor.deleteTitle}</DialogTitle>
             <DialogDescription>
-              This action cannot be undone. This will permanently delete the lesson "{lesson.title}".
+              {t.teacher.lessonEditor.deleteDescription(lesson.title)}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-              Cancel
+              {t.common.cancel}
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
-              Delete
+              {t.common.delete}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -6,6 +6,7 @@ import { FilterControls, FilterType } from "@/components/fact-check/FilterContro
 import { ClaimItem, FlaggedClaim } from "@/components/fact-check/ClaimItem";
 import { ContentPreview } from "@/components/fact-check/ContentPreview";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { db } from "@/lib/firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -13,6 +14,7 @@ export default function FactCheckPanel() {
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
   const { user, userData, loading } = useAuth();
+  const { t } = useLanguage();
   const [selectedFilter, setSelectedFilter] = useState<FilterType>("all");
   const [selectedClaim, setSelectedClaim] = useState<FlaggedClaim | null>(null);
   const [fixingClaimId, setFixingClaimId] = useState<string | null>(null);
@@ -149,10 +151,10 @@ export default function FactCheckPanel() {
 
   const status: "High confidence" | "Needs review" | "Critical issues found" =
     stats.unsupportedStatements > 0
-      ? "Critical issues found"
+      ? t.teacher.factCheck.status.criticalIssues as "Critical issues found"
       : stats.outdatedFacts > 0
-      ? "Needs review"
-      : "High confidence";
+      ? t.teacher.factCheck.status.needsReview as "Needs review"
+      : t.teacher.factCheck.status.highConfidence as "High confidence";
 
   const handleFix = async (claimId: string) => {
     setFixingClaimId(claimId);
@@ -192,9 +194,9 @@ export default function FactCheckPanel() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Fact-checking & quality review</h1>
+            <h1 className="text-3xl font-bold mb-2">{t.teacher.factCheck.title}</h1>
             <p className="text-lg text-muted-foreground">
-              Review flagged claims before publishing this lesson.
+              {t.teacher.factCheck.description}
             </p>
           </div>
 
@@ -212,15 +214,15 @@ export default function FactCheckPanel() {
 
               {/* Claims list */}
               <div className="space-y-3">
-                <h2 className="text-lg font-semibold">Flagged claims</h2>
+                <h2 className="text-lg font-semibold">{t.teacher.factCheck.flaggedClaims}</h2>
                 {filteredClaims.length === 0 ? (
                   <div className="p-6 text-center border rounded-lg">
                     <p className="text-sm text-muted-foreground">
                       {claims.length === 0
-                        ? "No flagged issues found for this lesson."
+                        ? t.teacher.factCheck.noIssues
                         : acceptedClaimIds.size === claims.length
-                        ? "All claims have been reviewed!"
-                        : "No claims match the selected filter."}
+                        ? t.teacher.factCheck.allReviewed
+                        : t.teacher.factCheck.noMatches}
                     </p>
                   </div>
                 ) : (
