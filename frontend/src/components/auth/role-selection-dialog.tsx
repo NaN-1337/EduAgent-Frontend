@@ -16,7 +16,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { GraduationCap, User, Users } from "lucide-react";
-import { t, translations } from "@/lib/translations";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/lib/translations";
 
 type Role = "student" | "teacher" | "individual";
 
@@ -29,6 +30,7 @@ export function RoleSelectionDialog({
   open,
   onRoleSelect,
 }: RoleSelectionDialogProps) {
+  const { t } = useLanguage();
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [selectedGrade, setSelectedGrade] = useState<string>("");
   const [selectedTeachingField, setSelectedTeachingField] = useState<string>("");
@@ -45,21 +47,21 @@ export function RoleSelectionDialog({
   const roles = [
     {
       value: "student" as Role,
-      label: t("auth.roleSelection.student.label"),
+      label: t.auth.roleSelection.student.label,
       icon: GraduationCap,
-      description: t("auth.roleSelection.student.description"),
+      description: t.auth.roleSelection.student.description,
     },
     {
       value: "teacher" as Role,
-      label: t("auth.roleSelection.teacher.label"),
+      label: t.auth.roleSelection.teacher.label,
       icon: User,
-      description: t("auth.roleSelection.teacher.description"),
+      description: t.auth.roleSelection.teacher.description,
     },
     {
       value: "individual" as Role,
-      label: t("auth.roleSelection.individual.label"),
+      label: t.auth.roleSelection.individual.label,
       icon: Users,
-      description: t("auth.roleSelection.individual.description"),
+      description: t.auth.roleSelection.individual.description,
     },
   ];
 
@@ -90,10 +92,10 @@ export function RoleSelectionDialog({
       >
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            {t("auth.roleSelection.title")}
+            {t.auth.roleSelection.title}
           </DialogTitle>
           <DialogDescription className="text-base">
-            {t("auth.roleSelection.description")}
+            {t.auth.roleSelection.description}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -133,11 +135,11 @@ export function RoleSelectionDialog({
         {selectedRole === "student" && (
           <div className="space-y-2 pt-2">
             <Label htmlFor="grade" className="text-base font-semibold">
-              {t("auth.roleSelection.gradeRequired").replace("Te rugăm să selectezi clasa", "Selectează clasa")} <span className="text-destructive">*</span>
+              {t.auth.roleSelection.gradeRequired} <span className="text-destructive">*</span>
             </Label>
             <Select value={selectedGrade} onValueChange={setSelectedGrade}>
               <SelectTrigger id="grade" className="h-12">
-                <SelectValue placeholder={t("auth.register.gradeLabel")} />
+                <SelectValue placeholder={t.auth.register.gradeLabel} />
               </SelectTrigger>
               <SelectContent>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((grade) => {
@@ -157,11 +159,11 @@ export function RoleSelectionDialog({
         {selectedRole === "teacher" && (
           <div className="space-y-2 pt-2">
             <Label htmlFor="teachingField" className="text-base font-semibold">
-              {t("auth.roleSelection.teachingFieldRequired").replace("Te rugăm să selectezi domeniul de predare", "Selectează domeniul de predare")} <span className="text-destructive">*</span>
+              {t.auth.roleSelection.teachingFieldRequired} <span className="text-destructive">*</span>
             </Label>
             <Select value={selectedTeachingField} onValueChange={setSelectedTeachingField}>
               <SelectTrigger id="teachingField" className="h-12">
-                <SelectValue placeholder={t("auth.register.teachingFieldLabel")} />
+                <SelectValue placeholder={t.auth.register.teachingFieldLabel} />
               </SelectTrigger>
               <SelectContent>
                 {Object.entries(translations.ro.teachingFields).map(([key, value]) => (
@@ -198,7 +200,7 @@ export function RoleSelectionDialog({
             }
             className="w-full sm:w-auto"
           >
-            {t("auth.roleSelection.continueButton")}
+            {t.auth.roleSelection.continueButton}
           </Button>
         </div>
       </DialogContent>

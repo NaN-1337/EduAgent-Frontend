@@ -3,12 +3,12 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen, Clock, TrendingUp, Lightbulb, ArrowRight } from "lucide-react";
+import { Plus, BookOpen, Clock, TrendingUp, Lightbulb, ArrowRight, Copy, Check, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebaseConfig";
 import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
-import { t } from "@/lib/translations";
 
 interface Lesson {
   id: string;
@@ -22,19 +22,21 @@ interface Lesson {
 export default function TeacherDashboard() {
   const navigate = useNavigate();
   const { user, userData, loading } = useAuth();
+  const { t } = useLanguage();
   const [recentLessons, setRecentLessons] = useState<Lesson[]>([]);
   const [loadingLessons, setLoadingLessons] = useState(true);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [analytics, setAnalytics] = useState({
     hoursSaved: 0,
     lessonsGenerated: 0,
-    mostFrequentSubject: t("common.messages.noData"),
+    mostFrequentSubject: t.common.messages.noData,
   });
 
   const tips = [
-    t("teacherDashboard.tips.tip1"),
-    t("teacherDashboard.tips.tip2"),
-    t("teacherDashboard.tips.tip3"),
-    t("teacherDashboard.tips.tip4"),
+    t.teacherDashboard.tips.tip1,
+    t.teacherDashboard.tips.tip2,
+    t.teacherDashboard.tips.tip3,
+    t.teacherDashboard.tips.tip4,
   ];
 
   useEffect(() => {
@@ -188,21 +190,21 @@ export default function TeacherDashboard() {
   };
 
   const getStatusLabel = (status: "draft" | "fact-check needed" | "ready") => {
-    const statusKey = status.replace(/\s+/g, "").replace(/-/g, "");
-    return t(`common.status.${statusKey}` as any) || status;
+    const statusKey = status.replace(/\s+/g, "").replace(/-/g, "") as keyof typeof t.common.status;
+    return t.common.status[statusKey] || status;
   };
 
   const formatDate = (timestamp: any) => {
-    if (!timestamp) return t("common.messages.notFound");
+    if (!timestamp) return t.common.messages.notFound;
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     
     if (date.toDateString() === today.toDateString()) {
-      return t("common.messages.today");
+      return t.common.messages.today;
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return t("common.messages.yesterday");
+      return t.common.messages.yesterday;
     } else {
       return date.toLocaleDateString("ro-RO", { month: "short", day: "numeric", year: "numeric" });
     }
@@ -213,23 +215,35 @@ export default function TeacherDashboard() {
     navigate(`/teacher/lessons/${lessonId}/edit`);
   };
 
+  const handleCopyCode = async () => {
+    if (!userData?.teacherCode) return;
+    
+    try {
+      await navigator.clipboard.writeText(userData.teacherCode);
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 3000);
+    } catch (err) {
+      console.error("Failed to copy code:", err);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar role="teacher" />
       
       {/* Main content with padding for fixed navbar */}
       <main className="pt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
-          {/* Two-column layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
-            {/* Left column - ~60% (3/5 columns) */}
-            <div className="lg:col-span-3 space-y-6 lg:space-y-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+          {/* Main Content + Sidebar Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
+            {/* Main Content Area */}
+            <div className="lg:col-span-3 space-y-6 lg:space-y-8 order-1 lg:order-1">
               {/* Create new lesson card */}
               <Card className="border-2 shadow-sm hover:shadow-md transition-shadow duration-200">
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-2xl font-semibold">{t("teacherDashboard.createNewLesson.title")}</CardTitle>
+                  <CardTitle className="text-2xl font-semibold">{t.teacherDashboard.createNewLesson.title}</CardTitle>
                   <CardDescription className="text-base mt-2">
-                    {t("teacherDashboard.createNewLesson.description")}
+                    {t.teacherDashboard.createNewLesson.description}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -237,10 +251,10 @@ export default function TeacherDashboard() {
                     onClick={() => navigate("/teacher/new-lesson")}
                     size="lg"
                     className="w-full sm:w-auto text-base px-6 py-6 h-auto font-medium"
-                    aria-label={t("teacherDashboard.createNewLesson.title")}
+                    aria-label={t.teacherDashboard.createNewLesson.title}
                   >
                     <Plus className="mr-2 h-5 w-5" aria-hidden="true" />
-                    {t("teacherDashboard.createNewLesson.button")}
+                    {t.teacherDashboard.createNewLesson.button}
                   </Button>
                 </CardContent>
               </Card>
@@ -248,12 +262,12 @@ export default function TeacherDashboard() {
               {/* Recent lessons card */}
               <Card className="border-2 shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-2xl font-semibold">{t("teacherDashboard.recentLessons.title")}</CardTitle>
+                  <CardTitle className="text-2xl font-semibold">{t.teacherDashboard.recentLessons.title}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {recentLessons.length === 0 ? (
                     <p className="text-muted-foreground text-center py-8">
-                      {t("teacherDashboard.recentLessons.empty")}
+                      {t.teacherDashboard.recentLessons.empty}
                     </p>
                   ) : (
                     recentLessons.map((lesson) => (
@@ -284,7 +298,7 @@ export default function TeacherDashboard() {
                         <div className="flex items-center gap-3">
                           <Badge 
                             className={`${getStatusColor(lesson.status)} border`}
-                            aria-label={`${t("common.labels.status")}: ${getStatusLabel(lesson.status)}`}
+                            aria-label={`${t.common.labels.status}: ${getStatusLabel(lesson.status)}`}
                           >
                             {getStatusLabel(lesson.status)}
                           </Badge>
@@ -296,9 +310,9 @@ export default function TeacherDashboard() {
                               e.stopPropagation();
                               handleLessonClick(lesson.id);
                             }}
-                            aria-label={`${t("common.buttons.open")} ${lesson.title}`}
+                            aria-label={`${t.common.buttons.open} ${lesson.title}`}
                           >
-                            {t("common.buttons.open")}
+                            {t.common.buttons.open}
                             <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
                           </Button>
                         </div>
@@ -307,65 +321,107 @@ export default function TeacherDashboard() {
                   )}
                 </CardContent>
               </Card>
-            </div>
 
-            {/* Right column - ~40% (2/5 columns) */}
-            <div className="lg:col-span-2 space-y-6 lg:space-y-8">
               {/* Analytics card */}
               <Card className="border-2 shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-xl font-semibold flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-primary" />
-                    {t("teacherDashboard.insights.title")}
+                    {t.teacherDashboard.insights.title}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span className="text-sm">{t("teacherDashboard.insights.hoursSaved")}</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        <span className="text-sm">{t.teacherDashboard.insights.hoursSaved}</span>
+                      </div>
+                      <p className="text-3xl font-semibold">{analytics.hoursSaved}h</p>
                     </div>
-                    <p className="text-3xl font-semibold">{analytics.hoursSaved}h</p>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <BookOpen className="h-4 w-4" />
-                      <span className="text-sm">{t("teacherDashboard.insights.lessonsGenerated")}</span>
+                    
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <BookOpen className="h-4 w-4" />
+                        <span className="text-sm">{t.teacherDashboard.insights.lessonsGenerated}</span>
+                      </div>
+                      <p className="text-3xl font-semibold">{analytics.lessonsGenerated}</p>
                     </div>
-                    <p className="text-3xl font-semibold">{analytics.lessonsGenerated}</p>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <TrendingUp className="h-4 w-4" />
-                      <span className="text-sm">{t("teacherDashboard.insights.mostFrequentSubject")}</span>
+                    
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <TrendingUp className="h-4 w-4" />
+                        <span className="text-sm">{t.teacherDashboard.insights.mostFrequentSubject}</span>
+                      </div>
+                      <p className="text-2xl font-semibold">{analytics.mostFrequentSubject}</p>
                     </div>
-                    <p className="text-2xl font-semibold">{analytics.mostFrequentSubject}</p>
                   </div>
                 </CardContent>
               </Card>
+            </div>
 
-              {/* Tips card */}
-              <Card className="border-2 shadow-sm bg-primary/5 border-primary/20">
-                <CardHeader>
-                  <CardTitle className="text-xl font-semibold flex items-center gap-2">
+            {/* Sidebar - Right side, Always visible */}
+            <aside className="lg:col-span-1 space-y-6 order-2 lg:order-2">
+              {/* Teacher Code Card */}
+              {userData?.teacherCode && (
+                <Card className="border-2 border-primary/30 shadow-sm sticky top-24">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                      <Users className="h-5 w-5 text-primary" />
+                      {t.common.labels.teacherCode}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="px-4 py-3 bg-muted/50 border-2 border-primary/30 rounded-lg">
+                      <p className="text-2xl font-bold text-primary font-mono tracking-wider text-center">
+                        {userData.teacherCode}
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleCopyCode}
+                      size="sm"
+                      variant={codeCopied ? "default" : "outline"}
+                      className="w-full"
+                    >
+                      {codeCopied ? (
+                        <>
+                          <Check className="mr-2 h-4 w-4" />
+                          {t.common.buttons.copied}
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="mr-2 h-4 w-4" />
+                          {t.common.buttons.copy}
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      {t.common.profile.shareCodeMessage}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Tips Card */}
+              <Card className="border-2 shadow-sm bg-primary/5 border-primary/20 sticky top-[400px]">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
                     <Lightbulb className="h-5 w-5 text-primary" />
-                    {t("teacherDashboard.tips.title")}
+                    {t.teacherDashboard.tips.title}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-3" role="list">
-                    {tips.map((tip, index) => (
-                      <li key={index} className="flex items-start gap-3">
-                        <span className="text-primary mt-1" aria-hidden="true">•</span>
-                        <span className="text-base leading-relaxed">{tip}</span>
+                    {tips.slice(0, 3).map((tip, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="text-primary mt-1 text-sm" aria-hidden="true">•</span>
+                        <span className="text-sm leading-relaxed">{tip}</span>
                       </li>
                     ))}
                   </ul>
                 </CardContent>
               </Card>
-            </div>
+            </aside>
           </div>
         </div>
       </main>

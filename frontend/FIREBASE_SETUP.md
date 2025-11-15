@@ -51,21 +51,68 @@ This guide will walk you through setting up Firebase for the Innovate4AI fronten
 ### 4. Set Up Firestore Security Rules
 
 1. In Firestore Database, go to the **"Rules"** tab
-2. Replace the default rules with:
+2. Replace the default rules with the rules from `firestore.rules` file in the project root, or copy the following:
 
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can read and write their own user document
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is a teacher
+    function isTeacher() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    }
+    
+    // Users collection
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow users to read their own data or any authenticated user to read (for teacher-student relationships)
+      allow read: if isAuthenticated();
+      
+      // Allow users to create/update their own data
+      allow create: if isAuthenticated() && 
+                       request.auth.uid == userId &&
+                       request.resource.data.uid == userId;
+      
+      allow update: if isAuthenticated() && 
+                       request.auth.uid == userId;
+      
+      allow delete: if isAuthenticated() && 
+                       request.auth.uid == userId;
+    }
+    
+    // Lessons collection
+    match /lessons/{lessonId} {
+      // Allow read if user is authenticated
+      allow read: if isAuthenticated();
+      
+      // Allow create if user is a teacher and sets themselves as the teacherId
+      allow create: if isTeacher() && 
+                       request.resource.data.teacherId == request.auth.uid;
+      
+      // Allow update/delete if user is the teacher who owns the lesson
+      allow update: if isAuthenticated() && 
+                       resource.data.teacherId == request.auth.uid;
+      
+      allow delete: if isAuthenticated() && 
+                       resource.data.teacherId == request.auth.uid;
     }
   }
 }
 ```
 
 3. Click **"Publish"**
+
+**Note**: If you're using Firebase CLI, you can also deploy the rules from the `firestore.rules` file:
+```bash
+firebase deploy --only firestore:rules
+```
 
 ### 5. Get Firebase Configuration
 
@@ -156,10 +203,14 @@ Users are stored in Firestore with this structure:
 - Make sure popups are not blocked in your browser
 - Try using a different browser
 
-### "Permission denied" when accessing Firestore
-- Check your Firestore security rules
-- Make sure the user is authenticated
-- Verify the user's UID matches the document ID
+### "Permission denied" or "Missing or insufficient permissions" when accessing Firestore
+- Check your Firestore security rules in the Firebase Console (Rules tab)
+- Make sure the rules are published (click "Publish" after editing)
+- Verify the user is authenticated (`request.auth != null`)
+- For lessons queries, ensure the rules allow reading lessons for authenticated users
+- Check that the `teacherId` field matches the authenticated user's UID when creating/updating lessons
+- If using queries with `where` clauses, ensure the security rules allow the query pattern
+- Make sure you've updated the rules from the default "test mode" rules to the proper rules shown in step 4
 
 ### Environment variables not working
 - Make sure the file is named `.env` (in the `frontend/` directory)

@@ -2,15 +2,16 @@ import { AuthForm } from "@/components/auth/auth-form";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { RoleSelectionDialog } from "@/components/auth/role-selection-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getDashboardRoute } from "@/lib/routes";
-import { t } from "@/lib/translations";
 
 export default function LoginPage() {
   const { user, userData, loading, refreshUserData } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [showRoleDialog, setShowRoleDialog] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
@@ -111,7 +112,7 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-sm text-muted-foreground">{t("common.messages.loading")}</p>
+          <p className="text-sm text-muted-foreground">{t.common.loading}</p>
         </div>
       </div>
     );
@@ -123,7 +124,7 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-sm text-muted-foreground">{t("common.messages.loading")}</p>
+          <p className="text-sm text-muted-foreground">{t.common.loading}</p>
         </div>
       </div>
     );

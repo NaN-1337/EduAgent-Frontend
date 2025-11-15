@@ -22,7 +22,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RoleSelectionDialog } from "./role-selection-dialog";
 import { Loader2 } from "lucide-react";
-import { t, translations } from "@/lib/translations";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { translations } from "@/lib/translations";
 
 type LoginFormData = {
   email: string;
@@ -46,6 +47,7 @@ interface AuthFormProps {
 export function AuthForm({ mode }: AuthFormProps) {
   const navigate = useNavigate();
   const { refreshUserData } = useAuth();
+  const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -54,28 +56,28 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   // Define schemas inside component to use translations
   const loginSchema = z.object({
-    email: z.string().email(t("auth.login.errors.invalidEmail")),
-    password: z.string().min(6, t("auth.login.errors.wrongPassword")),
+    email: z.string().email(t.auth.login.errors.invalidEmail),
+    password: z.string().min(6, t.auth.login.errors.wrongPassword),
   });
 
   const passwordSchema = z
     .string()
-    .min(8, t("auth.register.passwordRequirements.minLength"))
-    .regex(/[A-Z]/, t("auth.register.passwordRequirements.uppercase"))
-    .regex(/[a-z]/, t("auth.register.passwordRequirements.lowercase"))
-    .regex(/[0-9]/, t("auth.register.passwordRequirements.number"))
-    .regex(/[^A-Za-z0-9]/, t("auth.register.passwordRequirements.special"));
+    .min(8, t.auth.register.passwordRequirements.minLength)
+    .regex(/[A-Z]/, t.auth.register.passwordRequirements.uppercase)
+    .regex(/[a-z]/, t.auth.register.passwordRequirements.lowercase)
+    .regex(/[0-9]/, t.auth.register.passwordRequirements.number)
+    .regex(/[^A-Za-z0-9]/, t.auth.register.passwordRequirements.special);
 
   const registerSchema = z.object({
-    name: z.string().min(2, t("common.labels.name")),
-    email: z.string().email(t("auth.login.errors.invalidEmail")),
+    name: z.string().min(2, t.common.labels.name),
+    email: z.string().email(t.auth.login.errors.invalidEmail),
     password: passwordSchema,
-    confirmPassword: z.string().min(8, t("auth.register.passwordRequirements.minLength")),
+    confirmPassword: z.string().min(8, t.auth.register.passwordRequirements.minLength),
     role: z.enum(["student", "teacher", "individual"]),
     grade: z.string().optional(),
     teachingField: z.string().optional(),
   }).refine((data) => data.password === data.confirmPassword, {
-    message: t("auth.register.errors.passwordsDontMatch"),
+    message: t.auth.register.errors.passwordsDontMatch,
     path: ["confirmPassword"],
   }).refine((data) => {
     if (data.role === "student") {
@@ -83,7 +85,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     }
     return true;
   }, {
-    message: t("auth.register.errors.gradeRequired"),
+    message: t.auth.register.errors.gradeRequired,
     path: ["grade"],
   }).refine((data) => {
     if (data.role === "teacher") {
@@ -91,7 +93,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     }
     return true;
   }, {
-    message: t("auth.register.errors.teachingFieldRequired"),
+    message: t.auth.register.errors.teachingFieldRequired,
     path: ["teachingField"],
   });
 
@@ -217,7 +219,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         // Refresh user data in context
         await refreshUserData();
         
-        setSuccessMessage(t("auth.register.emailVerification"));
+        setSuccessMessage(t.auth.register.emailVerification);
         
         // Wait a bit for Firestore to be ready, then navigate to dashboard
         setTimeout(() => {
@@ -228,11 +230,11 @@ export function AuthForm({ mode }: AuthFormProps) {
     } catch (err: any) {
       console.error("Auth error:", err);
       if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
-        setError(t("auth.login.errors.invalidCredentials"));
+        setError(t.auth.login.errors.invalidCredentials);
       } else if (err.code === "auth/email-already-in-use") {
-        setError(t("auth.register.errors.emailExists"));
+        setError(t.auth.register.errors.emailExists);
       } else {
-        setError(err.message || t("common.messages.error"));
+        setError(err.message || t.common.messages.error);
       }
     } finally {
       setIsLoading(false);
@@ -274,9 +276,9 @@ export function AuthForm({ mode }: AuthFormProps) {
       console.error("Google auth error:", err);
       setIsLoading(false);
       if (err.code === "auth/popup-closed-by-user") {
-        setError(t("auth.login.errors.networkError"));
+        setError(t.auth.login.errors.networkError);
       } else {
-        setError(err.message || t("common.messages.error"));
+        setError(err.message || t.common.messages.error);
       }
     }
   };
@@ -284,7 +286,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const handleRoleSelect = async (role: "student" | "teacher" | "individual", grade?: string, teachingField?: string) => {
     if (!pendingGoogleUser) {
       console.error("No pending user for role selection");
-      setError(t("common.messages.error"));
+      setError(t.common.messages.error);
       return;
     }
 
@@ -321,7 +323,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       const verifyDoc = await getDoc(verifyDocRef);
       
       if (!verifyDoc.exists()) {
-        throw new Error(t("common.messages.error"));
+        throw new Error(t.common.messages.error);
       }
       
       console.log("User data verified, closing dialog and navigating...");
@@ -334,7 +336,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       navigate(dashboardRoute);
     } catch (err: any) {
       console.error("Error saving user:", err);
-      setError(err.message || t("common.messages.error"));
+      setError(err.message || t.common.messages.error);
       setIsLoading(false);
     }
   };
@@ -344,12 +346,12 @@ export function AuthForm({ mode }: AuthFormProps) {
       <Card className="w-full max-w-md mx-auto shadow-2xl border-2 dark:border-primary/20 backdrop-blur-sm bg-card/95 dark:bg-card/95 transition-all duration-300 hover:shadow-primary/10">
         <CardHeader className="space-y-2 pb-6">
           <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            {mode === "login" ? t("auth.login.title") : t("auth.register.title")}
+            {mode === "login" ? t.auth.login.title : t.auth.register.title}
           </CardTitle>
           <CardDescription className="text-center text-base">
             {mode === "login"
-              ? t("auth.login.description")
-              : t("auth.register.description")}
+              ? t.auth.login.description
+              : t.auth.register.description}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -357,7 +359,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             {mode === "register" && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="name">{t("common.labels.name")}</Label>
+                  <Label htmlFor="name">{t.common.labels.name}</Label>
                   <Input
                     id="name"
                     placeholder="John Doe"
@@ -371,7 +373,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="role">{t("common.labels.role")}</Label>
+                  <Label htmlFor="role">{t.common.labels.role}</Label>
                   <Select
                     value={selectedRole || ""}
                     onValueChange={(value) => {
@@ -386,12 +388,12 @@ export function AuthForm({ mode }: AuthFormProps) {
                     disabled={isLoading}
                   >
                     <SelectTrigger id="role">
-                      <SelectValue placeholder={t("auth.register.roleLabel")} />
+                      <SelectValue placeholder={t.auth.register.roleLabel} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="student">{t("auth.roleSelection.student.label")}</SelectItem>
-                      <SelectItem value="teacher">{t("auth.roleSelection.teacher.label")}</SelectItem>
-                      <SelectItem value="individual">{t("auth.roleSelection.individual.label")}</SelectItem>
+                      <SelectItem value="student">{t.auth.roleSelection.student.label}</SelectItem>
+                      <SelectItem value="teacher">{t.auth.roleSelection.teacher.label}</SelectItem>
+                      <SelectItem value="individual">{t.auth.roleSelection.individual.label}</SelectItem>
                     </SelectContent>
                   </Select>
                   {errors.role && (
@@ -404,7 +406,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                 {selectedRole === "student" && (
                   <div className="space-y-2">
                     <Label htmlFor="grade">
-                      {t("common.labels.grade")} <span className="text-destructive">*</span>
+                      {t.common.labels.grade} <span className="text-destructive">*</span>
                     </Label>
                     <Select
                       value={watch("grade") || ""}
@@ -412,7 +414,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                       disabled={isLoading}
                     >
                       <SelectTrigger id="grade">
-                        <SelectValue placeholder={t("auth.register.gradeLabel")} />
+                        <SelectValue placeholder={t.auth.register.gradeLabel} />
                       </SelectTrigger>
                       <SelectContent>
                         {Array.from({ length: 12 }, (_, i) => i + 1).map((grade) => {
@@ -436,7 +438,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                 {selectedRole === "teacher" && (
                   <div className="space-y-2">
                     <Label htmlFor="teachingField">
-                      {t("auth.register.teachingFieldLabel")} <span className="text-destructive">*</span>
+                      {t.auth.register.teachingFieldLabel} <span className="text-destructive">*</span>
                     </Label>
                     <Select
                       value={watch("teachingField") || ""}
@@ -444,7 +446,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                       disabled={isLoading}
                     >
                       <SelectTrigger id="teachingField">
-                        <SelectValue placeholder={t("auth.register.teachingFieldLabel")} />
+                        <SelectValue placeholder={t.auth.register.teachingFieldLabel} />
                       </SelectTrigger>
                       <SelectContent>
                         {Object.entries(translations.ro.teachingFields).map(([key, value]) => (
@@ -465,7 +467,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">{t("common.labels.email")}</Label>
+              <Label htmlFor="email">{t.common.labels.email}</Label>
               <Input
                 id="email"
                 type="email"
@@ -481,7 +483,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">{t("common.labels.password")}</Label>
+              <Label htmlFor="password">{t.common.labels.password}</Label>
               <Input
                 id="password"
                 type="password"
@@ -503,23 +505,23 @@ export function AuthForm({ mode }: AuthFormProps) {
               {mode === "register" && (
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground">
-                    {t("auth.register.passwordRequirements.title")}
+                    {t.auth.register.passwordRequirements.title}
                   </p>
                   <ul className="text-xs space-y-0.5 ml-4 list-disc">
                     <li className={passwordValue && passwordValue.length >= 8 ? "text-green-600" : "text-muted-foreground"}>
-                      {t("auth.register.passwordRequirements.minLength")}
+                      {t.auth.register.passwordRequirements.minLength}
                     </li>
                     <li className={passwordValue && /[A-Z]/.test(passwordValue) ? "text-green-600" : "text-muted-foreground"}>
-                      {t("auth.register.passwordRequirements.uppercase")}
+                      {t.auth.register.passwordRequirements.uppercase}
                     </li>
                     <li className={passwordValue && /[a-z]/.test(passwordValue) ? "text-green-600" : "text-muted-foreground"}>
-                      {t("auth.register.passwordRequirements.lowercase")}
+                      {t.auth.register.passwordRequirements.lowercase}
                     </li>
                     <li className={passwordValue && /[0-9]/.test(passwordValue) ? "text-green-600" : "text-muted-foreground"}>
-                      {t("auth.register.passwordRequirements.number")}
+                      {t.auth.register.passwordRequirements.number}
                     </li>
                     <li className={passwordValue && /[^A-Za-z0-9]/.test(passwordValue) ? "text-green-600" : "text-muted-foreground"}>
-                      {t("auth.register.passwordRequirements.special")}
+                      {t.auth.register.passwordRequirements.special}
                     </li>
                   </ul>
                 </div>
@@ -528,7 +530,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
             {mode === "register" && (
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">{t("common.labels.confirmPassword")}</Label>
+                <Label htmlFor="confirmPassword">{t.common.labels.confirmPassword}</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -545,7 +547,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                   </p>
                 )}
                 {watch("confirmPassword") && watch("password") && watch("confirmPassword") === watch("password") && !errors.confirmPassword && (
-                  <p className="text-xs text-green-600">{t("auth.register.passwordMatch")}</p>
+                  <p className="text-xs text-green-600">{t.auth.register.passwordMatch}</p>
                 )}
               </div>
             )}
@@ -564,7 +566,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {mode === "login" ? t("auth.login.submitButton") : t("auth.register.submitButton")}
+              {mode === "login" ? t.auth.login.submitButton : t.auth.register.submitButton}
             </Button>
           </form>
 
@@ -574,7 +576,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                {t("auth.login.orContinueWith")}
+                {t.auth.login.orContinueWith}
               </span>
             </div>
           </div>
@@ -614,22 +616,22 @@ export function AuthForm({ mode }: AuthFormProps) {
           <p className="mt-4 text-center text-sm text-muted-foreground">
             {mode === "login" ? (
               <>
-                {t("auth.login.noAccount")}{" "}
+                {t.auth.login.noAccount}{" "}
                 <Link
                   to="/register"
                   className="text-primary hover:underline font-medium"
                 >
-                  {t("auth.login.signUpLink")}
+                  {t.auth.login.signUpLink}
                 </Link>
               </>
             ) : (
               <>
-                {t("auth.register.hasAccount")}{" "}
+                {t.auth.register.hasAccount}{" "}
                 <Link
                   to="/login"
                   className="text-primary hover:underline font-medium"
                 >
-                  {t("auth.register.signInLink")}
+                  {t.auth.register.signInLink}
                 </Link>
               </>
             )}
