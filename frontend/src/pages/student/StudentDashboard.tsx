@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translations } from "@/lib/translations";
 import { convertLessonFromStorage, gradeToStorage, teachingFieldFromStorage } from "@/lib/dataConverters";
-import { BookOpen, Users, ArrowRight, GraduationCap, User, CheckCircle2 } from "lucide-react";
+import { BookOpen, Users, ArrowRight, GraduationCap, User } from "lucide-react";
 import { db } from "@/lib/firebaseConfig";
 import { doc, getDoc, collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -31,7 +31,6 @@ interface Lesson {
   teacherId: string;
   createdAt?: any;
   lastModified?: any;
-  isCompleted?: boolean;
 }
 
 export default function StudentDashboard() {
@@ -215,14 +214,7 @@ export default function StudentDashboard() {
           return dateB.getTime() - dateA.getTime();
         });
 
-        // Check which lessons are completed
-        const completedLessons = userData.completedLessons || [];
-        const lessonsWithCompletion = lessonsData.map((lesson) => ({
-          ...lesson,
-          isCompleted: completedLessons.includes(lesson.id),
-        }));
-
-        setMyLessons(lessonsWithCompletion);
+        setMyLessons(lessonsData);
       } catch (error) {
         console.error("Error fetching lessons:", error);
       } finally {
@@ -403,12 +395,6 @@ export default function StudentDashboard() {
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-lg">{lesson.title}</h3>
-                        {lesson.isCompleted && (
-                          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            {t.student.dashboard.myLessons.completed || "Completed"}
-                          </Badge>
-                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                         <span>{lesson.subject}</span>
