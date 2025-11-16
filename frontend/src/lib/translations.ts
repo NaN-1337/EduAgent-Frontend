@@ -410,6 +410,9 @@ export interface Translations {
       completeLesson: string;
       startLesson: string;
       continueLesson: string;
+      accessAgain: string;
+      delete: string;
+      deleteConfirm: string;
       createPath: {
         title: string;
         description: string;
@@ -423,12 +426,28 @@ export interface Translations {
         errors: {
           goalRequired: string;
           subjectRequired: string;
+          alreadyExists: string;
         };
       };
       view: {
         backToPaths: string;
         progress: string;
         chaptersCompleted: (completed: number, total: number) => string;
+      };
+      examTypes: {
+        evaluareNationala: string;
+        bacalaureat: string;
+      };
+      subjects: {
+        matematica: string;
+        limbaSiLiteraturaRomana: string;
+        istorie: string;
+        biologie: string;
+        geografie: string;
+        informatica: string;
+        stiinte: string;
+        stiinteAleNaturii: string;
+        istoriaComunismului: string;
       };
     };
   };
@@ -1065,6 +1084,9 @@ const ro: Translations = {
       completeLesson: "Finalizează lecția",
       startLesson: "Începe lecția",
       continueLesson: "Continuă lecția",
+      accessAgain: "Accesează din nou lecția",
+      delete: "Șterge",
+      deleteConfirm: "Ești sigur că vrei să ștergi această cale de învățare? Această acțiune nu poate fi anulată.",
       createPath: {
         title: "Creează cale de învățare nouă",
         description: "Selectează pentru ce vrei să te pregătești și materia",
@@ -1078,12 +1100,28 @@ const ro: Translations = {
         errors: {
           goalRequired: "Te rugăm să selectezi pentru ce vrei să te pregătești",
           subjectRequired: "Te rugăm să selectezi materia",
+          alreadyExists: "O cale de învățare pentru această combinație de examen și materie există deja.",
         },
       },
       view: {
         backToPaths: "Înapoi la căile de învățare",
         progress: "Progres",
         chaptersCompleted: (completed: number, total: number) => `${completed} din ${total} capitole completate`,
+      },
+      examTypes: {
+        evaluareNationala: "Evaluare Națională",
+        bacalaureat: "Bacalaureat",
+      },
+      subjects: {
+        matematica: "Matematică",
+        limbaSiLiteraturaRomana: "Limba și Literatura Română",
+        istorie: "Istorie",
+        biologie: "Biologie (Anatomie și Fiziologie Umană, Genetică și Ecologie Umană)",
+        geografie: "Geografie",
+        informatica: "Informatică (specializarea matematică-informatică)",
+        stiinte: "Științe",
+        stiinteAleNaturii: "Științe ale naturii",
+        istoriaComunismului: "Istoria comunismului din România",
       },
     },
   },
@@ -1812,6 +1850,9 @@ const en: Translations = {
       completeLesson: "Complete Lesson",
       startLesson: "Start Lesson",
       continueLesson: "Continue Lesson",
+      accessAgain: "Access Lesson Again",
+      delete: "Delete",
+      deleteConfirm: "Are you sure you want to delete this learning path? This action cannot be undone.",
       createPath: {
         title: "Create New Learning Path",
         description: "Select what you want to prepare for and the subject",
@@ -1825,12 +1866,28 @@ const en: Translations = {
         errors: {
           goalRequired: "Please select what you want to prepare for",
           subjectRequired: "Please select the subject",
+          alreadyExists: "A learning path for this exam type and subject combination already exists.",
         },
       },
       view: {
         backToPaths: "Back to Learning Paths",
         progress: "Progress",
         chaptersCompleted: (completed: number, total: number) => `${completed} of ${total} chapters completed`,
+      },
+      examTypes: {
+        evaluareNationala: "National Evaluation",
+        bacalaureat: "Baccalaureate",
+      },
+      subjects: {
+        matematica: "Mathematics",
+        limbaSiLiteraturaRomana: "Romanian Language and Literature",
+        istorie: "History",
+        biologie: "Biology (Human Anatomy and Physiology, Genetics and Human Ecology)",
+        geografie: "Geography",
+        informatica: "Computer Science (Mathematics-Computer Science specialization)",
+        stiinte: "Sciences",
+        stiinteAleNaturii: "Natural Sciences",
+        istoriaComunismului: "History of Communism in Romania",
       },
     },
   },
