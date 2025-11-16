@@ -162,3 +162,83 @@ export async function downloadFile(url: string): Promise<Blob> {
   return await response.blob();
 }
 
+// ===========================
+// Chat API
+// ===========================
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: number;
+}
+
+export interface StartChatRequest {
+  lesson_content: string;
+  user_prompt: string;
+  subject: string;
+  user_role: "student";
+  grade: number;
+}
+
+export interface ContinueChatRequest {
+  session_id: string;
+  user_prompt: string;
+}
+
+export interface ChatResponse {
+  success: boolean;
+  data: {
+    session_id: string;
+    response: string;
+    user_role: string;
+    grade: number | null;
+    message_count: number;
+  };
+}
+
+/**
+ * Start a new chat session
+ */
+export async function startChat(
+  request: StartChatRequest
+): Promise<ChatResponse["data"]> {
+  const response = await fetch(`${API_BASE_URL}/api/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to start chat");
+  }
+
+  const data: ChatResponse = await response.json();
+  return data.data;
+}
+
+/**
+ * Continue an existing chat session
+ */
+export async function continueChat(
+  request: ContinueChatRequest
+): Promise<ChatResponse["data"]> {
+  const response = await fetch(`${API_BASE_URL}/api/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to continue chat");
+  }
+
+  const data: ChatResponse = await response.json();
+  return data.data;
+}
+

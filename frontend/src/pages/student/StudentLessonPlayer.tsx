@@ -5,13 +5,14 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, CheckCircle2, Loader2, ChevronsRight, ChevronsLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, CheckCircle2, Loader2, ChevronsRight, ChevronsLeft, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { doc, updateDoc, arrayUnion, serverTimestamp, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { translations } from "@/lib/translations";
 import { convertLessonFromStorage } from "@/lib/dataConverters";
 import { PDFSlideViewer } from "@/components/pdf-viewer/PDFSlideViewer";
+import { LessonChatbot } from "@/components/chatbot/LessonChatbot";
 
 export default function StudentLessonPlayer() {
   const { id: lessonId } = useParams<{ id: string }>();
@@ -21,8 +22,6 @@ export default function StudentLessonPlayer() {
   
   const [lesson, setLesson] = useState<any>(null);
   const [loadingLesson, setLoadingLesson] = useState(true);
-  const [teacherName, setTeacherName] = useState<string>("Unknown Teacher");
-  const [teacherTeachingField, setTeacherTeachingField] = useState<string>("");
   const [activeTab, setActiveTab] = useState("summary");
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [fontSize, setFontSize] = useState(16); // base font size in pixels
@@ -58,28 +57,6 @@ export default function StudentLessonPlayer() {
         }
 
         const data = lessonDocSnap.data();
-        
-        // Fetch teacher name and teaching field
-        if (data.teacherId) {
-          const teacherDocRef = doc(db, "users", data.teacherId);
-          const teacherDocSnap = await getDoc(teacherDocRef);
-          if (teacherDocSnap.exists()) {
-            const teacherData = teacherDocSnap.data();
-            setTeacherName(teacherData.name || "Unknown Teacher");
-            
-            // Get teaching field and convert to display format
-            if (teacherData.teachingField) {
-              const { teachingFieldFromStorage } = await import("@/lib/dataConverters");
-              const englishKey = teachingFieldFromStorage(teacherData.teachingField);
-              if (englishKey) {
-                const fieldDisplay = translations[language].teachingFields[englishKey] || teacherData.teachingField;
-                setTeacherTeachingField(fieldDisplay);
-              } else {
-                setTeacherTeachingField(teacherData.teachingField);
-              }
-            }
-          }
-        }
         
         // Parse slides from Firestore
         let slides: any[] = [];
@@ -131,8 +108,11 @@ export default function StudentLessonPlayer() {
           id: lessonDocSnap.id,
           title: converted.title || "Untitled Lesson",
           subject: converted.subject || "Unknown",
+          subjectRaw: data.subject || "", // Raw subject for API (e.g., "biologie", "matematica")
           grade: gradeDisplay,
+          gradeRaw: data.grade || 1, // Raw grade number for API (e.g., 5, 6)
           studentSummary: data.studentSummary || "",
+          contentStudent: data.studentSummary || "", // Alias for chatbot
           slides: slides,
           presentationFileUrl: data.presentationFileUrl,
           presentationFileType: data.presentationFileType,
@@ -327,10 +307,10 @@ export default function StudentLessonPlayer() {
 
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col w-full overflow-x-hidden">
       {/* Top Bar */}
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full left-0 right-0">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left: Logo */}
             <Link to="/student/dashboard" className="flex items-center space-x-3">
@@ -366,9 +346,9 @@ export default function StudentLessonPlayer() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex relative">
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto w-full">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
             {/* Section Navigation Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -387,8 +367,8 @@ export default function StudentLessonPlayer() {
               </TabsList>
 
               {/* Summary View */}
-              <TabsContent value="summary" className="mt-0">
-                <div className="space-y-6">
+              <TabsContent value="summary" className="mt-0 !mt-0">
+                <div className="space-y-6 w-full">
                   {/* Controls */}
                   <div className="flex items-center justify-between">
                     <h2 className="text-2xl font-bold">{lesson.title}</h2>
@@ -443,10 +423,15 @@ export default function StudentLessonPlayer() {
 
                   {/* Main Content */}
                   <div
-                    className="max-w-none prose prose-lg dark:prose-invert max-w-none"
+                    className="prose prose-lg dark:prose-invert max-w-none"
                     style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
                   >
                     <style>{`
+                      .prose {
+                        max-width: 100% !important;
+                        margin-left: 0 !important;
+                        margin-right: 0 !important;
+                      }
                       .prose h1 {
                         font-size: 2em;
                         font-weight: bold;
@@ -729,60 +714,58 @@ export default function StudentLessonPlayer() {
           </div>
         </main>
 
-        {/* Right Side Panel - Teacher Information */}
+        {/* Right Side Panel - Chatbot (Fixed to viewport, slides in/out) */}
         <aside className={cn(
-          "hidden lg:block border-l bg-muted/30 overflow-y-auto transition-all duration-300",
-          sidebarCollapsed ? "w-12" : "w-80"
+          "hidden lg:flex flex-col fixed right-0 border-l bg-background transition-transform duration-300 ease-in-out z-30",
+          "top-16 bottom-0 w-96",
+          sidebarCollapsed ? "translate-x-full" : "translate-x-0"
         )}>
-          {sidebarCollapsed ? (
-            <div className="p-4 flex flex-col items-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSidebarCollapsed(false)}
-                className="h-8 w-8"
-                aria-label={t.student.lessonPlayer.teacherInfo?.title || "Teacher Information"}
-              >
-                <ChevronsLeft className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : (
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">
-                  {t.student.lessonPlayer.teacherInfo?.title || "Teacher Information"}
-                </h3>
+          <div className="flex flex-col h-full w-full">
+            <div className="px-4 py-3 border-b bg-muted/30 flex-shrink-0">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-sm">
+                    {t.student.chatbot?.title || "Learning Assistant"}
+                  </h3>
+                </div>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setSidebarCollapsed(true)}
-                  className="h-8 w-8"
+                  className="h-8 w-8 -mr-2"
                   aria-label="Collapse sidebar"
                 >
                   <ChevronsRight className="h-4 w-4" />
                 </Button>
               </div>
-
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <h4 className="font-semibold text-sm">
-                    {t.student.lessonPlayer.teacherInfo?.teacherName || "Teacher"}
-                  </h4>
-                  <p className="text-sm text-muted-foreground">{teacherName}</p>
-                </div>
-                
-                {teacherTeachingField && (
-                  <div className="space-y-1">
-                    <h4 className="font-semibold text-sm">
-                      {t.student.lessonPlayer.teacherInfo?.teachingField || "Subject"}
-                    </h4>
-                    <p className="text-sm text-muted-foreground">{teacherTeachingField}</p>
-                  </div>
-                )}
-              </div>
+              <p className="text-xs text-muted-foreground pl-7">
+                {t.student.chatbot?.subtitle || "Ask me anything about this lesson"}
+              </p>
             </div>
-          )}
+            
+            {lesson && user && (
+              <LessonChatbot
+                lessonContent={lesson.contentStudent || lesson.studentSummary || ""}
+                subject={lesson.subjectRaw || lesson.subject || ""}
+                grade={lesson.gradeRaw || lesson.grade || 1}
+                lessonId={lessonId || ""}
+                studentId={user.uid}
+              />
+            )}
+          </div>
         </aside>
+
+        {/* Collapse Button - Visible when sidebar is hidden */}
+        {sidebarCollapsed && (
+          <button
+            onClick={() => setSidebarCollapsed(false)}
+            className="hidden lg:flex fixed right-4 top-20 z-30 h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+            aria-label={t.student.chatbot?.title || "Show Learning Assistant"}
+          >
+            <ChevronsLeft className="h-5 w-5" />
+          </button>
+        )}
       </div>
     </div>
   );

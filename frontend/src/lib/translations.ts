@@ -476,6 +476,14 @@ export interface Translations {
         grade: string;
       };
     };
+
+    chatbot: {
+      title: string;
+      subtitle: string;
+      welcomeMessage: string;
+      inputPlaceholder: string;
+      errorMessage: string;
+    };
   };
 
   // Placeholders for dynamic content (lessons, subjects, etc.)
@@ -1027,6 +1035,14 @@ const ro: Translations = {
         teachingField: "Materie",
         grade: "Clasă",
       },
+    },
+
+    chatbot: {
+      title: "Asistent de Învățare",
+      subtitle: "Întreabă-mă orice despre lecție",
+      welcomeMessage: "Bună! Sunt aici să te ajut să înțelegi această lecție. Simte-te liber să-mi pui orice întrebări! 😊",
+      inputPlaceholder: "Scrie întrebarea ta...",
+      errorMessage: "Ne pare rău, am întâmpinat o eroare. Te rog încearcă din nou.",
     },
   },
 
@@ -1675,6 +1691,14 @@ const en: Translations = {
         teachingField: "Subject",
         grade: "Grade",
       },
+    },
+
+    chatbot: {
+      title: "Learning Assistant",
+      subtitle: "Ask me anything about this lesson",
+      welcomeMessage: "Hi! I'm here to help you understand this lesson. Feel free to ask me any questions! 😊",
+      inputPlaceholder: "Type your question...",
+      errorMessage: "Sorry, I encountered an error. Please try again.",
     },
   },
 
