@@ -436,7 +436,11 @@ export interface Translations {
           decrease: string;
           increase: string;
           listen: string;
+          stop: string;
           listenTooltip: string;
+          ttsNotSupported: string;
+          noContent: string;
+          ttsError: string;
         };
       };
       slides: {
@@ -995,7 +999,11 @@ const ro: Translations = {
           decrease: "Micșorează dimensiunea fontului",
           increase: "Mărește dimensiunea fontului",
           listen: "Ascultă",
-          listenTooltip: "Funcția de citire cu voce tare va fi disponibilă în curând",
+          stop: "Oprește",
+          listenTooltip: "Ascultă conținutul lecției",
+          ttsNotSupported: "Citirea cu voce tare nu este suportată în browserul dvs.",
+          noContent: "Nu există conținut disponibil pentru citire.",
+          ttsError: "A apărut o eroare la citirea textului.",
         },
       },
       slides: {
@@ -1651,7 +1659,11 @@ const en: Translations = {
           decrease: "Decrease font size",
           increase: "Increase font size",
           listen: "Listen",
-          listenTooltip: "Read aloud feature coming soon",
+          stop: "Stop",
+          listenTooltip: "Listen to the lesson content",
+          ttsNotSupported: "Text-to-speech is not supported in your browser.",
+          noContent: "No content available to read.",
+          ttsError: "An error occurred while reading the text.",
         },
       },
       slides: {

@@ -26,12 +26,15 @@ export default function StudentLessonPlayer() {
   const [activeTab, setActiveTab] = useState("summary");
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [fontSize, setFontSize] = useState(16); // base font size in pixels
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [quizAnswers, setQuizAnswers] = useState<Record<string, number | null>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const chatbotRef = useRef<LessonChatbotRef>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const isUserStoppingRef = useRef(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -171,6 +174,37 @@ export default function StudentLessonPlayer() {
     }
   }, [user, lessonId]);
 
+  // Stop speech when switching away from summary tab
+  useEffect(() => {
+    if (activeTab !== "summary" && isPlaying) {
+      isUserStoppingRef.current = true;
+      window.speechSynthesis.cancel();
+      setIsPlaying(false);
+      speechSynthesisRef.current = null;
+    }
+  }, [activeTab, isPlaying]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  // Load voices when available (some browsers load voices asynchronously)
+  useEffect(() => {
+    const loadVoices = () => {
+      window.speechSynthesis.getVoices();
+    };
+    
+    loadVoices();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+  }, []);
+
   if (authLoading || loadingLesson) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -253,6 +287,119 @@ export default function StudentLessonPlayer() {
         </p>
       );
     });
+  };
+
+  // Extract plain text from HTML or plain text content
+  const extractTextContent = (content: string): string => {
+    if (!content) return "";
+    
+    // If it's HTML, extract text
+    if (content.startsWith("<")) {
+      // Create a temporary div to parse HTML
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = content;
+      
+      // Remove script and style elements
+      const scripts = tempDiv.querySelectorAll("script, style");
+      scripts.forEach(el => el.remove());
+      
+      // Get text content and clean it up
+      let text = tempDiv.textContent || tempDiv.innerText || "";
+      
+      // Clean up extra whitespace
+      text = text
+        .replace(/\s+/g, " ") // Replace multiple spaces with single space
+        .replace(/\n\s*\n/g, "\n") // Replace multiple newlines with single newline
+        .trim();
+      
+      return text;
+    }
+    
+    // If it's plain text, return as is (with some cleanup)
+    return content
+      .replace(/\s+/g, " ")
+      .replace(/\n\s*\n/g, "\n")
+      .trim();
+  };
+
+  // Handle text-to-speech
+  const handleTextToSpeech = () => {
+    if (!lesson?.studentSummary) return;
+
+    // Check if browser supports speech synthesis
+    if (!("speechSynthesis" in window)) {
+      alert(t.student.lessonPlayer.summary.fontControls.ttsNotSupported || "Text-to-speech is not supported in your browser.");
+      return;
+    }
+
+    // Cancel any ongoing speech
+    isUserStoppingRef.current = true;
+    window.speechSynthesis.cancel();
+    isUserStoppingRef.current = false; // Reset since we're starting new speech
+
+    // Extract text content
+    const textToRead = extractTextContent(lesson.studentSummary);
+    
+    if (!textToRead) {
+      alert(t.student.lessonPlayer.summary.fontControls.noContent || "No content available to read.");
+      return;
+    }
+
+    // Create speech utterance
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    
+    // Set language based on current language context
+    utterance.lang = language === "ro" ? "ro-RO" : "en-US";
+    
+    // Set voice properties
+    utterance.rate = 1.0; // Normal speed
+    utterance.pitch = 1.0; // Normal pitch
+    utterance.volume = 1.0; // Full volume
+
+    // Try to find a Romanian voice if available
+    if (language === "ro") {
+      const voices = window.speechSynthesis.getVoices();
+      const romanianVoice = voices.find(voice => 
+        voice.lang.startsWith("ro") || voice.name.toLowerCase().includes("romanian")
+      );
+      if (romanianVoice) {
+        utterance.voice = romanianVoice;
+      }
+    }
+
+    // Event handlers
+    utterance.onstart = () => {
+      setIsPlaying(true);
+    };
+
+    utterance.onend = () => {
+      setIsPlaying(false);
+      speechSynthesisRef.current = null;
+      isUserStoppingRef.current = false;
+    };
+
+    utterance.onerror = (event) => {
+      // Don't show error if user manually stopped
+      if (isUserStoppingRef.current) {
+        setIsPlaying(false);
+        speechSynthesisRef.current = null;
+        isUserStoppingRef.current = false;
+        return;
+      }
+
+      // Only show error for actual errors (not cancellations)
+      if (event.error !== 'interrupted' && event.error !== 'canceled') {
+        console.error("Speech synthesis error:", event);
+        alert(t.student.lessonPlayer.summary.fontControls.ttsError || "An error occurred while reading the text.");
+      }
+      
+      setIsPlaying(false);
+      speechSynthesisRef.current = null;
+    };
+
+    // Store reference and start speaking
+    speechSynthesisRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
   };
 
   const handleQuizSubmit = async () => {
@@ -413,34 +560,33 @@ export default function StudentLessonPlayer() {
                         <span className="ml-1 hidden sm:inline">A+</span>
                       </Button>
                       <Button
-                        variant="outline"
+                        variant={isPlaying ? "default" : "outline"}
                         size="sm"
-                        disabled
+                        onClick={() => {
+                          if (isPlaying) {
+                            // Stop playback
+                            isUserStoppingRef.current = true;
+                            if (speechSynthesisRef.current) {
+                              window.speechSynthesis.cancel();
+                              speechSynthesisRef.current = null;
+                            }
+                            setIsPlaying(false);
+                          } else {
+                            // Start playback
+                            isUserStoppingRef.current = false;
+                            handleTextToSpeech();
+                          }
+                        }}
                         aria-label={t.student.lessonPlayer.summary.fontControls.listen}
-                        title={t.student.lessonPlayer.summary.fontControls.listenTooltip}
+                        title={isPlaying ? (t.student.lessonPlayer.summary.fontControls.stop || "Stop") : (t.student.lessonPlayer.summary.fontControls.listen || "Listen")}
                       >
-                        <Volume2 className="h-4 w-4" />
-                        <span className="ml-1 hidden sm:inline">{t.student.lessonPlayer.summary.fontControls.listen}</span>
+                        <Volume2 className={cn("h-4 w-4", isPlaying && "animate-pulse")} />
+                        <span className="ml-1 hidden sm:inline">
+                          {isPlaying ? (t.student.lessonPlayer.summary.fontControls.stop || "Stop") : (t.student.lessonPlayer.summary.fontControls.listen || "Listen")}
+                        </span>
                       </Button>
                     </div>
                   </div>
-
-                  {/* Learning Objectives */}
-                  <Card className="bg-primary/5 border-primary/20">
-                    <CardContent className="pt-6">
-                      <h3 className="text-lg font-semibold mb-3">
-                        {t.student.lessonPlayer.summary.learningObjectives}
-                      </h3>
-                      <ul className="space-y-2">
-                        {lesson.learningObjectives.map((objective, index) => (
-                          <li key={index} className="flex items-start gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>{objective}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
 
                   {/* Main Content */}
                   <div
