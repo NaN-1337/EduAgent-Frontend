@@ -17,6 +17,9 @@ import StudentLessonsPage from './pages/student/StudentLessonsPage'
 import JoinLessonPage from './pages/student/JoinLessonPage'
 import StudentLessonPlayer from './pages/student/StudentLessonPlayer'
 import IndividualDashboard from './pages/individual/IndividualDashboard'
+import LearningPathsPage from './pages/individual/LearningPathsPage'
+import NewLearningPathPage from './pages/individual/NewLearningPathPage'
+import LearningPathViewPage from './pages/individual/LearningPathViewPage'
 
 function App() {
   return (
@@ -37,9 +40,15 @@ function App() {
           <Route path="/teacher/lessons/:lessonId/fact-check" element={<FactCheckPanel />} />
           <Route path="/student/dashboard" element={<StudentDashboard />} />
           <Route path="/student/lessons" element={<StudentLessonsPage />} />
+          <Route path="/student/learning-paths" element={<LearningPathsPage />} />
+          <Route path="/student/learning-paths/new" element={<NewLearningPathPage />} />
+          <Route path="/student/learning-paths/:id" element={<LearningPathViewPage />} />
           <Route path="/lesson/join" element={<JoinLessonPage />} />
           <Route path="/lesson/:id" element={<StudentLessonPlayer />} />
           <Route path="/individual/dashboard" element={<IndividualDashboard />} />
+          <Route path="/individual/learning-paths" element={<LearningPathsPage />} />
+          <Route path="/individual/learning-paths/new" element={<NewLearningPathPage />} />
+          <Route path="/individual/learning-paths/:id" element={<LearningPathViewPage />} />
         </Routes>
         </AuthProvider>
       </LanguageProvider>

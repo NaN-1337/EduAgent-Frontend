@@ -223,7 +223,7 @@ export default function ProfilePage() {
   };
 
       // Determine navbar role based on user role
-      const navbarRole = profileData.role === "teacher" ? "teacher" : "student";
+      const navbarRole = profileData.role === "teacher" ? "teacher" : profileData.role === "individual" ? "individual" : "student";
 
       return (
         <div className="min-h-screen bg-background">
