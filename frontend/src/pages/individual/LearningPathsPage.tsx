@@ -5,151 +5,86 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Plus, BookOpen, ArrowRight } from "lucide-react";
+import { Plus, BookOpen, ArrowRight, Trash2 } from "lucide-react";
 import { LearningPath } from "@/types/learningPath";
+import { ExamData, examDataToLearningPath, findExamDataFromPath } from "@/utils/learningPathMapper";
+import examDataJSON from "../../../learning_paths.json";
+import { translations } from "@/lib/translations";
 
-// Mock data - will be replaced with backend API calls
-const mockLearningPaths: LearningPath[] = [
+// Predefined learning paths - loaded from JSON
+const PREDEFINED_PATHS_CONFIG = [
   {
-    id: "1",
-    title: "Evaluare Națională",
-    subject: "Matematică",
-    subjectStorage: "matematica",
-    goal: "Evaluare Națională",
-    chapters: [
-      {
-        id: "1-1",
-        title: "Algebră - Ecuații",
-        description: "Învață să rezolvi ecuații de gradul I și II",
-        status: "completed",
-        order: 1,
-      },
-      {
-        id: "1-2",
-        title: "Geometrie - Triunghiuri",
-        description: "Proprietăți și teoreme despre triunghiuri",
-        status: "in_progress",
-        order: 2,
-      },
-      {
-        id: "1-3",
-        title: "Funcții",
-        description: "Funcții liniare și pătratice",
-        status: "unlocked",
-        order: 3,
-      },
-      {
-        id: "1-4",
-        title: "Probabilități",
-        description: "Noțiuni de bază despre probabilități",
-        status: "locked",
-        order: 4,
-      },
-    ],
-    createdAt: new Date("2024-01-15"),
-    updatedAt: new Date("2024-01-20"),
-    userId: "user1",
-    progress: {
-      completed: 1,
-      total: 4,
-    },
+    exam_name: "Evaluarea Națională pentru Absolvenții Clasei a VIII-a",
+    exam_subject: "Matematică",
   },
   {
-    id: "2",
-    title: "Bacalaureat",
-    subject: "Istorie",
-    subjectStorage: "istorie",
-    goal: "Bacalaureat",
-    chapters: [
-      {
-        id: "2-1",
-        title: "Antichitate",
-        description: "Istoria Greciei și Romei antice",
-        status: "completed",
-        order: 1,
-      },
-      {
-        id: "2-2",
-        title: "Evul Mediu",
-        description: "Perioada medievală în Europa",
-        status: "completed",
-        order: 2,
-      },
-      {
-        id: "2-3",
-        title: "Renașterea",
-        description: "Renașterea și Reforma",
-        status: "unlocked",
-        order: 3,
-      },
-    ],
-    createdAt: new Date("2024-01-10"),
-    updatedAt: new Date("2024-01-18"),
-    userId: "user1",
-    progress: {
-      completed: 2,
-      total: 3,
-    },
+    exam_name: "Examenul de Bacalaureat din România",
+    exam_subject: "Istorie",
   },
   {
-    id: "3",
-    title: "Bacalaureat",
-    subject: "Biologie",
-    subjectStorage: "biologie",
-    goal: "Bacalaureat",
-    chapters: [
-      {
-        id: "3-1",
-        title: "Celula - Structură și funcții",
-        description: "Structura celulei, organitele și funcțiile lor",
-        status: "completed",
-        order: 1,
-      },
-      {
-        id: "3-2",
-        title: "Sistemul de reproducere",
-        description: "Reproducerea la plante și animale",
-        status: "in_progress",
-        order: 2,
-      },
-      {
-        id: "3-3",
-        title: "Genetica mendeliană",
-        description: "Legile lui Mendel și moștenirea trăsăturilor",
-        status: "unlocked",
-        order: 3,
-      },
-      {
-        id: "3-4",
-        title: "Evoluție și biodiversitate",
-        description: "Teoriile evoluției și diversitatea speciilor",
-        status: "locked",
-        order: 4,
-      },
-      {
-        id: "3-5",
-        title: "Ecologie și mediu",
-        description: "Ecosisteme, poluare și protecția mediului",
-        status: "locked",
-        order: 5,
-      },
-    ],
-    createdAt: new Date("2024-01-12"),
-    updatedAt: new Date("2024-01-19"),
-    userId: "user1",
-    progress: {
-      completed: 1,
-      total: 5,
-    },
+    exam_name: "Examenul de Bacalaureat din România",
+    exam_subject: "Biologie (Anatomie și Fiziologie Umană, Genetică și Ecologie Umană)",
   },
+  // Removed second Bacalaureat - Matematică (M_mate-info) with 9 chapters - keeping only the one with 10 chapters
 ];
+
+// Load learning paths from localStorage or create predefined ones
+function loadLearningPathsFromStorage(userId: string, examDataList: ExamData[], language: "ro" | "en" = "ro"): LearningPath[] {
+  const storageKey = `learning_paths_${userId}`;
+  const stored = localStorage.getItem(storageKey);
+  
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      // Convert date strings back to Date objects
+      return parsed.map((path: any) => ({
+        ...path,
+        createdAt: new Date(path.createdAt),
+        updatedAt: new Date(path.updatedAt),
+      }));
+    } catch (e) {
+      console.error("Error parsing stored learning paths:", e);
+    }
+  }
+  
+  // Get translations
+  const t = translations[language].individual.learningPaths;
+  
+  // Create predefined paths from JSON
+  const predefinedPaths: LearningPath[] = PREDEFINED_PATHS_CONFIG.map((config) => {
+    const examData = examDataList.find(
+      (data) =>
+        data.exam_name === config.exam_name &&
+        data.exam_subject === config.exam_subject
+    );
+    
+    if (!examData) {
+      console.warn(`Could not find exam data for ${config.exam_name} - ${config.exam_subject}`);
+      return null;
+    }
+    
+    return examDataToLearningPath(examData, userId, [], t, language);
+  }).filter((path): path is LearningPath => path !== null);
+  
+  // Save to localStorage
+  localStorage.setItem(storageKey, JSON.stringify(predefinedPaths));
+  
+  return predefinedPaths;
+}
+
+// Save learning paths to localStorage
+function saveLearningPaths(userId: string, paths: LearningPath[]) {
+  const storageKey = `learning_paths_${userId}`;
+  localStorage.setItem(storageKey, JSON.stringify(paths));
+}
 
 export default function LearningPathsPage() {
   const navigate = useNavigate();
   const { user, userData, loading } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
   const [loadingPaths, setLoadingPaths] = useState(true);
+  const [deletingPathId, setDeletingPathId] = useState<string | null>(null);
 
   // Check authentication and role
   useEffect(() => {
@@ -187,19 +122,46 @@ export default function LearningPathsPage() {
       return;
     }
     
-    // Mock data loading - will be replaced with Firebase/API call
     const loadLearningPaths = async () => {
       setLoadingPaths(true);
       try {
-        // TODO: Replace with actual API call
-        // const response = await fetch(`/api/learning-paths?role=${userData.role}&userId=${user.uid}`);
-        // const data = await response.json();
-        // setLearningPaths(data);
+        // Load exam data from JSON
+        const examDataList = examDataJSON as ExamData[];
+        
+        // Get translations
+        const tLearningPaths = translations[language].individual.learningPaths;
+        
+        // Load existing paths from localStorage
+        let pathsToDisplay = loadLearningPathsFromStorage(user?.uid || "default", examDataList, language);
+        
+        // Apply translations to existing paths
+        pathsToDisplay = pathsToDisplay.map((path) => {
+          // Re-translate title and subject based on current language
+          const examData = findExamDataFromPath(path, examDataList);
+          
+          if (examData) {
+            const updatedPath = examDataToLearningPath(examData, path.userId, [], tLearningPaths, language);
+            // Preserve progress and chapter statuses, but update titles/descriptions
+            return {
+              ...updatedPath,
+              id: path.id,
+              chapters: path.chapters.map((ch, idx) => {
+                const newCh = updatedPath.chapters[idx];
+                if (newCh) {
+                  // Keep status from existing chapter, but update title and description from translation
+                  return { ...newCh, status: ch.status };
+                }
+                return ch;
+              }),
+              progress: path.progress,
+              createdAt: path.createdAt,
+            };
+          }
+          return path;
+        });
         
         // Check if we have a newly created learning path in sessionStorage
         const newPathData = sessionStorage.getItem('newLearningPath');
-        let pathsToDisplay = [...mockLearningPaths];
-        
         if (newPathData) {
           try {
             const newPath = JSON.parse(newPathData);
@@ -210,17 +172,57 @@ export default function LearningPathsPage() {
             if (typeof newPath.updatedAt === 'string') {
               newPath.updatedAt = new Date(newPath.updatedAt);
             }
-            // Add new path at the end of the list
-            pathsToDisplay = [...mockLearningPaths, newPath];
+            
+            // Apply translations to new path
+            let translatedNewPath = newPath;
+            const examData = findExamDataFromPath(newPath, examDataList);
+            
+            if (examData) {
+              const translatedPath = examDataToLearningPath(examData, newPath.userId, [], tLearningPaths, language);
+              // Preserve progress and chapter statuses from newPath, but update titles/descriptions
+              translatedNewPath = {
+                ...translatedPath,
+                id: newPath.id,
+                chapters: newPath.chapters.map((ch: any, idx: number) => {
+                  const newCh = translatedPath.chapters[idx];
+                  if (newCh) {
+                    // Keep status from newPath, but update title and description from translation
+                    return { ...newCh, status: ch.status };
+                  }
+                  return ch;
+                }),
+                progress: newPath.progress,
+                createdAt: newPath.createdAt,
+                updatedAt: newPath.updatedAt,
+              };
+            }
+            
+            // Check if path already exists (by title and subject)
+            const existingIndex = pathsToDisplay.findIndex(
+              (p) => p.id === translatedNewPath.id
+            );
+            
+            if (existingIndex >= 0) {
+              // Replace existing
+              pathsToDisplay[existingIndex] = translatedNewPath;
+            } else {
+              // Add new path at the end of the list
+              pathsToDisplay = [...pathsToDisplay, translatedNewPath];
+            }
+            
+            // Save updated paths
+            saveLearningPaths(user?.uid || "default", pathsToDisplay);
+            
             sessionStorage.removeItem('newLearningPath'); // Clear after use
           } catch (e) {
             console.error("Error parsing new learning path:", e);
           }
         }
         
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        // Set learning paths - new ones will always be at the end
+        // Simulate API call delay
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        
+        // Set learning paths
         setLearningPaths(pathsToDisplay);
       } catch (error) {
         console.error("Error loading learning paths:", error);
@@ -231,7 +233,32 @@ export default function LearningPathsPage() {
     };
 
     loadLearningPaths();
-  }, [userData, user, loading]);
+  }, [userData, user, loading, language]);
+
+  const handleDeletePath = async (pathId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent navigation to path details
+    
+    if (!user) return;
+    
+    if (!window.confirm(t.individual.learningPaths.deleteConfirm)) {
+      return;
+    }
+    
+    setDeletingPathId(pathId);
+    
+    try {
+      // Remove path from localStorage
+      const updatedPaths = learningPaths.filter((path) => path.id !== pathId);
+      saveLearningPaths(user.uid, updatedPaths);
+      
+      // Update state
+      setLearningPaths(updatedPaths);
+    } catch (error) {
+      console.error("Error deleting learning path:", error);
+    } finally {
+      setDeletingPathId(null);
+    }
+  };
 
   // Show loading spinner while auth or data is loading
   if (loading || loadingPaths) {
@@ -289,39 +316,65 @@ export default function LearningPathsPage() {
                     >
                       <CardHeader>
                         <div className="flex items-center justify-between">
-                          <div>
+                          <div className="flex-1">
                             <CardTitle className="text-xl">{path.title}</CardTitle>
                             <CardDescription className="mt-1">
                               {path.subject} • {t.individual.learningPaths.view.chaptersCompleted(path.progress.completed, path.progress.total)}
                             </CardDescription>
                           </div>
-                          <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={(e) => handleDeletePath(path.id, e)}
+                              disabled={deletingPathId === path.id}
+                              title={t.individual.learningPaths.delete}
+                            >
+                              {deletingPathId === path.id ? (
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-destructive border-t-transparent" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                          </div>
                         </div>
                       </CardHeader>
                       <CardContent>
                         <div className="flex flex-wrap gap-2">
-                          {path.chapters.map((chapter) => (
-                            <div
-                              key={chapter.id}
-                              className={`
-                                px-3 py-1.5 rounded-full text-sm font-medium
-                                ${
-                                  chapter.status === "completed"
-                                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                                    : chapter.status === "in_progress"
-                                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                                    : chapter.status === "unlocked"
-                                    ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                                    : "bg-gray-50 text-gray-400 dark:bg-gray-900 dark:text-gray-600"
-                                }
-                              `}
-                            >
-                              {chapter.title}
-                              {chapter.status === "unlocked" && (
-                                <span className="ml-1 text-xs">({t.individual.learningPaths.unlocked})</span>
-                              )}
-                            </div>
-                          ))}
+                          {path.chapters.map((chapter) => {
+                            // Determine color based on status
+                            let bgColor = "";
+                            let textColor = "";
+                            
+                            if (chapter.status === "completed") {
+                              bgColor = "bg-green-100 dark:bg-green-900";
+                              textColor = "text-green-800 dark:text-green-200";
+                            } else if (chapter.status === "in_progress") {
+                              bgColor = "bg-yellow-100 dark:bg-yellow-900";
+                              textColor = "text-yellow-800 dark:text-yellow-200";
+                            } else if (chapter.status === "unlocked") {
+                              bgColor = "bg-gray-100 dark:bg-gray-800";
+                              textColor = "text-gray-600 dark:text-gray-400";
+                            } else {
+                              // locked
+                              bgColor = "bg-gray-50 dark:bg-gray-900";
+                              textColor = "text-gray-400 dark:text-gray-600";
+                            }
+                            
+                            return (
+                              <div
+                                key={chapter.id}
+                                className={`px-3 py-1.5 rounded-full text-sm font-medium ${bgColor} ${textColor}`}
+                              >
+                                {chapter.title}
+                                {chapter.status === "unlocked" && (
+                                  <span className="ml-1 text-xs">(Unlocked)</span>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </CardContent>
                     </Card>

@@ -11,6 +11,8 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { translations } from "@/lib/translations";
 import { teachingFieldToStorage } from "@/lib/dataConverters";
 import { LearningPath } from "@/types/learningPath";
+import { ExamData, examDataToLearningPath, findBestExamSubjectMatch, findExamData, findExamDataFromPath } from "@/utils/learningPathMapper";
+import examDataJSON from "../../../learning_paths.json";
 
 // Evaluation types - hardcoded
 const EVALUATION_TYPES = {
@@ -28,6 +30,16 @@ const EVALUATION_TYPES = {
 // These are the keys from teachingFields translations (English keys)
 const EVALUARE_NATIONALA_SUBJECTS = ["Romanian Language and Literature", "Mathematics"];
 
+// Subject keys for Bacalaureat - only those that exist in JSON
+const BACALAUREAT_SUBJECTS = [
+  "Romanian Language and Literature",
+  "Mathematics",
+  "Biology",
+  "History",
+  "Geography"
+  // Computer Science removed - not available for selection
+];
+
 export default function NewLearningPathPage() {
   const navigate = useNavigate();
   const { user, userData, loading: authLoading } = useAuth();
@@ -35,7 +47,7 @@ export default function NewLearningPathPage() {
   const [evaluationType, setEvaluationType] = useState<string>("");
   const [subject, setSubject] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const [errors, setErrors] = useState<{ evaluationType?: string; subject?: string }>({});
+  const [errors, setErrors] = useState<{ evaluationType?: string; subject?: string; general?: string }>({});
 
   // Determine base path based on role
   const basePath = userData?.role === "student" ? "/student/learning-paths" : "/individual/learning-paths";
@@ -62,9 +74,9 @@ export default function NewLearningPathPage() {
         EVALUARE_NATIONALA_SUBJECTS.includes(subj.key)
       );
     } else if (evaluationType === "bacalaureat") {
-      // All subjects except Romanian and Mathematics for Bacalaureat
+      // Only subjects that exist in JSON for Bacalaureat
       return allSubjects.filter((subj) => 
-        !EVALUARE_NATIONALA_SUBJECTS.includes(subj.key)
+        BACALAUREAT_SUBJECTS.includes(subj.key)
       );
     }
 
@@ -88,12 +100,19 @@ export default function NewLearningPathPage() {
     setSubject("");
     setErrors({});
   }, [evaluationType]);
+  
+  // Reset general error when subject or evaluationType changes
+  useEffect(() => {
+    if (errors.general) {
+      setErrors({ ...errors, general: undefined });
+    }
+  }, [subject, evaluationType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
-    const newErrors: { evaluationType?: string; subject?: string } = {};
+    const newErrors: { evaluationType?: string; subject?: string; general?: string } = {};
     if (!evaluationType) {
       newErrors.evaluationType = t.individual.learningPaths.createPath.errors.goalRequired;
     }
@@ -110,60 +129,106 @@ export default function NewLearningPathPage() {
     setErrors({});
 
     try {
-      // TODO: Replace with actual API call to backend
-      // const response = await fetch('http://localhost:5000/generateLearningPath', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     goal: evaluationType, // Send evaluation type as goal
-      //     subject: teachingFieldToStorage(subject),
-      //     userId: user?.uid,
-      //     role: userData?.role, // Send role to backend
-      //   }),
-      // });
-      // const data = await response.json();
-      // When backend is ready, it will generate chapters and return the learning path
-      // Then redirect to dashboard with the new learning path in the list
-
-      // Mock response - simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      
       // Get evaluation type display name
       const evaluationTypeDisplay = EVALUATION_TYPES[language][evaluationType as keyof typeof EVALUATION_TYPES.ro];
       const subjectDisplay = translations[language].teachingFields[subject] || subject;
-      // Convert subject key (from teachingFields) to storage key
-      const subjectStorage = teachingFieldToStorage(subject) || subject;
       
-      // Create mock learning path with chapters
-      // TODO: This will come from backend API response
-      const mockChapters = evaluationType === "evaluare_nationala" 
-        ? [
-            { id: `${Date.now()}-1`, title: "Pregătire inițială", description: "Capitol introductiv", status: "unlocked" as const, order: 1 },
-            { id: `${Date.now()}-2`, title: "Exerciții practice", description: "Exerciții de aplicare", status: "locked" as const, order: 2 },
-            { id: `${Date.now()}-3`, title: "Simulări", description: "Simulări de examen", status: "locked" as const, order: 3 },
-          ]
-        : [
-            { id: `${Date.now()}-1`, title: "Noțiuni fundamentale", description: "Bazele materiei", status: "unlocked" as const, order: 1 },
-            { id: `${Date.now()}-2`, title: "Capitol avansat 1", description: "Concepte avansate", status: "locked" as const, order: 2 },
-            { id: `${Date.now()}-3`, title: "Capitol avansat 2", description: "Aplicații practice", status: "locked" as const, order: 3 },
-            { id: `${Date.now()}-4`, title: "Pregătire finală", description: "Recapitulare și teste", status: "locked" as const, order: 4 },
-          ];
+      // Map evaluation type to exam_name in JSON
+      const examName = evaluationType === "evaluare_nationala"
+        ? "Evaluarea Națională pentru Absolvenții Clasei a VIII-a"
+        : "Examenul de Bacalaureat din România";
       
-      const newLearningPath = {
-        id: `path-${Date.now()}`,
-        title: evaluationTypeDisplay,
-        subject: subjectDisplay,
-        subjectStorage: subjectStorage,
-        goal: evaluationTypeDisplay,
-        chapters: mockChapters,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        userId: user?.uid || "user1",
-        progress: {
-          completed: 0,
-          total: mockChapters.length,
-        },
-      };
+      // Load exam data from JSON
+      const examDataList = examDataJSON as ExamData[];
+      
+      // Map teachingField key to exam_subject from JSON (with special handling for History of Communism)
+      const examSubject = findBestExamSubjectMatch(subject, examName, examDataList);
+      
+      if (!examSubject) {
+        throw new Error(`Could not map subject ${subject} to exam_subject for ${examName}`);
+      }
+      
+      // Find matching exam data
+      const examData = findExamData(examName, examSubject, examDataList);
+      
+      if (!examData) {
+        throw new Error(`Could not find exam data for ${examName} - ${examSubject}`);
+      }
+      
+      // Load existing paths to check if path already exists
+      const storageKey = `learning_paths_${user?.uid || "default"}`;
+      const stored = localStorage.getItem(storageKey);
+      let existingPaths: LearningPath[] = [];
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          existingPaths = parsed.map((path: any) => ({
+            ...path,
+            createdAt: new Date(path.createdAt),
+            updatedAt: new Date(path.updatedAt),
+          }));
+        } catch (e) {
+          console.error("Error parsing stored learning paths:", e);
+        }
+      }
+      
+      // Check if a learning path already exists for this exam type and subject
+      // Use subjectStorage and exam type to check, not translated titles (language-independent check)
+      const tLearningPaths = translations[language].individual.learningPaths;
+      const testPath = examDataToLearningPath(examData, user?.uid || "user1", [], tLearningPaths, language);
+      
+      // Determine exam type from examName
+      const examType = examName.includes("Evaluarea Națională") || examName.includes("Evaluarea Nationala")
+        ? "evaluare_nationala"
+        : "bacalaureat";
+      
+      // Check if path exists by matching exam type and subjectStorage (language-independent)
+      // Compare directly using exam_subject from JSON to avoid translation issues
+      const existingPath = existingPaths.find((path) => {
+        // Check if exam type matches (by checking title patterns, works in both languages)
+        const pathExamType = (path.title.includes("Evaluare") || path.title.includes("National Evaluation") || path.title.includes("National"))
+          ? "evaluare_nationala"
+          : "bacalaureat";
+        
+        if (pathExamType !== examType) {
+          return false;
+        }
+        
+        // First try: Check if subjectStorage matches (most reliable if both are set)
+        if (path.subjectStorage && testPath.subjectStorage) {
+          if (path.subjectStorage === testPath.subjectStorage) {
+            return true;
+          }
+          // If subjectStorage doesn't match, continue to next check
+        }
+        
+        // Second: Try to find examData for the existing path and compare with current examData
+        // This compares the actual exam_subject from JSON, which is the most reliable
+        const existingPathExamData = findExamDataFromPath(path, examDataList);
+        if (existingPathExamData) {
+          // Direct comparison of exam_subject from JSON - most reliable
+          // This works regardless of language or translation
+          if (existingPathExamData.exam_subject === examData.exam_subject) {
+            return true;
+          }
+        }
+        
+        // If we couldn't find examData for existing path, it means it doesn't match
+        return false;
+      });
+      
+      if (existingPath) {
+        setErrors({ general: t.individual.learningPaths.createPath.errors.alreadyExists });
+        setIsCreating(false);
+        return;
+      }
+      
+      // Get translations
+      // Convert exam data to LearningPath with translations
+      const newLearningPath = examDataToLearningPath(examData, user?.uid || "user1", existingPaths, tLearningPaths, language);
+      
+      // Simulate API call delay
+      await new Promise((resolve) => setTimeout(resolve, 500));
       
       // Store new learning path in sessionStorage to be picked up by dashboard
       sessionStorage.setItem('newLearningPath', JSON.stringify(newLearningPath));
@@ -216,7 +281,7 @@ export default function NewLearningPathPage() {
                     value={evaluationType}
                     onValueChange={(value) => {
                       setEvaluationType(value);
-                      if (errors.evaluationType) setErrors({ ...errors, evaluationType: undefined });
+                      setErrors({ ...errors, evaluationType: undefined, general: undefined });
                     }}
                   >
                     <SelectTrigger className={errors.evaluationType ? "border-destructive" : ""}>
@@ -241,7 +306,7 @@ export default function NewLearningPathPage() {
                     value={subject}
                     onValueChange={(value) => {
                       setSubject(value);
-                      if (errors.subject) setErrors({ ...errors, subject: undefined });
+                      setErrors({ ...errors, subject: undefined, general: undefined });
                     }}
                     disabled={!evaluationType}
                   >
@@ -260,6 +325,12 @@ export default function NewLearningPathPage() {
                     <p className="text-sm text-destructive">{errors.subject}</p>
                   )}
                 </div>
+
+                {errors.general && (
+                  <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-md">
+                    <p className="text-sm text-destructive">{errors.general}</p>
+                  </div>
+                )}
 
                 <div className="flex gap-4">
                   <Button

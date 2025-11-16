@@ -1,0 +1,430 @@
+[
+  {
+    "exam_name": "Evaluarea Națională pentru Absolvenții Clasei a VIII-a",
+    "exam_subject": "Limba și Literatura Română",
+    "chapters": [
+      {
+        "number": 1,
+        "title": "Comprehensiunea Textului și Tipare Textuale",
+        "description": "Identificarea informațiilor importante, a temei, a ideilor principale și secundare din texte. Analiza tiparelor textuale de bază: narativ (literar și nonliterar), descriptiv (literar și nonliterar), dialogat, explicativ și argumentativ, în diverse tipuri de texte (continue, discontinue, multimodale)."
+      },
+      {
+        "number": 2,
+        "title": "Analiză și Interpretare Literară",
+        "description": "Studiul aprofundat al genurilor literare (epic, liric, dramatic). Analiza instanțelor comunicării narative (autor, narator, personaje) și a mijloacelor de caracterizare. Elemente de versificație (rimă, strofă, măsură, ritm) și interpretarea limbajului figurat (personificare, comparație, epitet, metaforă, hiperbolă, antiteză etc.)."
+      },
+      {
+        "number": 3,
+        "title": "Redactarea de Text și Etapele Scrierii",
+        "description": "Aplicarea etapelor procesului de scriere: generarea ideilor, planificarea, scrierea și rescrierea textului. Abilitatea de a compune diverse tipuri de texte: rezumat, text narativ, descriptiv, explicativ, argumentativ, caracterizare de personaj și texte funcționale (scrisoare, e-mail). Respectarea normelor de stil, corectitudine gramaticală și etica redactării."
+      },
+      {
+        "number": 4,
+        "title": "Vocabular (Lexic) și Semantică",
+        "description": "Studiul cuvântului: sensul de bază, secundar, propriu și figurat. Relații semantice: sinonime, antonime, omonime, cuvinte polisemantice și câmpul lexical. Mijloace de îmbogățire a vocabularului (derivare, compunere, conversiune), familia lexicală, pleonasmul și paronimele."
+      },
+      {
+        "number": 5,
+        "title": "Fonetică, Ortografie și Punctuație",
+        "description": "Structura fonologică a cuvintelor: diftong, triftong, hiat. Regulile de despărțire în silabe și utilizarea corectă a accentului. Aplicarea conștientă a regulilor ortografice, ortoepice și a semnelor de punctuație, conform normelor (DOOM 3)."
+      },
+      {
+        "number": 6,
+        "title": "Morfologie (I): Verbul",
+        "description": "Flexiunea verbului: moduri personale (indicativ, conjunctiv, condițional-optativ, imperativ) și timpurile acestora. Verbe auxiliare (a fi, a avea, a vrea) și copulative (a fi, a deveni etc.). Forme verbale nepersonale (infinitiv, gerunziu, participiu, supin) și utilizările lor sintactice."
+      },
+      {
+        "number": 7,
+        "title": "Morfologie (II): Părțile de vorbire nominale",
+        "description": "Substantivul (gen, număr, caz, articol, tipuri). Pronumele și adjectivele pronominale: personal, reflexiv, posesiv, demonstrativ, interogativ, relativ, nehotărât, negativ. Adjectivul (grade de comparație, acord). Numeralul (cardinal, ordinal)."
+      },
+      {
+        "number": 8,
+        "title": "Morfologie (III): Părțile de vorbire neflexibile",
+        "description": "Studiul părților de vorbire neflexibile: adverbul (tipuri, grade de comparație), prepoziția, conjuncția (coordonatoare și subordonatoare) și interjecția (inclusiv cea predicativă)."
+      },
+      {
+        "number": 9,
+        "title": "Sintaxa Propoziției și a Frazei",
+        "description": "Identificarea funcțiilor sintactice în propoziție: predicat (verbal, nominal), subiect (exprimat, neexprimat), atribut (de diverse tipuri), complement (direct, indirect, prepozițional) și circumstanțiale (loc, timp, mod, cauză, scop). Relații în frază: coordonare și subordonare. Realizări propoziționale ale funcțiilor sintactice (propoziții subordonate)."
+      },
+      {
+        "number": 10,
+        "title": "Construcții Sintactice, Variație Lingvistică și Interculturalitate",
+        "description": "Analiza construcțiilor sintactice specifice: active/pasive, impersonale, cu pronume reflexive, incidente, concesive și condiționale. Elemente de variație stilistică (limbă standard, limbaj popular, registru, argou, jargon) și de interculturalitate (identitate națională, diversitate culturală, valori etice)."
+      }
+    ]
+  },
+  {
+    "exam_name": "Evaluarea Națională pentru Absolvenții Clasei a VIII-a",
+    "exam_subject": "Matematică",
+    "chapters": [
+      {
+        "number": 1,
+        "title": "Mulțimi de Numere (N, Z, Q) și Operații",
+        "description": "Operarea cu numere naturale, întregi și raționale. Include operații de bază (adunare, scădere, înmulțire, împărțire, puteri), ordinea efectuării operațiilor și utilizarea parantezelor, fracții (ordinare, zecimale) și transformarea fracțiilor periodice."
+      },
+      {
+        "number": 2,
+        "title": "Divizibilitate, Proporționalitate și Organizarea Datelor",
+        "description": "Studiul divizibilității în N (criterii, c.m.m.d.c., c.m.m.m.c.), rapoarte, proporții, procente și mărimi direct/invers proporționale. Include elemente de organizare a datelor (tabele, grafice), probabilități și statistică (medie, mediană, mod)."
+      },
+      {
+        "number": 3,
+        "title": "Numere Reale și Calcul Algebric",
+        "description": "Introducerea numerelor reale (rădăcina pătrată, numere iraționale), operații, raționalizarea numitorului și medii (aritmetică, geometrică). Include calculul algebric: operații cu numere reprezentate prin litere, formule de calcul prescurtat și metode de descompunere în factori."
+      },
+      {
+        "number": 4,
+        "title": "Ecuații, Inecuații, Sisteme și Funcții",
+        "description": "Rezolvarea ecuațiilor de forma ax+b=0 și ax^2+bx+c=0, a inecuațiilor de forma ax+b>=0 și a sistemelor de ecuații liniare (metoda substituției și reducerii). Include noțiunea de funcție de forma f(x)=ax+b și reprezentarea ei grafică."
+      },
+      {
+        "number": 5,
+        "title": "Elemente Fundamentale de Geometrie Plană",
+        "description": "Definirea și proprietățile conceptelor de bază: punct, dreaptă, plan, unghi (clasificare, operații, opuse la vârf, complementare, suplementare). Include relații de paralelism (axioma paralelelor) și perpendicularitate, distanțe și simetrie."
+      },
+      {
+        "number": 6,
+        "title": "Triunghiul: Proprietăți, Linii Importante și Congruență",
+        "description": "Analiza triunghiului: clasificare, suma unghiurilor, linii importante (bisectoare, mediatoare, înălțimi, mediane) și concurența lor. Include criterii de congruență (LUL, ULU, LLL) și proprietățile triunghiurilor particulare (isoscel, echilateral, dreptunghic)."
+      },
+      {
+        "number": 7,
+        "title": "Asemănarea și Relații Metrice (Inclusiv Trigonometrie)",
+        "description": "Teorema lui Thales, asemănarea triunghiurilor (criterii) și relațiile metrice în triunghiul dreptunghic (teorema înălțimii, catetei, Pitagora). Include noțiunile de bază de trigonometrie (sinus, cosinus, tangentă, cotangentă) pentru unghiuri ascuțite."
+      },
+      {
+        "number": 8,
+        "title": "Patrulatere, Cercul și Arii",
+        "description": "Studiul proprietăților patrulaterelor (paralelogram, dreptunghi, romb, pătrat, trapez) și ale cercului (unghi la centru, unghi înscris, coarde, tangente). Include calculul de perimetre și arii pentru toate figurile plane studiate (triunghi, patrulatere, disc)."
+      },
+      {
+        "number": 9,
+        "title": "Geometrie în Spațiu: Relații și Corpuri",
+        "description": "Studiul corpurilor geometrice (prismă, piramidă, trunchiuri, con, cilindru, sferă). Analiza relațiilor de paralelism și perpendicularitate în spațiu (drepte, plane), proiecții, unghiuri diedre și teorema celor trei perpendiculare."
+      },
+      {
+        "number": 10,
+        "title": "Calculul Ariilor și Volumelor Corpurilor Geometrice",
+        "description": "Aplicarea formulelor și metodelor de calcul pentru arii (laterale, totale) și volume ale corpurilor geometrice studiate (prismă dreaptă, piramidă regulată, trunchi de piramidă/con, con circular drept, cilindru circular drept și sferă)."
+      }
+    ]
+  },
+  {
+    "exam_name": "Examenul de Bacalaureat din România",
+    "exam_subject": "Matematică (M_mate-info)",
+    "chapters": [
+      {
+        "number": 1,
+        "title": "Fundamente Algebrice și Logică",
+        "description": "Include mulțimea numerelor reale (operații, ordonare, modul, intervale), elemente de logică matematică, inducția matematică și studiul șirurilor, cu accent pe progresiile aritmetice și geometrice."
+      },
+      {
+        "number": 2,
+        "title": "Funcții: Concepte Generale și Funcțiile de Gradul I și II",
+        "description": "Definiția funcției, proprietăți generale (mărginire, monotonie, paritate, periodicitate), compunerea funcțiilor. Studiul detaliat al funcțiilor de gradul I și II: grafic, ecuații, inecuații, sisteme și relațiile lui Viète."
+      },
+      {
+        "number": 3,
+        "title": "Vectori, Trigonometrie și Aplicații",
+        "description": "Vectori în plan (operații, coliniaritate), produsul scalar. Elemente de trigonometrie (cerc trigonometric, funcții, formule de reducere, formule fundamentale) și aplicații în geometrie: teorema sinusurilor, teorema cosinusului, rezolvarea triunghiurilor și calculul de arii."
+      },
+      {
+        "number": 4,
+        "title": "Numere Complexe, Funcții Exponențiale și Logaritmice",
+        "description": "Numere complexe sub formă algebrică, operații, conjugat, rezolvarea ecuației de gradul al doilea în C. Studiul funcțiilor putere, radical, exponențială și logaritmică, incluzând proprietățile, graficele și rezolvarea ecuațiilor și inecuațiilor specifice."
+      },
+      {
+        "number": 5,
+        "title": "Combinatorică, Probabilități și Statistică",
+        "description": "Metode de numărare: permutări, aranjamente, combinări. Binomul lui Newton. Elemente de calcul financiar (procente, dobânzi), probabilități și statistică descriptivă (culegerea și interpretarea datelor)."
+      },
+      {
+        "number": 6,
+        "title": "Geometrie Analitică în Plan",
+        "description": "Introducerea reperului cartezian, coordonatele unui punct și ale unui vector, distanța dintre două puncte. Ecuații ale dreptei în plan (diverse forme) și aplicarea condițiilor de paralelism și perpendicularitate. Calculul de distanțe și arii."
+      },
+      {
+        "number": 7,
+        "title": "Algebră Liniară: Matrice, Determinanți și Sisteme",
+        "description": "Operații cu matrice (adunare, înmulțire, înmulțire cu scalar), proprietăți. Calculul determinanților și proprietățile acestora. Matrice inversabile, ecuații matriceale și rezolvarea sistemelor de ecuații liniare (metoda Cramer, metoda Gauss, rang)."
+      },
+      {
+        "number": 8,
+        "title": "Structuri Algebrice și Polinoame",
+        "description": "Legi de compoziție internă, proprietăți. Studiul structurilor de grup, inel și corp. Inelul polinoamelor (operații, împărțire, schema lui Horner), divizibilitate, rădăcini, relațiile lui Viète și rezolvarea ecuațiilor algebrice."
+      },
+      {
+        "number": 9,
+        "title": "Analiză Matematică (I): Limite, Continuitate și Derivabilitate",
+        "description": "Limite de șiruri (convergență, numărul 'e') și limite de funcții (calcul, cazuri exceptate, asimptote). Funcții continue (proprietăți, teorema lui Darboux). Funcții derivabile (reguli de calcul, derivate de ordin I și II, teoremele Fermat, Rolle, Lagrange, regulile lui l'Hospital)."
+      },
+      {
+        "number": 10,
+        "title": "Analiză Matematică (II): Studiul Funcțiilor și Calcul Integral",
+        "description": "Studiul funcțiilor folosind derivatele (monotonie, puncte de extrem, concavitate) și reprezentarea grafică. Primitive (integrala nedefinită). Integrala definită (formula Leibniz-Newton, proprietăți), metode de calcul (integrare prin părți, schimbare de variabilă) și aplicații (calculul de arii și volume)."
+      }
+    ]
+  },
+  {
+    "exam_name": "Examenul de Bacalaureat din România",
+    "exam_subject": "Limba și Literatura Română",
+    "chapters": [
+      {
+        "number": 1,
+        "title": "Perioada Pașoptistă și Fundamentele Romantismului",
+        "description": "Studiul începuturilor literaturii române moderne: romantismul pașoptist (Grigore Alexandrescu, Vasile Alecsandri) și nuvela istorică (Costache Negruzzi - „Alexandru Lăpușneanul”)."
+      },
+      {
+        "number": 2,
+        "title": "Epoca Marilor Clasici: Poezie și Proză",
+        "description": "Aprofundarea operelor canonice din a doua jumătate a secolului XIX: poezia romantică (Mihai Eminescu), basmul cult (Ion Creangă) și proza realist-psihologică (Ioan Slavici)."
+      },
+      {
+        "number": 3,
+        "title": "Genul Dramatic: Comedie și Parabolă",
+        "description": "Analiza particularităților textului dramatic prin studiul comediei (*O scrisoare pierdută* de I.L. Caragiale) și al parabolei dramatice postbelice (*Iona* de Marin Sorescu)."
+      },
+      {
+        "number": 4,
+        "title": "Poezia Simbolistă: George Bacovia",
+        "description": "Explorarea curentului simbolist prin opera lui George Bacovia. Analiza temelor (plumb, singurătate, nevroză), a cromaticii și a corespondențelor în *Plumb* și *Lacustră*."
+      },
+      {
+        "number": 5,
+        "title": "Poezia Interbelică (I): Modernismul",
+        "description": "Studiul liricii moderniste și al artelor poetice. Include operele lui Tudor Arghezi (*Testament*, *Flori de mucigai*), Lucian Blaga (*Eu nu strivesc corola de minuni a lumii*) și Ion Barbu (*Riga Crypto și lapona Enigel*)."
+      },
+      {
+        "number": 6,
+        "title": "Poezia Interbelică (II): Tradiționalismul",
+        "description": "Înțelegerea curentului tradiționalist prin analiza operelor lui Ion Pillat (*Aci sosi pe vremuri*) și Vasile Voiculescu (*În grădina Ghetsemani*)."
+      },
+      {
+        "number": 7,
+        "title": "Romanul Interbelic (I): Realismul Obiectiv",
+        "description": "Analiza romanului realist-obiectiv, tradițional și balzacian. Include studiul operelor *Ion* (Liviu Rebreanu), *Baltagul* (Mihail Sadoveanu) și *Enigma Otiliei* (George Călinescu)."
+      },
+      {
+        "number": 8,
+        "title": "Romanul Interbelic (II): Romanul Subiectiv și al Experienței",
+        "description": "Studiul romanului modern, subiectiv și al experienței. Include operele lui Camil Petrescu (*Ultima noapte de dragoste, întâia noapte de război*) și Mircea Eliade (*Maitreyi*)."
+      },
+      {
+        "number": 9,
+        "title": "Literatura Postbelică: Romanul și Poezia",
+        "description": "Analiza principalelor opere postbelice: romanul realist (*Moromeții* de Marin Preda) și poezia neomodernistă (*Leoaică tânără, iubirea...* de Nichita Stănescu)."
+      },
+      {
+        "number": 10,
+        "title": "Sinteze: Curente Literare și Culturale",
+        "description": "Revizuirea și aprofundarea trăsăturilor principalelor curente culturale și literare (Umanism, Iluminism, Romantism, Realism, Simbolism, Modernism, Tradiționalism, Postmodernism) și reflectarea lor în operele studiate."
+      }
+    ]
+  },
+  {
+    "exam_name": "Examenul de Bacalaureat din România",
+    "exam_subject": "Biologie (Anatomie și Fiziologie Umană, Genetică și Ecologie Umană)",
+    "chapters": [
+      {
+        "number": 1,
+        "title": "Introducere și Sistemul Nervos",
+        "description": "Structura corpului uman (planuri, topografie) și funcțiile de relație. Studiul sistemului nervos somatic și vegetativ, funcția reflexă, căile de conducere și noțiuni de patologie (meningită, comă)."
+      },
+      {
+        "number": 2,
+        "title": "Analizatorii (Organele de Simț)",
+        "description": "Studiul segmentelor unui analizator. Fiziologia analizatorilor vizual, auditiv, vestibular și cutanat, incluzând deficiențe senzoriale (miopie, cataractă, glaucom, otită) și noțiuni de igienă."
+      },
+      {
+        "number": 3,
+        "title": "Sistemul Endocrin",
+        "description": "Analiza glandelor endocrine (hipofiză, tiroidă, pancreas, suprarenale, gonade), hormonii secretați și efectele acestora. Include disfuncțiile endocrine majore (diabet zaharat, nanism, gigantism, boala Basedow-Graves)."
+      },
+      {
+        "number": 4,
+        "title": "Sistemul Locomotor (Osos și Muscular)",
+        "description": "Studiul componentelor sistemului osos (scheletul, creșterea oaselor) și al sistemului muscular (grupe de mușchi, contracția). Include noțiuni de igienă și patologie (fracturi, entorse, luxații, oboseală musculară)."
+      },
+      {
+        "number": 5,
+        "title": "Sistemul Digestiv",
+        "description": "Studiul funcțiilor de nutriție. Include transformările fizico-chimice ale alimentelor în tubul digestiv, procesul de absorbție intestinală și fiziologia intestinului gros, alături de patologia asociată (carii, ciroză, litiază biliară, pancreatită)."
+      },
+      {
+        "number": 6,
+        "title": "Sistemul Circulator",
+        "description": "Analiza sistemului circulator: grupe sanguine, imunitate, activitatea cardiacă (debit, tensiune arterială, puls) și structura circulației mari și mici. Include patologii precum anemiile, leucemiile și cardiopatia ischemică."
+      },
+      {
+        "number": 7,
+        "title": "Sistemele Respirator și Excretor",
+        "description": "Studiul a două funcții de nutriție: respirația (ventilație, volume și capacități, transportul gazelor) și excreția (formarea și eliminarea urinei). Include noțiuni de igienă și patologie pentru ambele sisteme (gripă, emfizem, cistită, nefrită)."
+      },
+      {
+        "number": 8,
+        "title": "Sistemul Reproducător",
+        "description": "Analiza funcției de reproducere: componentele și fiziologia sistemului reproducător femel și mascul. Include sănătatea reproducerii (planificare familială, contracepție, sarcină) și patologia asociată (anexită, adenom de prostată)."
+      },
+      {
+        "number": 9,
+        "title": "Genetică Moleculară și Umană",
+        "description": "Studiul geneticii moleculare (structura și funcțiile ADN și ARN, organizarea materialului genetic) și al geneticii umane (genomul, mutageneza, teratogeneza, cancerul)."
+      },
+      {
+        "number": 10,
+        "title": "Ecologie Umană și Bioetică",
+        "description": "Analiza ecosistemelor antropizate și a impactului antropic asupra mediului (poluare, degradarea habitatelor, supraexploatare). Include considerații bioetice (clonare, fertilizare in vitro, terapie genică)."
+      }
+    ]
+  },
+  {
+    "exam_name": "Examenul de Bacalaureat din România",
+    "exam_subject": "Istorie",
+    "chapters": [
+      {
+        "number": 1,
+        "title": "Romanitatea Românilor în Viziunea Istoricilor",
+        "description": "Analiza teoriilor și argumentelor istoricilor (atât susținători ai continuității, cât și ai imigraționismului) privind procesul de formare a poporului român și a limbii române."
+      },
+      {
+        "number": 2,
+        "title": "Secolul XX: Democrație și Totalitarism",
+        "description": "Studiul comparativ al ideologiilor și practicilor politice democratice și totalitare (fascism, comunism) în România și în Europa, și impactul acestora asupra societății."
+      },
+      {
+        "number": 3,
+        "title": "Constituțiile din România",
+        "description": "Analiza evoluției constituționale a României, comparând legile fundamentale (de la Regulamentele Organice la Constituția actuală) sub aspectul instituțiilor, puterilor statului și al drepturilor cetățenești."
+      },
+      {
+        "number": 4,
+        "title": "Autonomii Locale și Instituții Centrale (Sec. IX-XVIII)",
+        "description": "Studiul formării statelor medievale românești, pornind de la autonomiile locale (obști, cnezate, voievodate) și ajungând la instituțiile centrale (Domnia, Sfatul Domnesc, Adunarea Țării, Biserica)."
+      },
+      {
+        "number": 5,
+        "title": "Formarea Statului Român Modern (Sec. XVIII-XX)",
+        "description": "Analiza proiectelor politice (reformiste, revoluționare) care au stat la baza modernizării statului, incluzând Unirea Principatelor (1859), independența (1877) și realizarea României Mari (1918)."
+      },
+      {
+        "number": 6,
+        "title": "România Postbelică și Construcția Democrației",
+        "description": "Studiul regimului comunist în România, de la stalinism la național-comunism, incluzând formele de disidență anticomunistă și procesul de revenire la democrație după 1989."
+      },
+      {
+        "number": 7,
+        "title": "Diplomație și Conflict în Evul Mediu (Sec. IX-XVIII)",
+        "description": "Analiza relațiilor internaționale ale spațiului românesc în Evul Mediu, urmărind raporturile (diplomatice și militare) cu marile puteri vecine, precum Imperiul Otoman, Regatul Ungariei și Polonia."
+      },
+      {
+        "number": 8,
+        "title": "România în Concertul European (Sec. XIX-XX)",
+        "description": "Studiul politicii externe a României de la implicarea în „criza orientală” și obținerea independenței, până la participarea la marile alianțe ale secolului XX (Primul și Al Doilea Război Mondial)."
+      },
+      {
+        "number": 9,
+        "title": "România în Perioada „Războiului Rece”",
+        "description": "Analiza politicii externe a României în contextul Războiului Rece, urmărind relațiile cu URSS și blocul comunist, momentele de distanțare și raporturile cu statele democratice occidentale."
+      }
+    ]
+  },
+  {
+    "exam_name": "Examenul de Bacalaureat din România",
+    "exam_subject": "Geografie",
+    "chapters": [
+      {
+        "number": 1,
+        "title": "Europa și România: Elemente Fizico-Geografice",
+        "description": "Analiza comparativă a reliefului (trepte, tipuri, unități majore), climei (factori genetici, regionare), hidrografiei (cu accent pe Dunăre și Marea Neagră), învelișului biopedogeografic și a resurselor naturale."
+      },
+      {
+        "number": 2,
+        "title": "Europa și România: Geografie Umană și Economică",
+        "description": "Studiul hărții politice, al caracteristicilor geodemografice (populație, orașe), al activităților economice (agricultură, industrie, servicii), al sistemelor de transport și al relației cu mediul înconjurător."
+      },
+      {
+        "number": 3,
+        "title": "Regiuni Geografice și Vecinătatea României",
+        "description": "Caracterizarea generală a regiunilor geografice din Europa și România, studiu de caz aprofundat: Carpații. Analiza geografică a țărilor vecine României."
+      },
+      {
+        "number": 4,
+        "title": "Uniunea Europeană: Formare și Caracteristici Generale",
+        "description": "Evoluția procesului de integrare europeană și analiza caracteristicilor geografice, politice și economice actuale ale Uniunii Europene."
+      },
+      {
+        "number": 5,
+        "title": "Statele Membre ale Uniunii Europene",
+        "description": "Prezentare sintetică a statelor UE, cu studii de caz pe principalele țări: Franța, Germania, Regatul Unit, Italia, Spania, Portugalia, Grecia, Austria."
+      },
+      {
+        "number": 6,
+        "title": "România și Integrarea Europeană",
+        "description": "Analiza oportunităților geografice și a interdependențelor (economice, culturale) ale României ca stat membru al UE. Include problema energiei la nivel național și european."
+      },
+      {
+        "number": 7,
+        "title": "Europa în Lumea Contemporană",
+        "description": "Studiul problemelor fundamentale ale lumii contemporane (globalizare, mondializare) și analiza rolului Europei și al UE în ansamblurile economice și geopolitice globale."
+      }
+    ]
+  },
+  {
+    "exam_name": "Examenul de Bacalaureat din România",
+    "exam_subject": "Informatică (specializarea matematică-informatică)",
+    "chapters": [
+      {
+        "number": 1,
+        "title": "Fundamentele Programării și Algoritmilor",
+        "description": "Definirea noțiunii de algoritm, variabile, expresii și structuri de control (liniară, alternativă, repetitivă). Include elementele de bază ale limbajului C/C++ (sintaxă, tipuri de date, operatori, citire/scriere)."
+      },
+      {
+        "number": 2,
+        "title": "Subprograme și Modularitate",
+        "description": "Utilizarea subprogramelor predefinite și definirea subprogramelor proprii (proceduri și funcții). Include mecanismele de transfer prin parametri (valoare, referință) și noțiunile de variabile globale/locale."
+      },
+      {
+        "number": 3,
+        "title": "Structuri de Date Statice",
+        "description": "Definirea și utilizarea tipurilor de date structurate: tablouri (vectori și matrice), șiruri de caractere (operații și funcții specifice) și înregistrări (articole)."
+      },
+      {
+        "number": 4,
+        "title": "Algoritmi Elementari: Prelucrări Numerice",
+        "description": "Implementarea algoritmilor pentru operarea asupra cifrelor unui număr, verificarea divizibilității, numere prime, algoritmul lui Euclid, șirul lui Fibonacci și calculul unor sume."
+      },
+      {
+        "number": 5,
+        "title": "Algoritmi Elementari: Sortare, Căutare și Complexitate",
+        "description": "Studiul metodelor de sortare (bulelor, inserției, selecției, numărării), interclasarea și metode de căutare (secvențială, binară). Include analiza complexității algoritmilor."
+      },
+      {
+        "number": 6,
+        "title": "Prelucrarea Fișierelor Text",
+        "description": "Operații de bază cu fișiere text, tipuri de acces și utilizarea procedurilor și funcțiilor predefinite pentru citirea și scrierea datelor în fișiere."
+      },
+      {
+        "number": 7,
+        "title": "Recursivitatea",
+        "description": "Înțelegerea conceptului de recursivitate și aplicarea acestuia prin definirea și utilizarea procedurilor și funcțiilor recursive pentru rezolvarea problemelor."
+      },
+      {
+        "number": 8,
+        "title": "Metoda Backtracking și Generare Combinatorială",
+        "description": "Studiul metodei backtracking (iterativ sau recursiv) și aplicarea ei pentru generarea elementelor combinatoriale: permutări, aranjamente, combinări și submulțimi."
+      },
+      {
+        "number": 9,
+        "title": "Teoria Grafurilor",
+        "description": "Introducere în grafuri neorientate și orientate: terminologie (nod, muchie, arc, grad, drum, ciclu), proprietăți (conexitate, tare conexitate) și metode de reprezentare (matrice de adiacență, liste de adiacență)."
+      },
+      {
+        "number": 10,
+        "title": "Arbori",
+        "description": "Studiul arborilor ca structuri de date particulare: terminologie (rădăcină, părinte, fiu, frunză) și metode de reprezentare în memorie (vector de tați, liste de descendenți, matrice de adiacență)."
+      }
+    ]
+  }
+]

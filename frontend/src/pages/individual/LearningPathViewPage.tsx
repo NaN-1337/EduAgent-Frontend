@@ -9,170 +9,37 @@ import { ArrowLeft, CheckCircle2, Lock, Unlock, PlayCircle, Loader2 } from "luci
 import { LearningPath, Chapter, ChapterStatus } from "@/types/learningPath";
 import { cn } from "@/lib/utils";
 import { translations } from "@/lib/translations";
+import { ExamData, examDataToLearningPath, findExamDataFromPath } from "@/utils/learningPathMapper";
+import examDataJSON from "../../../learning_paths.json";
+import { getTranslatedChapter } from "@/utils/chapterTranslations";
 
-// Mock data - will be replaced with backend API calls
-const mockLearningPaths: LearningPath[] = [
-  {
-    id: "1",
-    title: "Evaluare Națională",
-    subject: "Matematică",
-    subjectStorage: "matematica",
-    goal: "Evaluare Națională",
-    chapters: [
-      {
-        id: "1-1",
-        title: "Algebră - Ecuații",
-        description: "Învață să rezolvi ecuații de gradul I și II",
-        status: "completed",
-        order: 1,
-        lessonId: "lesson-1",
-      },
-      {
-        id: "1-2",
-        title: "Geometrie - Triunghiuri",
-        description: "Proprietăți și teoreme despre triunghiuri",
-        status: "in_progress",
-        order: 2,
-        lessonId: "lesson-2",
-      },
-      {
-        id: "1-3",
-        title: "Funcții",
-        description: "Funcții liniare și pătratice",
-        status: "unlocked",
-        order: 3,
-        lessonId: "lesson-3",
-      },
-      {
-        id: "1-4",
-        title: "Probabilități",
-        description: "Noțiuni de bază despre probabilități",
-        status: "locked",
-        order: 4,
-        lessonId: "lesson-4",
-      },
-    ],
-    createdAt: new Date("2024-01-15"),
-    updatedAt: new Date("2024-01-20"),
-    userId: "user1",
-    progress: {
-      completed: 1,
-      total: 4,
-    },
-  },
-  {
-    id: "2",
-    title: "Bacalaureat",
-    subject: "Istorie",
-    subjectStorage: "istorie",
-    goal: "Bacalaureat",
-    chapters: [
-      {
-        id: "2-1",
-        title: "Antichitate",
-        description: "Istoria Greciei și Romei antice",
-        status: "completed",
-        order: 1,
-        lessonId: "lesson-2-1",
-      },
-      {
-        id: "2-2",
-        title: "Evul Mediu",
-        description: "Perioada medievală în Europa",
-        status: "completed",
-        order: 2,
-        lessonId: "lesson-2-2",
-      },
-      {
-        id: "2-3",
-        title: "Renașterea",
-        description: "Renașterea și Reforma",
-        status: "unlocked",
-        order: 3,
-        lessonId: "lesson-2-3",
-      },
-      {
-        id: "2-4",
-        title: "Revoluții și modernitate",
-        description: "Revoluțiile din secolul XVIII-XIX",
-        status: "locked",
-        order: 4,
-        lessonId: "lesson-2-4",
-      },
-      {
-        id: "2-5",
-        title: "Secolul XX",
-        description: "Primul și al Doilea Război Mondial",
-        status: "locked",
-        order: 5,
-        lessonId: "lesson-2-5",
-      },
-    ],
-    createdAt: new Date("2024-01-10"),
-    updatedAt: new Date("2024-01-18"),
-    userId: "user1",
-    progress: {
-      completed: 2,
-      total: 5,
-    },
-  },
-  {
-    id: "3",
-    title: "Bacalaureat",
-    subject: "Biologie",
-    subjectStorage: "biologie",
-    goal: "Bacalaureat",
-    chapters: [
-      {
-        id: "3-1",
-        title: "Celula - Structură și funcții",
-        description: "Structura celulei, organitele și funcțiile lor",
-        status: "completed",
-        order: 1,
-        lessonId: "lesson-3-1",
-      },
-      {
-        id: "3-2",
-        title: "Sistemul de reproducere",
-        description: "Reproducerea la plante și animale",
-        status: "in_progress",
-        order: 2,
-        lessonId: "lesson-3-2",
-      },
-      {
-        id: "3-3",
-        title: "Genetica mendeliană",
-        description: "Legile lui Mendel și moștenirea trăsăturilor",
-        status: "unlocked",
-        order: 3,
-        lessonId: "lesson-3-3",
-      },
-      {
-        id: "3-4",
-        title: "Evoluție și biodiversitate",
-        description: "Teoriile evoluției și diversitatea speciilor",
-        status: "locked",
-        order: 4,
-        lessonId: "lesson-3-4",
-      },
-      {
-        id: "3-5",
-        title: "Ecologie și mediu",
-        description: "Ecosisteme, poluare și protecția mediului",
-        status: "locked",
-        order: 5,
-        lessonId: "lesson-3-5",
-      },
-    ],
-    createdAt: new Date("2024-01-12"),
-    updatedAt: new Date("2024-01-19"),
-    userId: "user1",
-    progress: {
-      completed: 1,
-      total: 5,
-    },
-  },
-];
+// Load learning paths from localStorage
+function loadLearningPathsFromStorage(userId: string, examDataList: ExamData[]): LearningPath[] {
+  const storageKey = `learning_paths_${userId}`;
+  const stored = localStorage.getItem(storageKey);
+  
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      // Convert date strings back to Date objects
+      return parsed.map((path: any) => ({
+        ...path,
+        createdAt: new Date(path.createdAt),
+        updatedAt: new Date(path.updatedAt),
+      }));
+    } catch (e) {
+      console.error("Error parsing stored learning paths:", e);
+    }
+  }
+  
+  return [];
+}
+
+// Save learning paths to localStorage
+function saveLearningPathsToStorage(userId: string, paths: LearningPath[]) {
+  const storageKey = `learning_paths_${userId}`;
+  localStorage.setItem(storageKey, JSON.stringify(paths));
+}
 
 export default function LearningPathViewPage() {
   const { id } = useParams<{ id: string }>();
@@ -182,6 +49,9 @@ export default function LearningPathViewPage() {
   const [learningPath, setLearningPath] = useState<LearningPath | null>(null);
   const [loading, setLoading] = useState(true);
   const [completingChapterId, setCompletingChapterId] = useState<string | null>(null);
+  
+  // Get translations
+  const tLearningPaths = translations[language].individual.learningPaths;
 
   // Determine base path based on role
   const basePath = userData?.role === "student" ? "/student/learning-paths" : "/individual/learning-paths";
@@ -194,89 +64,123 @@ export default function LearningPathViewPage() {
 
   useEffect(() => {
     const loadLearningPath = async () => {
-      if (!id) {
+      if (!id || !user) {
         setLoading(false);
         return;
       }
 
       setLoading(true);
-      // TODO: Replace with actual API call
-      // const response = await fetch(`/api/learning-paths/${id}?role=${userData?.role}&userId=${user?.uid}`);
-      // const data = await response.json();
-      // setLearningPath(data);
       
-      // Mock data loading - find the learning path by ID
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      
-      // Get all mock learning paths (including newly created ones from sessionStorage)
-      let allPaths = [...mockLearningPaths];
-      
-      // Check for newly created learning path in sessionStorage
-      const newPathData = sessionStorage.getItem('newLearningPath');
-      if (newPathData) {
-        try {
-          const newPath = JSON.parse(newPathData);
-          // Parse dates if they are strings
-          if (typeof newPath.createdAt === 'string') {
-            newPath.createdAt = new Date(newPath.createdAt);
+      try {
+        // Load exam data from JSON
+        const examDataList = examDataJSON as ExamData[];
+        
+        // Load all learning paths from localStorage
+        let allPaths = loadLearningPathsFromStorage(user.uid, examDataList);
+        
+        // Check for newly created learning path in sessionStorage
+        const newPathData = sessionStorage.getItem('newLearningPath');
+        if (newPathData) {
+          try {
+            const newPath = JSON.parse(newPathData);
+            // Parse dates if they are strings
+            if (typeof newPath.createdAt === 'string') {
+              newPath.createdAt = new Date(newPath.createdAt);
+            }
+            if (typeof newPath.updatedAt === 'string') {
+              newPath.updatedAt = new Date(newPath.updatedAt);
+            }
+            // Add lessonId to chapters if missing
+            newPath.chapters = newPath.chapters.map((ch: any, idx: number) => ({
+              ...ch,
+              lessonId: ch.lessonId || `lesson-${newPath.id}-${idx + 1}`,
+            }));
+            
+            // Check if path already exists
+            const existingIndex = allPaths.findIndex((p) => p.id === newPath.id);
+            if (existingIndex >= 0) {
+              allPaths[existingIndex] = newPath;
+            } else {
+              allPaths = [...allPaths, newPath];
+            }
+            
+            // Save updated paths
+            saveLearningPathsToStorage(user.uid, allPaths);
+            sessionStorage.removeItem('newLearningPath');
+          } catch (e) {
+            console.error("Error parsing new learning path:", e);
           }
-          if (typeof newPath.updatedAt === 'string') {
-            newPath.updatedAt = new Date(newPath.updatedAt);
-          }
-          // Add lessonId to chapters if missing
-          newPath.chapters = newPath.chapters.map((ch: any, idx: number) => ({
-            ...ch,
-            lessonId: ch.lessonId || `lesson-${newPath.id}-${idx + 1}`,
-          }));
-          allPaths = [...mockLearningPaths, newPath];
-        } catch (e) {
-          console.error("Error parsing new learning path:", e);
         }
-      }
-      
-      // Find the learning path by ID
-      const foundPath = allPaths.find((path) => path.id === id);
-      
-      if (foundPath) {
-        setLearningPath(foundPath);
-      } else {
+        
+        // Find the learning path by ID
+        let foundPath = allPaths.find((path) => path.id === id);
+        
+        if (foundPath) {
+          // Apply translations to the path (title, subject, and chapters)
+          // Find examData by matching title and subject
+          const examData = findExamDataFromPath(foundPath, examDataList);
+          
+          if (examData) {
+            // Re-translate the path with current language
+            const translatedPath = examDataToLearningPath(examData, foundPath.userId, [], tLearningPaths, language);
+            
+            // Preserve progress and chapter statuses, but update titles/descriptions
+            foundPath = {
+              ...translatedPath,
+              id: foundPath.id,
+              chapters: foundPath.chapters.map((ch, idx) => {
+                const newCh = translatedPath.chapters[idx];
+                if (newCh) {
+                  // Keep status from existing chapter, but update title and description from translation
+                  return { ...newCh, status: ch.status };
+                }
+                return ch;
+              }),
+              progress: foundPath.progress,
+              createdAt: foundPath.createdAt,
+              updatedAt: foundPath.updatedAt,
+            };
+          }
+          
+          setLearningPath(foundPath);
+        } else {
+          setLearningPath(null);
+        }
+      } catch (error) {
+        console.error("Error loading learning path:", error);
         setLearningPath(null);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
-    if (userData?.role === "individual" || userData?.role === "student") {
+    if ((userData?.role === "individual" || userData?.role === "student") && user) {
       loadLearningPath();
     }
-  }, [id, userData]);
+  }, [id, userData, user, language]);
 
   const handleCompleteChapter = async (chapterId: string) => {
-    if (!learningPath) return;
+    if (!learningPath || !user) return;
 
     setCompletingChapterId(chapterId);
     
     try {
-      // TODO: Replace with actual API call
-      // await fetch(`/api/learning-paths/${id}/chapters/${chapterId}/complete`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     role: userData?.role,
-      //     userId: user?.uid,
-      //   }),
-      // });
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Find the chapter being completed
+      const completedChapter = learningPath.chapters.find((c) => c.id === chapterId);
+      if (!completedChapter) return;
 
       // Update local state
       const updatedChapters = learningPath.chapters.map((chapter) => {
+        // Mark this chapter as completed
         if (chapter.id === chapterId) {
           return { ...chapter, status: "completed" as ChapterStatus };
         }
         // Unlock next chapter if this one is completed
-        if (chapter.order === learningPath.chapters.find((c) => c.id === chapterId)!.order + 1) {
+        // Find the chapter with order = completedChapter.order + 1
+        if (chapter.order === completedChapter.order + 1) {
           if (chapter.status === "locked") {
             return { ...chapter, status: "unlocked" as ChapterStatus };
           }
@@ -286,14 +190,26 @@ export default function LearningPathViewPage() {
 
       const completedCount = updatedChapters.filter((c) => c.status === "completed").length;
 
-      setLearningPath({
+      const updatedPath: LearningPath = {
         ...learningPath,
         chapters: updatedChapters,
+        updatedAt: new Date(),
         progress: {
           completed: completedCount,
           total: updatedChapters.length,
         },
-      });
+      };
+
+      setLearningPath(updatedPath);
+      
+      // Save to localStorage
+      const examDataList = examDataJSON as ExamData[];
+      const allPaths = loadLearningPathsFromStorage(user.uid, examDataList);
+      const pathIndex = allPaths.findIndex((p) => p.id === learningPath.id);
+      if (pathIndex >= 0) {
+        allPaths[pathIndex] = updatedPath;
+        saveLearningPathsToStorage(user.uid, allPaths);
+      }
     } catch (error) {
       console.error("Error completing chapter:", error);
     } finally {
@@ -307,6 +223,45 @@ export default function LearningPathViewPage() {
     if (chapter.lessonId) {
       // Navigate to lesson page
       navigate(`/lesson/${chapter.lessonId}`);
+    }
+  };
+
+  const handleStartChapter = async (chapterId: string) => {
+    if (!learningPath || !user) return;
+
+    try {
+      // Update chapter status to "in_progress"
+      const updatedChapters = learningPath.chapters.map((chapter) => {
+        if (chapter.id === chapterId && chapter.status === "unlocked") {
+          return { ...chapter, status: "in_progress" as ChapterStatus };
+        }
+        return chapter;
+      });
+
+      const updatedPath: LearningPath = {
+        ...learningPath,
+        chapters: updatedChapters,
+        updatedAt: new Date(),
+      };
+
+      setLearningPath(updatedPath);
+      
+      // Save to localStorage
+      const examDataList = examDataJSON as ExamData[];
+      const allPaths = loadLearningPathsFromStorage(user.uid, examDataList);
+      const pathIndex = allPaths.findIndex((p) => p.id === learningPath.id);
+      if (pathIndex >= 0) {
+        allPaths[pathIndex] = updatedPath;
+        saveLearningPathsToStorage(user.uid, allPaths);
+      }
+
+      // Navigate to lesson if lessonId exists
+      const chapter = learningPath.chapters.find((c) => c.id === chapterId);
+      if (chapter?.lessonId) {
+        navigate(`/lesson/${chapter.lessonId}`);
+      }
+    } catch (error) {
+      console.error("Error starting chapter:", error);
     }
   };
 
@@ -447,7 +402,7 @@ export default function LearningPathViewPage() {
                         variant="outline"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleChapterClick(chapter);
+                          handleStartChapter(chapter.id);
                         }}
                       >
                         {t.individual.learningPaths.startLesson}
@@ -462,7 +417,7 @@ export default function LearningPathViewPage() {
                           handleChapterClick(chapter);
                         }}
                       >
-                        {t.individual.learningPaths.continueLesson}
+                        {t.individual.learningPaths.accessAgain}
                       </Button>
                     )}
                   </div>
