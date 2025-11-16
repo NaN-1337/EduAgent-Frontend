@@ -1,13 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
-import { ProgressIndicator } from "@/components/lesson-wizard/ProgressIndicator";
 import { Step1DefineLesson } from "@/components/lesson-wizard/Step1DefineLesson";
 import { Step2Questions } from "@/components/lesson-wizard/Step2Questions";
 import { Step3Generation } from "@/components/lesson-wizard/Step3Generation";
 import { Step5Review } from "@/components/lesson-wizard/Step5Review";
-import { Question } from "@/lib/api";
+import { LoadingScreen, LoadingStep } from "@/components/lesson-wizard/LoadingScreen";
+import { Question, generateQuestions } from "@/lib/api";
 import { ChevronLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -30,21 +30,25 @@ interface Step2QuestionsData {
   customAnswers: Record<string, string>;
 }
 
+type WorkflowStage = 
+  | "define" 
+  | "questions" 
+  | "generation" 
+  | "review";
+
 export default function NewLessonPage() {
   const navigate = useNavigate();
   const { user, userData, loading } = useAuth();
   const { t } = useLanguage();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [generationComplete, setGenerationComplete] = useState(false);
+  const [currentStage, setCurrentStage] = useState<WorkflowStage>("define");
   const [lessonId, setLessonId] = useState<string | null>(null);
-  const [isCreatingLesson, setIsCreatingLesson] = useState(false);
-
-  const steps = [
-    { number: 1, label: t.teacher.newLesson.steps.defineLesson },
-    { number: 2, label: t.teacher.newLesson.steps.questions || "Questions" },
-    { number: 3, label: t.teacher.newLesson.steps.generation },
-    { number: 4, label: t.teacher.newLesson.steps.reviewFinish },
-  ];
+  const [questionsError, setQuestionsError] = useState<string | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  
+  // Workflow progress tracking
+  const [workflowSteps, setWorkflowSteps] = useState<LoadingStep[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [questionsLoadingSteps, setQuestionsLoadingSteps] = useState<LoadingStep[]>([]);
 
   const [step1Data, setStep1Data] = useState<Step1Data>({
     title: "",
@@ -66,6 +70,46 @@ export default function NewLessonPage() {
     }
   }, [user, userData, loading, navigate]);
 
+  // Initialize workflow steps - first step starts as in-progress
+  useEffect(() => {
+    setWorkflowSteps([
+      {
+        id: "define",
+        label: t.teacher.newLesson.steps.defineLesson,
+        icon: "filetext",
+        status: "in-progress", // Start with first step in progress
+      },
+      {
+        id: "questions",
+        label: t.teacher.newLesson.steps.questions || "Questions",
+        icon: "lightbulb",
+        status: "pending",
+      },
+      {
+        id: "generation",
+        label: t.teacher.newLesson.steps.generation,
+        icon: "sparkles",
+        status: "pending",
+      },
+      {
+        id: "review",
+        label: t.teacher.newLesson.steps.reviewFinish,
+        icon: "loader",
+        status: "pending",
+      },
+    ]);
+  }, [t]);
+
+  // Smooth scroll to content when stage changes
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollIntoView({ 
+        behavior: "smooth", 
+        block: "start" 
+      });
+    }
+  }, [currentStage]);
+
   const handleStep1Change = (data: Partial<Step1Data>) => {
     setStep1Data((prev) => ({ ...prev, ...data }));
   };
@@ -74,36 +118,137 @@ export default function NewLessonPage() {
     setStep2Data((prev) => ({ ...prev, ...data }));
   };
 
-  const handleNext = () => {
-    if (currentStep < 4) {
-      if (currentStep === 2) {
-        // After step 2, move to generation
-        setCurrentStep(3);
-        setGenerationComplete(false);
-      } else if (currentStep === 3) {
-        // Step 3 auto-advances when complete, but allow manual continue
-        if (generationComplete) {
-          setCurrentStep(4);
+  const updateWorkflowStep = (stepId: string, status: LoadingStep["status"]) => {
+    setWorkflowSteps((prev) =>
+      prev.map((step) =>
+        step.id === stepId ? { ...step, status } : step
+      )
+    );
+  };
+
+  const handleNext = async () => {
+    if (currentStage === "define" && isStep1Valid) {
+      // Mark define as complete
+      updateWorkflowStep("define", "completed");
+      
+      // Start questions stage
+      setIsProcessing(true);
+      updateWorkflowStep("questions", "in-progress");
+      setCurrentStage("questions");
+      
+      // Initialize loading steps - first step is in progress
+      setQuestionsLoadingSteps([
+        { 
+          id: "analyze", 
+          label: t.teacher.newLesson.loadingQuestions?.steps?.analyze || "Analyzing lesson parameters", 
+          icon: "brain",
+          status: "in-progress",
+        },
+        { 
+          id: "context", 
+          label: t.teacher.newLesson.loadingQuestions?.steps?.context || "Understanding educational context", 
+          icon: "sparkles",
+          status: "pending",
+        },
+        { 
+          id: "questions", 
+          label: t.teacher.newLesson.loadingQuestions?.steps?.questions || "Generating clarifying questions", 
+          icon: "lightbulb",
+          status: "pending",
+        },
+      ]);
+      
+      // Load questions (first step waits for this)
+      try {
+        setQuestionsError(null);
+        const gradeNum = gradeToStorage(step1Data.grade);
+        const subjectStorage = teachingFieldToStorage(step1Data.subject);
+        
+        if (gradeNum === null || !subjectStorage) {
+          throw new Error("Invalid grade or subject");
         }
-      } else {
-        setCurrentStep((prev) => prev + 1);
+
+        const questions = await generateQuestions({
+          title: step1Data.title,
+          subject: subjectStorage,
+          grade: gradeNum,
+        });
+
+        setStep2Data((prev) => ({ ...prev, questions }));
+        
+        // API call complete - quickly progress through remaining steps
+        // Step 1 complete
+        setQuestionsLoadingSteps((prev) => 
+          prev.map((step, idx) => 
+            idx === 0 ? { ...step, status: "completed" as const } : step
+          )
+        );
+        
+        // Small delay then step 2 in progress
+        await new Promise(resolve => setTimeout(resolve, 400));
+        setQuestionsLoadingSteps((prev) => 
+          prev.map((step, idx) => 
+            idx === 1 ? { ...step, status: "in-progress" as const } : step
+          )
+        );
+        
+        // Small delay then step 2 complete, step 3 in progress
+        await new Promise(resolve => setTimeout(resolve, 600));
+        setQuestionsLoadingSteps((prev) => 
+          prev.map((step, idx) => 
+            idx === 1 ? { ...step, status: "completed" as const } :
+            idx === 2 ? { ...step, status: "in-progress" as const } : step
+          )
+        );
+        
+        // Small delay then step 3 complete
+        await new Promise(resolve => setTimeout(resolve, 600));
+        setQuestionsLoadingSteps((prev) => 
+          prev.map((step, idx) => 
+            idx === 2 ? { ...step, status: "completed" as const } : step
+          )
+        );
+        
+        // Brief delay before showing questions
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Keep questions stage as "in-progress" - it completes when user submits answers
+        setIsProcessing(false);
+      } catch (err: any) {
+        console.error("Error loading questions:", err);
+        setQuestionsError(err.message || "Failed to load questions");
+        updateWorkflowStep("questions", "failed");
+        setQuestionsLoadingSteps((prev) => 
+          prev.map((step) => 
+            step.status === "in-progress" ? { ...step, status: "failed" as const } : step
+          )
+        );
+        setIsProcessing(false);
       }
+    } else if (currentStage === "questions" && isStep2Valid && !isProcessing) {
+      // User has answered all questions - NOW mark questions as complete and move to generation
+      updateWorkflowStep("questions", "completed");
+      updateWorkflowStep("generation", "in-progress");
+      setCurrentStage("generation");
     }
   };
 
   const handleBack = () => {
-    if (currentStep > 1 && currentStep !== 3) {
-      setCurrentStep((prev) => prev - 1);
+    if (currentStage === "questions" && !isProcessing) {
+      setCurrentStage("define");
+      updateWorkflowStep("questions", "pending");
+      setStep2Data({ questions: [], answers: {}, customAnswers: {} });
     }
   };
 
   const handleGenerationComplete = (finalLessonId: string) => {
     setLessonId(finalLessonId);
-    setGenerationComplete(true);
+    updateWorkflowStep("generation", "completed");
+    updateWorkflowStep("review", "in-progress");
     
     // Auto-advance to review after a brief delay
     setTimeout(() => {
-      setCurrentStep(4);
+      setCurrentStage("review");
     }, 1000);
   };
 
@@ -117,10 +262,8 @@ export default function NewLessonPage() {
     step2Data.questions.every((q) => step2Data.answers[q.id.toString()]);
 
   const canProceed =
-    (currentStep === 1 && isStep1Valid) ||
-    (currentStep === 2 && isStep2Valid) ||
-    (currentStep === 3 && generationComplete) ||
-    currentStep === 4;
+    (currentStage === "define" && isStep1Valid) ||
+    (currentStage === "questions" && isStep2Valid && !isProcessing);
 
   if (loading) {
     return (
@@ -136,24 +279,55 @@ export default function NewLessonPage() {
       
       <main className="pt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
-          {/* Progress indicator */}
-          <ProgressIndicator currentStep={currentStep} steps={steps} />
-
-          {/* Step content */}
-          <div className="mb-8">
-            {currentStep === 1 && (
-              <Step1DefineLesson data={step1Data} onChange={handleStep1Change} />
-            )}
-            {currentStep === 2 && (
-              <Step2Questions
-                title={step1Data.title}
-                subject={step1Data.subject}
-                grade={step1Data.grade}
-                data={step2Data}
-                onChange={handleStep2Change}
+          {/* Persistent workflow progress tracker */}
+          {currentStage !== "review" && workflowSteps.length > 0 && (
+            <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+              <LoadingScreen
+                steps={workflowSteps}
+                showProgress={true}
+                compact={true}
               />
+            </div>
+          )}
+
+          {/* Step content with smooth transitions */}
+          <div 
+            ref={contentRef}
+            className="mb-8 animate-in fade-in slide-in-from-bottom-8 duration-700"
+            key={currentStage}
+          >
+            {currentStage === "define" && (
+              <>
+                <Step1DefineLesson data={step1Data} onChange={handleStep1Change} />
+                {questionsError && (
+                  <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
+                    <p className="text-sm text-destructive">{questionsError}</p>
+                  </div>
+                )}
+              </>
             )}
-            {currentStep === 3 && (
+            
+            {currentStage === "questions" && (
+              <>
+                {isProcessing ? (
+                  <div className="max-w-2xl mx-auto">
+                    <LoadingScreen
+                      title={t.teacher.newLesson.loadingQuestions?.title || "Analyzing Your Lesson"}
+                      subtitle={t.teacher.newLesson.loadingQuestions?.subtitle || "Our AI is preparing clarifying questions"}
+                      steps={questionsLoadingSteps}
+                      waitForCompletion={true}
+                    />
+                  </div>
+                ) : (
+                  <Step2Questions
+                    data={step2Data}
+                    onChange={handleStep2Change}
+                  />
+                )}
+              </>
+            )}
+            
+            {currentStage === "generation" && (
               <Step3Generation
                 title={step1Data.title}
                 subject={step1Data.subject}
@@ -163,22 +337,25 @@ export default function NewLessonPage() {
                 questions={step2Data.questions}
                 answers={step2Data.answers}
                 onComplete={handleGenerationComplete}
-                onContinue={() => setCurrentStep(4)}
-                canContinue={generationComplete}
+                onContinue={() => {
+                  setCurrentStage("review");
+                }}
+                canContinue={false}
               />
             )}
-            {currentStep === 4 && (
+            
+            {currentStage === "review" && (
               <Step5Review lessonId={lessonId || ""} onComplete={handleLessonComplete} />
             )}
           </div>
 
-          {/* Bottom navigation bar (steps 1-2 only, steps 3-4 have their own controls) */}
-          {currentStep < 3 && (
-            <div className="flex items-center justify-between pt-6 border-t">
+          {/* Bottom navigation bar (only for define and questions stages) */}
+          {(currentStage === "define" || (currentStage === "questions" && !isProcessing)) && (
+            <div className="flex items-center justify-between pt-6 border-t animate-in fade-in slide-in-from-bottom-4 duration-500">
               <Button
                 variant="outline"
                 onClick={handleBack}
-                disabled={currentStep === 1}
+                disabled={currentStage === "define"}
                 className="flex items-center gap-2"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -190,7 +367,10 @@ export default function NewLessonPage() {
                 disabled={!canProceed}
                 className="ml-auto"
               >
-                {t.teacher.newLesson.next}
+                {currentStage === "define" 
+                  ? (t.teacher.newLesson.generateQuestions || "Generate Questions")
+                  : (t.teacher.newLesson.generateLesson || "Generate Lesson")
+                }
               </Button>
             </div>
           )}

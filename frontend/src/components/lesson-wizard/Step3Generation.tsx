@@ -52,18 +52,23 @@ export function Step3Generation({
   const initialSteps = useMemo<GenerationStep[]>(
     () => [
       {
+        id: "analyzing",
+        label: t.teacher.newLesson.step3.steps?.analyzing || "Thinking about student needs",
+        status: "pending",
+      },
+      {
         id: "lecture",
-        label: t.teacher.newLesson.step3.steps?.lecture || "Generating lecture content",
+        label: t.teacher.newLesson.step3.steps?.lecture || "Crafting lesson content",
         status: "pending",
       },
       {
         id: "presentation",
-        label: t.teacher.newLesson.step3.steps?.presentation || "Creating presentation",
+        label: t.teacher.newLesson.step3.steps?.presentation || "Designing presentation slides",
         status: "pending",
       },
       {
-        id: "saving",
-        label: t.teacher.newLesson.step3.steps?.saving || "Saving lesson",
+        id: "finalizing",
+        label: t.teacher.newLesson.step3.steps?.finalizing || "Finalizing your lesson",
         status: "pending",
       },
     ],
@@ -72,15 +77,18 @@ export function Step3Generation({
 
   const stepDescriptions = useMemo<Record<string, string>>(
     () => ({
+      analyzing:
+        t.teacher.newLesson.step3.descriptions?.analyzing ||
+        "Analyzing educational objectives and student context...",
       lecture:
         t.teacher.newLesson.step3.descriptions?.lecture ||
-        "Generating student and teacher versions...",
+        "Generating engaging content for students and comprehensive teacher guidelines...",
       presentation:
         t.teacher.newLesson.step3.descriptions?.presentation ||
-        "Creating PowerPoint presentation...",
-      saving:
-        t.teacher.newLesson.step3.descriptions?.saving ||
-        "Uploading files and saving to database...",
+        "Creating beautiful slides with your selected template...",
+      finalizing:
+        t.teacher.newLesson.step3.descriptions?.finalizing ||
+        "Uploading files and preparing your lesson for review...",
     }),
     [t]
   );
@@ -115,12 +123,38 @@ export function Step3Generation({
           throw new Error("Invalid grade or subject");
         }
 
-        // Step 1: Generate lecture
+        // Step 0: Analyzing (visual only, shows briefly)
         setCurrentStepIndex(0);
         setSteps((prev) => {
           const newSteps = [...prev];
           newSteps[0] = {
             ...newSteps[0],
+            status: "in-progress",
+            description: stepDescriptions.analyzing,
+          };
+          return newSteps;
+        });
+
+        // Small delay for visual effect
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        // Mark analyzing as completed
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          newSteps[0] = {
+            ...newSteps[0],
+            status: "completed",
+            description: undefined,
+          };
+          return newSteps;
+        });
+
+        // Step 1: Generate lecture
+        setCurrentStepIndex(1);
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          newSteps[1] = {
+            ...newSteps[1],
             status: "in-progress",
             description: stepDescriptions.lecture,
           };
@@ -138,8 +172,8 @@ export function Step3Generation({
         // Mark lecture step as completed
         setSteps((prev) => {
           const newSteps = [...prev];
-          newSteps[0] = {
-            ...newSteps[0],
+          newSteps[1] = {
+            ...newSteps[1],
             status: "completed",
             description: undefined,
           };
@@ -147,11 +181,11 @@ export function Step3Generation({
         });
 
         // Step 2: Generate presentation
-        setCurrentStepIndex(1);
+        setCurrentStepIndex(2);
         setSteps((prev) => {
           const newSteps = [...prev];
-          newSteps[1] = {
-            ...newSteps[1],
+          newSteps[2] = {
+            ...newSteps[2],
             status: "in-progress",
             description: stepDescriptions.presentation,
           };
@@ -174,8 +208,8 @@ export function Step3Generation({
         // Mark presentation step as completed
         setSteps((prev) => {
           const newSteps = [...prev];
-          newSteps[1] = {
-            ...newSteps[1],
+          newSteps[2] = {
+            ...newSteps[2],
             status: "completed",
             description: undefined,
           };
@@ -183,13 +217,13 @@ export function Step3Generation({
         });
 
         // Step 3: Download PDF and upload to Firebase Storage
-        setCurrentStepIndex(2);
+        setCurrentStepIndex(3);
         setSteps((prev) => {
           const newSteps = [...prev];
-          newSteps[2] = {
-            ...newSteps[2],
+          newSteps[3] = {
+            ...newSteps[3],
             status: "in-progress",
-            description: stepDescriptions.saving,
+            description: stepDescriptions.finalizing,
           };
           return newSteps;
         });
@@ -237,11 +271,11 @@ export function Step3Generation({
           updatedAt: serverTimestamp(),
         });
 
-        // Mark saving step as completed
+        // Mark finalizing step as completed
         setSteps((prev) => {
           const newSteps = [...prev];
-          newSteps[2] = {
-            ...newSteps[2],
+          newSteps[3] = {
+            ...newSteps[3],
             status: "completed",
             description: undefined,
           };

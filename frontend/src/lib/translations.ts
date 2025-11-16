@@ -27,6 +27,7 @@ export interface Translations {
     noResults: string;
     welcome: string;
     welcomeBack: (name: string) => string;
+    retry: string;
     messages: {
       loading: string;
       error: string;
@@ -193,9 +194,29 @@ export interface Translations {
         generation: string;
         factCheck: string;
         reviewFinish: string;
+        questions: string;
       };
       back: string;
       next: string;
+      generateQuestions: string;
+      generateLesson: string;
+      loadingQuestions?: {
+        title: string;
+        subtitle: string;
+        steps: {
+          analyze: string;
+          context: string;
+          questions: string;
+        };
+      };
+      loadingGeneration?: {
+        title: string;
+        subtitle: string;
+        steps: {
+          prepare: string;
+          process: string;
+        };
+      };
       step1: {
         titleLabel: string;
         titlePlaceholder: string;
@@ -228,11 +249,29 @@ export interface Translations {
         aboutDescription: string;
         promptTipsTitle: string;
         promptTipsDescription: string;
+        questionsTitle?: string;
+        questionsDescription?: string;
+        loadingQuestions?: string;
+        customAnswerPlaceholder?: string;
+        allQuestionsAnswered?: string;
       };
       step3: {
         title: string;
         description: string;
         continueButton: string;
+        completedMessage?: string;
+        steps?: {
+          analyzing: string;
+          lecture: string;
+          presentation: string;
+          finalizing: string;
+        };
+        descriptions?: {
+          analyzing: string;
+          lecture: string;
+          presentation: string;
+          finalizing: string;
+        };
       };
       step4: {
         title: string;
@@ -495,6 +534,7 @@ const ro: Translations = {
     noResults: "Nu s-au găsit rezultate",
     welcome: "Bun venit",
     welcomeBack: (name: string) => `Bine ai revenit, ${name}!`,
+    retry: "Încearcă din nou",
     messages: {
       loading: "Se încarcă...",
       error: "A apărut o eroare",
@@ -688,9 +728,29 @@ const ro: Translations = {
         generation: "Generare",
         factCheck: "Verificare fapte",
         reviewFinish: "Revizuire și finalizare",
+        questions: "Întrebări clarificatoare",
       },
       back: "Înapoi",
       next: "Următorul",
+      generateQuestions: "Generează întrebări",
+      generateLesson: "Generează lecția",
+      loadingQuestions: {
+        title: "Analizăm lecția ta",
+        subtitle: "AI-ul nostru pregătește întrebări clarificatoare",
+        steps: {
+          analyze: "Analizăm parametrii lecției",
+          context: "Înțelegem contextul educațional",
+          questions: "Generăm întrebări clarificatoare",
+        },
+      },
+      loadingGeneration: {
+        title: "Pregătim generarea de conținut",
+        subtitle: "Ne pregătim să creăm lecția ta",
+        steps: {
+          prepare: "Pregătim modelele AI",
+          process: "Procesăm răspunsurile tale",
+        },
+      },
       step1: {
         titleLabel: "Titlul lecției",
         titlePlaceholder: "ex: Fotosinteză – Clasa a 5-a",
@@ -723,26 +783,28 @@ const ro: Translations = {
         aboutDescription: "EduAgent folosește aceste surse pentru a genera și verifica conținutul. Cu cât mai multe surse relevante furnizezi, cu atât lecția ta va fi mai precisă și aliniată.",
         promptTipsTitle: "Sfaturi pentru un prompt bun",
         promptTipsDescription: "Un prompt bun este clar și specific. Include detalii despre subiect, nivelul clasei, și ce vrei să acoperi lecția. Acest conținut va fi modificat ulterior.",
+        questionsTitle: "Întrebări clarificatoare",
+        questionsDescription: "Te rugăm să răspunzi la aceste întrebări pentru a ne ajuta să generăm cel mai bun conținut de lecție pentru elevii tăi.",
+        loadingQuestions: "Generăm întrebările...",
+        customAnswerPlaceholder: "Introdu răspunsul tău...",
+        allQuestionsAnswered: "Toate întrebările au fost răspunse! Poți continua la pasul următor.",
       },
       step3: {
-        title: "Generează lecția ta…",
+        title: "Generăm lecția ta…",
         description: "Acest proces poate dura câteva momente. Te rugăm să nu închizi această pagină.",
-        continueButton: "Continuă la rezumatul verificării faptelor",
+        continueButton: "Continuă la revizuire",
+        completedMessage: "Generare finalizată! Poți revizui și ajusta tot conținutul înainte de a-l distribui elevilor.",
         steps: {
-          understanding: "Înțelegerea cererii",
-          researching: "Căutarea subiectului",
-          drafting: "Redactarea rezumatului pentru elevi",
-          slides: "Crearea structurii slide-urilor",
-          guidelines: "Scrierea ghidurilor pentru profesor",
-          factcheck: "Rularea verificărilor de fapte",
+          analyzing: "Ne gândim la nevoile elevilor",
+          lecture: "Creăm conținutul lecției",
+          presentation: "Proiectăm slide-urile prezentării",
+          finalizing: "Finalizăm lecția ta",
         },
         descriptions: {
-          understanding: "Analizarea cerințelor și obiectivelor lecției tale...",
-          researching: "Scanarea PDF-ului încărcat și a surselor de încredere...",
-          drafting: "Crearea unui rezumat clar, potrivit vârstei pentru elevi...",
-          slides: "Organizarea conținutului în slide-uri de prezentare structurate...",
-          guidelines: "Pregătirea notițelor de predare și a sugestiilor de activități...",
-          factcheck: "Verificarea faptelor față de surse de încredere...",
+          analyzing: "Analizăm obiectivele educaționale și contextul elevilor...",
+          lecture: "Generăm conținut captivant pentru elevi și ghiduri complete pentru profesor...",
+          presentation: "Creăm slide-uri frumoase cu șablonul tău selectat...",
+          finalizing: "Încărcăm fișierele și pregătim lecția pentru revizuire...",
         },
       },
       step4: {
@@ -1098,6 +1160,7 @@ const en: Translations = {
     noResults: "No results found",
     welcome: "Welcome",
     welcomeBack: (name: string) => `Welcome back, ${name}!`,
+    retry: "Retry",
     messages: {
       loading: "Loading...",
       error: "An error occurred",
@@ -1291,9 +1354,29 @@ const en: Translations = {
         generation: "Generation",
         factCheck: "Fact-check",
         reviewFinish: "Review & finish",
+        questions: "Clarifying questions",
       },
       back: "Back",
       next: "Next",
+      generateQuestions: "Generate Questions",
+      generateLesson: "Generate Lesson",
+      loadingQuestions: {
+        title: "Analyzing Your Lesson",
+        subtitle: "Our AI is preparing clarifying questions",
+        steps: {
+          analyze: "Analyzing lesson parameters",
+          context: "Understanding educational context",
+          questions: "Generating clarifying questions",
+        },
+      },
+      loadingGeneration: {
+        title: "Preparing Content Generation",
+        subtitle: "Getting ready to create your lesson",
+        steps: {
+          prepare: "Preparing AI models",
+          process: "Processing your answers",
+        },
+      },
       step1: {
         titleLabel: "Lesson title",
         titlePlaceholder: "e.g., Photosynthesis – Grade 5",
@@ -1326,26 +1409,28 @@ const en: Translations = {
         aboutDescription: "EduAgent uses these sources to generate and fact-check content. The more relevant sources you provide, the more accurate and aligned your lesson will be.",
         promptTipsTitle: "Tips for a good prompt",
         promptTipsDescription: "A good prompt is clear and specific. Include details about the subject, grade level, and what you want the lesson to cover. This content will be modified later.",
+        questionsTitle: "Clarifying Questions",
+        questionsDescription: "Please answer these questions to help us generate the best lesson content for your students.",
+        loadingQuestions: "Generating questions...",
+        customAnswerPlaceholder: "Enter your answer...",
+        allQuestionsAnswered: "All questions answered! You can proceed to the next step.",
       },
       step3: {
         title: "Generating your lesson…",
         description: "This may take a few moments. Please don't close this page.",
-        continueButton: "Continue to fact-check summary",
+        continueButton: "Continue to review",
+        completedMessage: "Generation complete! You can review and adjust all content before sharing with students.",
         steps: {
-          understanding: "Understanding request",
-          researching: "Researching topic",
-          drafting: "Drafting student summary",
-          slides: "Creating slides outline",
-          guidelines: "Writing teacher guidelines",
-          factcheck: "Running fact-check checks",
+          analyzing: "Thinking about student needs",
+          lecture: "Crafting lesson content",
+          presentation: "Designing presentation slides",
+          finalizing: "Finalizing your lesson",
         },
         descriptions: {
-          understanding: "Analyzing your lesson requirements and objectives...",
-          researching: "Scanning your uploaded PDF and trusted sources...",
-          drafting: "Creating a clear, age-appropriate summary for students...",
-          slides: "Organizing content into structured presentation slides...",
-          guidelines: "Preparing teaching notes and activity suggestions...",
-          factcheck: "Verifying facts against trusted sources...",
+          analyzing: "Analyzing educational objectives and student context...",
+          lecture: "Generating engaging content for students and comprehensive teacher guidelines...",
+          presentation: "Creating beautiful slides with your selected template...",
+          finalizing: "Uploading files and preparing your lesson for review...",
         },
       },
       step4: {

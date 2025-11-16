@@ -1,14 +1,9 @@
-import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
-import { Loader2, AlertCircle } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { generateQuestions, Question } from "@/lib/api";
-import { teachingFieldToStorage } from "@/lib/dataConverters";
-import { gradeToStorage } from "@/lib/dataConverters";
+import { Question } from "@/lib/api";
 
 interface Step2QuestionsData {
   questions: Question[];
@@ -17,71 +12,15 @@ interface Step2QuestionsData {
 }
 
 interface Step2QuestionsProps {
-  title: string;
-  subject: string;
-  grade: string;
   data: Step2QuestionsData;
   onChange: (data: Partial<Step2QuestionsData>) => void;
-  onQuestionsLoaded?: (questions: Question[]) => void;
 }
 
 export function Step2Questions({
-  title,
-  subject,
-  grade,
   data,
   onChange,
-  onQuestionsLoaded,
 }: Step2QuestionsProps) {
   const { t } = useLanguage();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Load questions when component mounts
-  useEffect(() => {
-    const loadQuestions = async () => {
-      if (data.questions.length > 0) {
-        // Questions already loaded
-        return;
-      }
-
-      if (!title || !subject || !grade) {
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        // Convert grade to number and subject to storage format (lowercase)
-        const gradeNum = gradeToStorage(grade);
-        const subjectStorage = teachingFieldToStorage(subject);
-        
-        if (gradeNum === null || !subjectStorage) {
-          throw new Error("Invalid grade or subject");
-        }
-
-        const questions = await generateQuestions({
-          title,
-          subject: subjectStorage, // Use storage format (e.g., "biologie")
-          grade: gradeNum,
-        });
-
-        onChange({ questions });
-        if (onQuestionsLoaded) {
-          onQuestionsLoaded(questions);
-        }
-      } catch (err: any) {
-        console.error("Error loading questions:", err);
-        setError(err.message || "Failed to load questions");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadQuestions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, subject, grade]); // Only run when these change
 
   const handleAnswerChange = (questionId: number, answer: string) => {
     const newAnswers = { ...data.answers, [questionId.toString()]: answer };
@@ -100,51 +39,6 @@ export function Step2Questions({
   };
 
   const allQuestionsAnswered = data.questions.every((q) => isQuestionAnswered(q.id));
-
-  if (loading) {
-    return (
-      <div className="max-w-4xl mx-auto">
-        <Card className="border-2 shadow-sm">
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="text-center space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-              <p className="text-sm text-muted-foreground">
-                {t.teacher.newLesson.step2.loadingQuestions || "Generating questions..."}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-4xl mx-auto">
-        <Card className="border-2 shadow-sm border-destructive">
-          <CardContent className="py-12">
-            <div className="text-center space-y-4">
-              <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
-              <p className="text-sm text-destructive">{error}</p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setError(null);
-                  onChange({ questions: [] });
-                }}
-              >
-                {t.common.retry || "Retry"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (data.questions.length === 0) {
-    return null;
-  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
