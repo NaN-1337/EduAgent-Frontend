@@ -400,6 +400,12 @@ export interface Translations {
         title: string;
         footer: string;
       };
+      teacherInfo: {
+        title: string;
+        teacherName: string;
+        teachingField: string;
+        grade: string;
+      };
     };
   };
 
@@ -890,6 +896,12 @@ const ro: Translations = {
       keyTerms: {
         title: "Termeni cheie",
         footer: "Această lecție a fost creată cu EduAgent și revizuită de profesorul tău.",
+      },
+      teacherInfo: {
+        title: "Informații profesor",
+        teacherName: "Profesor",
+        teachingField: "Materie",
+        grade: "Clasă",
       },
     },
   },
@@ -1467,6 +1479,12 @@ const en: Translations = {
       keyTerms: {
         title: "Key Terms",
         footer: "This lesson was created with EduAgent and reviewed by your teacher.",
+      },
+      teacherInfo: {
+        title: "Teacher Information",
+        teacherName: "Teacher",
+        teachingField: "Subject",
+        grade: "Grade",
       },
     },
   },

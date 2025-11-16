@@ -1,16 +1,17 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getMockLessonData } from "@/lib/translations";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, X, CheckCircle2, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, CheckCircle2, Loader2, ChevronsRight, ChevronsLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { doc, updateDoc, arrayUnion, serverTimestamp, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
+import { translations } from "@/lib/translations";
+import { convertLessonFromStorage } from "@/lib/dataConverters";
+import { PDFSlideViewer } from "@/components/pdf-viewer/PDFSlideViewer";
 
 export default function StudentLessonPlayer() {
   const { id: lessonId } = useParams<{ id: string }>();
@@ -18,15 +19,14 @@ export default function StudentLessonPlayer() {
   const { user, loading: authLoading } = useAuth();
   const { t, language } = useLanguage();
   
-  // Get mock lesson data based on current language
-  const lesson = useMemo(() => getMockLessonData(language), [language]);
-  
-  // TODO: Fetch lesson data from Firestore using lessonId
-  console.log("Loading lesson:", lessonId);
+  const [lesson, setLesson] = useState<any>(null);
+  const [loadingLesson, setLoadingLesson] = useState(true);
+  const [teacherName, setTeacherName] = useState<string>("Unknown Teacher");
+  const [teacherTeachingField, setTeacherTeachingField] = useState<string>("");
   const [activeTab, setActiveTab] = useState("summary");
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [fontSize, setFontSize] = useState(16); // base font size in pixels
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [quizAnswers, setQuizAnswers] = useState<Record<string, number | null>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
@@ -37,6 +37,126 @@ export default function StudentLessonPlayer() {
       navigate("/login");
     }
   }, [user, authLoading, navigate]);
+
+  // Fetch lesson data from Firestore
+  useEffect(() => {
+    const fetchLesson = async () => {
+      if (!lessonId) {
+        setLoadingLesson(false);
+        return;
+      }
+
+      try {
+        setLoadingLesson(true);
+        const lessonDocRef = doc(db, "lessons", lessonId);
+        const lessonDocSnap = await getDoc(lessonDocRef);
+
+        if (!lessonDocSnap.exists()) {
+          console.error("Lesson not found");
+          navigate("/student/dashboard");
+          return;
+        }
+
+        const data = lessonDocSnap.data();
+        
+        // Fetch teacher name and teaching field
+        if (data.teacherId) {
+          const teacherDocRef = doc(db, "users", data.teacherId);
+          const teacherDocSnap = await getDoc(teacherDocRef);
+          if (teacherDocSnap.exists()) {
+            const teacherData = teacherDocSnap.data();
+            setTeacherName(teacherData.name || "Unknown Teacher");
+            
+            // Get teaching field and convert to display format
+            if (teacherData.teachingField) {
+              const { teachingFieldFromStorage } = await import("@/lib/dataConverters");
+              const englishKey = teachingFieldFromStorage(teacherData.teachingField);
+              if (englishKey) {
+                const fieldDisplay = translations[language].teachingFields[englishKey] || teacherData.teachingField;
+                setTeacherTeachingField(fieldDisplay);
+              } else {
+                setTeacherTeachingField(teacherData.teachingField);
+              }
+            }
+          }
+        }
+        
+        // Parse slides from Firestore
+        let slides: any[] = [];
+        if (data.slides) {
+          if (Array.isArray(data.slides)) {
+            slides = data.slides.map((slide: any) => ({
+              id: slide.id || `slide-${slide.slideIndex || 0}`,
+              title: slide.title || `Slide ${(slide.slideIndex || 0) + 1}`,
+              content: slide.content || "",
+              speakerNote: slide.speakerNote || slide.speaker_note || "",
+              slideIndex: slide.slideIndex !== undefined ? slide.slideIndex : slide.slide_index,
+            }));
+          } else if (typeof data.slides === 'object') {
+            slides = Object.values(data.slides).map((slide: any) => ({
+              id: slide.id || `slide-${slide.slideIndex || 0}`,
+              title: slide.title || `Slide ${(slide.slideIndex || 0) + 1}`,
+              content: slide.content || "",
+              speakerNote: slide.speakerNote || slide.speaker_note || "",
+              slideIndex: slide.slideIndex !== undefined ? slide.slideIndex : slide.slide_index,
+            }));
+          }
+        }
+
+        // Convert from storage format to display format
+        const converted = convertLessonFromStorage(data, {
+          grades: translations[language].grades,
+          teachingFields: translations[language].teachingFields,
+        });
+
+        // Extract learning objectives from HTML if available
+        let learningObjectives: string[] = [];
+        if (data.studentSummary) {
+          // Try to extract h2 headings as objectives (simple approach)
+          const htmlContent = data.studentSummary;
+          const h2Matches = htmlContent.match(/<h2[^>]*>(.*?)<\/h2>/gi);
+          if (h2Matches) {
+            learningObjectives = h2Matches.map(match => 
+              match.replace(/<[^>]*>/g, '').trim()
+            ).slice(0, 5); // Limit to 5 objectives
+          }
+        }
+        
+        // Get translated grade name
+        const gradeDisplay = converted.grade 
+          ? (translations[language].grades[converted.grade as keyof typeof translations.ro.grades] || converted.grade)
+          : t.common.messages.noData;
+        
+        const lessonData = {
+          id: lessonDocSnap.id,
+          title: converted.title || "Untitled Lesson",
+          subject: converted.subject || "Unknown",
+          grade: gradeDisplay,
+          studentSummary: data.studentSummary || "",
+          slides: slides,
+          presentationFileUrl: data.presentationFileUrl,
+          presentationFileType: data.presentationFileType,
+          learningObjectives: learningObjectives.length > 0 ? learningObjectives : [
+            "Understand the main concepts",
+            "Apply knowledge to examples",
+            "Complete the lesson activities"
+          ],
+          quiz: [], // Quiz functionality can be added later
+        };
+
+        setLesson(lessonData);
+      } catch (error) {
+        console.error("Error fetching lesson:", error);
+        navigate("/student/dashboard");
+      } finally {
+        setLoadingLesson(false);
+      }
+    };
+
+    if (lessonId) {
+      fetchLesson();
+    }
+  }, [lessonId, language, navigate]);
 
   // Mark lesson as completed when student views it
   useEffect(() => {
@@ -69,10 +189,23 @@ export default function StudentLessonPlayer() {
     }
   }, [user, lessonId]);
 
-  if (authLoading) {
+  if (authLoading || loadingLesson) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!lesson) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-muted-foreground">Lesson not found</p>
+          <Button onClick={() => navigate("/student/dashboard")}>
+            Back to Dashboard
+          </Button>
+        </div>
       </div>
     );
   }
@@ -214,18 +347,13 @@ export default function StudentLessonPlayer() {
               </h1>
             </div>
 
-            {/* Right: Class/Teacher & Back Link */}
+            {/* Right: Back Link */}
             <div className="flex items-center gap-4">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm text-muted-foreground">
-                  {lesson.teacherName} · {lesson.className}
-                </p>
-              </div>
               {user && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate("/student/dashboard")}
+                  onClick={() => navigate("/student/lessons")}
                   className="text-sm"
                 >
                   <ChevronLeft className="h-4 w-4 mr-1" />
@@ -315,10 +443,55 @@ export default function StudentLessonPlayer() {
 
                   {/* Main Content */}
                   <div
-                    className="max-w-none"
+                    className="max-w-none prose prose-lg dark:prose-invert max-w-none"
                     style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
                   >
-                    <div className="space-y-4">{formatSummary(lesson.studentSummary)}</div>
+                    <style>{`
+                      .prose h1 {
+                        font-size: 2em;
+                        font-weight: bold;
+                        margin-top: 1em;
+                        margin-bottom: 0.5em;
+                      }
+                      .prose h2 {
+                        font-size: 1.5em;
+                        font-weight: 600;
+                        margin-top: 0.75em;
+                        margin-bottom: 0.5em;
+                      }
+                      .prose h3 {
+                        font-size: 1.25em;
+                        font-weight: 600;
+                        margin-top: 0.5em;
+                        margin-bottom: 0.25em;
+                      }
+                      .prose p {
+                        margin-bottom: 1em;
+                      }
+                      .prose ul, .prose ol {
+                        margin-bottom: 1em;
+                        padding-left: 1.5em;
+                      }
+                      .prose li {
+                        margin-bottom: 0.5em;
+                      }
+                      .prose strong {
+                        font-weight: 600;
+                      }
+                      .prose em {
+                        font-style: italic;
+                      }
+                    `}</style>
+                    {lesson.studentSummary && lesson.studentSummary.startsWith("<") ? (
+                      // Render HTML content
+                      <div
+                        dangerouslySetInnerHTML={{ __html: lesson.studentSummary }}
+                        className="space-y-4"
+                      />
+                    ) : (
+                      // Render plain text with formatting
+                      <div className="space-y-4">{formatSummary(lesson.studentSummary || "")}</div>
+                    )}
                   </div>
                 </div>
               </TabsContent>
@@ -326,7 +499,14 @@ export default function StudentLessonPlayer() {
               {/* Slides View */}
               <TabsContent value="slides" className="mt-0">
                 <div className="space-y-6">
-                  {lesson.slides && lesson.slides.length > 0 ? (
+                  {/* Show PDF viewer if presentation file is available */}
+                  {lesson.presentationFileUrl && lesson.presentationFileType === "pdf" ? (
+                    <PDFSlideViewer
+                      fileUrl={lesson.presentationFileUrl}
+                      currentPage={currentSlideIndex}
+                      onPageChange={(page) => setCurrentSlideIndex(page)}
+                    />
+                  ) : lesson.slides && lesson.slides.length > 0 ? (
                     <>
                       {/* Slide Counter */}
                       <div className="text-center text-sm text-muted-foreground">
@@ -338,10 +518,10 @@ export default function StudentLessonPlayer() {
                         <CardContent className="flex-1 flex flex-col items-center justify-center p-8 sm:p-12">
                           <div className="w-full max-w-3xl">
                             <h2 className="text-3xl sm:text-4xl font-bold mb-6 text-center">
-                              {lesson.slides[currentSlideIndex].title}
+                              {lesson.slides[currentSlideIndex]?.title || `Slide ${currentSlideIndex + 1}`}
                             </h2>
                             <div className="text-xl sm:text-2xl space-y-3">
-                              {formatSlideContent(lesson.slides[currentSlideIndex].content)}
+                              {formatSlideContent(lesson.slides[currentSlideIndex]?.content || "")}
                             </div>
                           </div>
                         </CardContent>
@@ -549,68 +729,60 @@ export default function StudentLessonPlayer() {
           </div>
         </main>
 
-        {/* Right Side Panel - Key Terms */}
-        <aside className="hidden lg:block w-80 border-l bg-muted/30 overflow-y-auto">
-          <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">{t.student.lessonPlayer.keyTerms.title}</h3>
+        {/* Right Side Panel - Teacher Information */}
+        <aside className={cn(
+          "hidden lg:block border-l bg-muted/30 overflow-y-auto transition-all duration-300",
+          sidebarCollapsed ? "w-12" : "w-80"
+        )}>
+          {sidebarCollapsed ? (
+            <div className="p-4 flex flex-col items-center">
               <Button
                 variant="ghost"
-                size="sm"
-                onClick={() => setSidebarOpen(false)}
-                className="lg:hidden"
+                size="icon"
+                onClick={() => setSidebarCollapsed(false)}
+                className="h-8 w-8"
+                aria-label={t.student.lessonPlayer.teacherInfo?.title || "Teacher Information"}
               >
-                <X className="h-4 w-4" />
+                <ChevronsLeft className="h-4 w-4" />
               </Button>
             </div>
+          ) : (
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">
+                  {t.student.lessonPlayer.teacherInfo?.title || "Teacher Information"}
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSidebarCollapsed(true)}
+                  className="h-8 w-8"
+                  aria-label="Collapse sidebar"
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </div>
 
-            <div className="space-y-4">
-              {lesson.keyTerms.map((item, index) => (
-                <div key={index} className="space-y-1">
-                  <h4 className="font-semibold text-sm">{item.term}</h4>
-                  <p className="text-sm text-muted-foreground">{item.definition}</p>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <h4 className="font-semibold text-sm">
+                    {t.student.lessonPlayer.teacherInfo?.teacherName || "Teacher"}
+                  </h4>
+                  <p className="text-sm text-muted-foreground">{teacherName}</p>
                 </div>
-              ))}
+                
+                {teacherTeachingField && (
+                  <div className="space-y-1">
+                    <h4 className="font-semibold text-sm">
+                      {t.student.lessonPlayer.teacherInfo?.teachingField || "Subject"}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">{teacherTeachingField}</p>
+                  </div>
+                )}
+              </div>
             </div>
-
-            <div className="pt-6 border-t">
-              <p className="text-xs text-muted-foreground">
-                {t.student.lessonPlayer.keyTerms.footer}
-              </p>
-            </div>
-          </div>
+          )}
         </aside>
-
-        {/* Mobile Sidebar */}
-        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="fixed bottom-4 right-4 lg:hidden z-40"
-            >
-              {t.student.lessonPlayer.keyTerms.title}
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-            <SheetHeader>
-              <SheetTitle>{t.student.lessonPlayer.keyTerms.title}</SheetTitle>
-            </SheetHeader>
-            <div className="mt-6 space-y-4">
-              {lesson.keyTerms.map((item, index) => (
-                <div key={index} className="space-y-1">
-                  <h4 className="font-semibold text-sm">{item.term}</h4>
-                  <p className="text-sm text-muted-foreground">{item.definition}</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-8 pt-6 border-t">
-              <p className="text-xs text-muted-foreground">
-                {t.student.lessonPlayer.keyTerms.footer}
-              </p>
-            </div>
-          </SheetContent>
-        </Sheet>
       </div>
     </div>
   );
