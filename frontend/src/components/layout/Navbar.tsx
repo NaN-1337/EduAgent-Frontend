@@ -37,6 +37,9 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
     if (path === "/individual/learning-paths" || path === "/student/learning-paths") {
       return location.pathname.startsWith("/individual/learning-paths") || location.pathname.startsWith("/student/learning-paths");
     }
+    if (path === "/teacher/quizzes" || path === "/student/quizzes") {
+      return location.pathname.startsWith("/teacher/quizzes") || location.pathname.startsWith("/student/quizzes");
+    }
     return location.pathname === path;
   };
 
@@ -44,6 +47,7 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
     { path: "/teacher/dashboard", label: t.navbar.teacher?.dashboard || t.navbar.student.dashboard },
     { path: "/teacher/lessons", label: t.navbar.teacher?.myLessons || t.navbar.student.myLessons },
     { path: "/teacher/students", label: t.teacher.studentsView.title },
+    { path: "/teacher/quizzes", label: t.navbar.quizzes || "Teste" },
     { path: "/profile", label: t.navbar.teacher?.account || t.navbar.student.account },
   ];
 
@@ -51,6 +55,7 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
     { path: "/student/dashboard", label: t.navbar.student.dashboard },
     { path: "/student/lessons", label: t.navbar.student.myLessons },
     { path: "/student/learning-paths", label: t.navbar.individual?.learningPaths || "Căi de învățare" },
+    { path: "/student/quizzes", label: t.navbar.quizzes || "Teste" },
     { path: "/profile", label: t.navbar.student.account },
   ];
 

@@ -79,6 +79,7 @@ export interface Translations {
       learningPaths: string;
       account: string;
     };
+    quizzes?: string;
     profile: string;
     logout: string;
     menu: string;
@@ -381,6 +382,22 @@ export interface Translations {
         tips: string;
         resources: string;
       };
+    };
+    quizzes?: {
+      title: string;
+      description: string;
+      emptyTitle: string;
+      emptyDescription: string;
+      questions: string;
+      completed: string;
+      averageScore: string;
+      viewDetails: string;
+      statistics: string;
+      questionStatistics: string;
+      question: string;
+      correct: string;
+      incorrect: string;
+      totalSubmissions: string;
     };
   };
 
@@ -1038,6 +1055,22 @@ const ro: Translations = {
         resources: "Resurse",
       },
     },
+    quizzes: {
+      title: "Testele mele",
+      description: "Vizualizează și gestionează toate testele tale",
+      emptyTitle: "Nu există teste încă",
+      emptyDescription: "Creează teste pentru lecțiile tale pentru a urmări progresul elevilor",
+      questions: "Întrebări",
+      completed: "Completate",
+      averageScore: "Scor mediu",
+      viewDetails: "Vezi detalii",
+      statistics: "Statistici",
+      questionStatistics: "Statistici pe întrebări",
+      question: "Întrebare",
+      correct: "Corect",
+      incorrect: "Incorect",
+      totalSubmissions: "Total trimise",
+    },
   },
 
   individual: {
@@ -1211,6 +1244,18 @@ const ro: Translations = {
       keyTerms: {
         title: "Termeni cheie",
         footer: "Această lecție a fost creată cu EduAgent și revizuită de profesorul tău.",
+      },
+      quizzes: {
+        title: "Testele mele",
+        description: "Completează testele pentru lecțiile tale",
+        emptyTitle: "Nu există teste disponibile",
+        emptyDescription: "Testele vor apărea aici când profesorii tăi le vor crea pentru lecții",
+        pending: "Teste în așteptare",
+        completed: "Teste completate",
+        questions: "Întrebări",
+        score: "Scor",
+        startQuiz: "Începe testul",
+        viewResults: "Vezi rezultatele",
       },
       teacherInfo: {
         title: "Informații profesor",
@@ -1958,6 +2003,18 @@ const en: Translations = {
       keyTerms: {
         title: "Key Terms",
         footer: "This lesson was created with EduAgent and reviewed by your teacher.",
+      },
+      quizzes: {
+        title: "My Quizzes",
+        description: "Complete quizzes for your lessons",
+        emptyTitle: "No quizzes available",
+        emptyDescription: "Quizzes will appear here when your teachers create them for lessons",
+        pending: "Pending Quizzes",
+        completed: "Completed Quizzes",
+        questions: "Questions",
+        score: "Score",
+        startQuiz: "Start Quiz",
+        viewResults: "View Results",
       },
       teacherInfo: {
         title: "Teacher Information",

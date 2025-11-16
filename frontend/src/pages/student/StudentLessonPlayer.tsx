@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, CheckCircle2, Loader2, ChevronsRight, ChevronsLeft, Bot, Download, Headphones } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { doc, updateDoc, arrayUnion, serverTimestamp, getDoc, collection, addDoc, query, where, getDocs } from "firebase/firestore";
+import { doc, updateDoc, arrayUnion, serverTimestamp, getDoc } from "firebase/firestore";
 import { db, storage } from "@/lib/firebaseConfig";
 import { ref, getDownloadURL } from "firebase/storage";
 import { translations } from "@/lib/translations";
@@ -15,9 +15,6 @@ import { convertLessonFromStorage } from "@/lib/dataConverters";
 import { PDFSlideViewer } from "@/components/pdf-viewer/PDFSlideViewer";
 import { LessonChatbot, LessonChatbotRef } from "@/components/chatbot/LessonChatbot";
 import { TextSelectionHandler } from "@/components/chatbot/TextSelectionHandler";
-import { QuizQuestion } from "@/lib/api";
-import { QuizInteractive } from "@/components/quiz/QuizInteractive";
-import { QuizResults } from "@/components/quiz/QuizResults";
 
 export default function StudentLessonPlayer() {
   const { id: lessonId } = useParams<{ id: string }>();
@@ -31,10 +28,6 @@ export default function StudentLessonPlayer() {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [fontSize, setFontSize] = useState(16); // base font size in pixels
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const [quiz, setQuiz] = useState<{ questions: QuizQuestion[]; title: string; totalQuestions: number; quizId: string } | null>(null);
-  const [quizSubmission, setQuizSubmission] = useState<any>(null);
-  const [loadingQuiz, setLoadingQuiz] = useState(false);
-  const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
   const chatbotRef = useRef<LessonChatbotRef>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -133,7 +126,6 @@ export default function StudentLessonPlayer() {
             "Apply knowledge to examples",
             "Complete the lesson activities"
           ],
-          quizId: data.quizId || null,
         };
 
         // If we have a podcast path, get a fresh download URL using Firebase SDK
@@ -161,113 +153,6 @@ export default function StudentLessonPlayer() {
       fetchLesson();
     }
   }, [lessonId, language, navigate]);
-
-  // Fetch quiz data and check for existing submission
-  useEffect(() => {
-    const fetchQuizData = async () => {
-      if (!lesson?.quizId || !user) {
-        setQuiz(null);
-        setQuizSubmission(null);
-        return;
-      }
-
-      try {
-        setLoadingQuiz(true);
-
-        // Fetch quiz
-        const quizDocRef = doc(db, "quizzes", lesson.quizId);
-        const quizDocSnap = await getDoc(quizDocRef);
-
-        if (!quizDocSnap.exists()) {
-          setQuiz(null);
-          setQuizSubmission(null);
-          return;
-        }
-
-        const quizData = quizDocSnap.data();
-        setQuiz({
-          questions: quizData.questions || [],
-          title: quizData.title || "Quiz",
-          totalQuestions: quizData.totalQuestions || quizData.questions?.length || 0,
-          quizId: lesson.quizId,
-        });
-
-        // Check for existing submission
-        const submissionsQuery = query(
-          collection(db, "quiz_submissions"),
-          where("quizId", "==", lesson.quizId),
-          where("studentId", "==", user.uid)
-        );
-        const submissionsSnapshot = await getDocs(submissionsQuery);
-
-        if (!submissionsSnapshot.empty) {
-          const submissionDoc = submissionsSnapshot.docs[0];
-          setQuizSubmission(submissionDoc.data());
-        } else {
-          setQuizSubmission(null);
-        }
-      } catch (error) {
-        console.error("Error fetching quiz data:", error);
-        setQuiz(null);
-        setQuizSubmission(null);
-      } finally {
-        setLoadingQuiz(false);
-      }
-    };
-
-    fetchQuizData();
-  }, [lesson?.quizId, user]);
-
-  // Handle quiz submission
-  const handleQuizSubmit = async (answers: Record<string, string>) => {
-    if (!quiz || !user || !lesson) return;
-
-    try {
-      setIsSubmittingQuiz(true);
-
-      // Calculate results
-      const submissionAnswers = quiz.questions.map((question) => {
-        const selectedAnswerId = answers[question.id];
-        const isCorrect = selectedAnswerId === question.correctAnswerId;
-        return {
-          questionId: question.id,
-          selectedAnswerId: selectedAnswerId || "",
-          correctAnswerId: question.correctAnswerId,
-          isCorrect: isCorrect,
-        };
-      });
-
-      const correctAnswers = submissionAnswers.filter((a) => a.isCorrect).length;
-      const incorrectAnswers = submissionAnswers.filter((a) => !a.isCorrect).length;
-
-      // Get teacherId from quiz document
-      const quizDocRef = doc(db, "quizzes", quiz.quizId);
-      const quizDocSnap = await getDoc(quizDocRef);
-      const quizData = quizDocSnap.data();
-
-      // Create submission document
-      const submissionData = {
-        quizId: quiz.quizId,
-        lectureId: lesson.id,
-        studentId: user.uid,
-        teacherId: quizData?.teacherId || "",
-        correctAnswers: correctAnswers,
-        incorrectAnswers: incorrectAnswers,
-        answers: submissionAnswers,
-        submittedAt: serverTimestamp(),
-      };
-
-      const submissionDocRef = await addDoc(collection(db, "quiz_submissions"), submissionData);
-      const submissionDoc = await getDoc(submissionDocRef);
-      
-      setQuizSubmission(submissionDoc.data());
-    } catch (error: any) {
-      console.error("Error submitting quiz:", error);
-      throw error;
-    } finally {
-      setIsSubmittingQuiz(false);
-    }
-  };
 
   // Mark lesson as completed when student views it
   useEffect(() => {
@@ -585,11 +470,6 @@ export default function StudentLessonPlayer() {
                 <TabsTrigger value="podcast" className="flex-1">
                   {t.student.lessonPlayer.tabs.podcast || "Podcast"}
                 </TabsTrigger>
-                {lesson?.quizId && (
-                  <TabsTrigger value="quiz" className="flex-1">
-                    {t.student.lessonPlayer.tabs.quiz || "Quiz"}
-                  </TabsTrigger>
-                )}
               </TabsList>
 
               {/* Summary View */}
@@ -902,39 +782,6 @@ export default function StudentLessonPlayer() {
                         {t.student.lessonPlayer.podcast?.notAvailable || "Podcast not available for this lesson."}
                       </p>
                     </div>
-                  )}
-                </div>
-              </TabsContent>
-
-              {/* Quiz View */}
-              <TabsContent value="quiz" className="mt-0">
-                <div className="space-y-6">
-                  {loadingQuiz ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : quiz ? (
-                    quizSubmission ? (
-                      <QuizResults
-                        questions={quiz.questions}
-                        title={quiz.title}
-                        answers={quizSubmission.answers || []}
-                        correctAnswers={quizSubmission.correctAnswers || 0}
-                        incorrectAnswers={quizSubmission.incorrectAnswers || 0}
-                        totalQuestions={quiz.totalQuestions}
-                      />
-                    ) : (
-                      <QuizInteractive
-                        questions={quiz.questions}
-                        title={quiz.title}
-                        onSubmit={handleQuizSubmit}
-                        isSubmitting={isSubmittingQuiz}
-                      />
-                    )
-                  ) : (
-                    <p className="text-center text-muted-foreground py-12">
-                      {t.student.lessonPlayer.quiz?.emptyState || "No quiz available for this lesson."}
-                    </p>
                   )}
                 </div>
               </TabsContent>
