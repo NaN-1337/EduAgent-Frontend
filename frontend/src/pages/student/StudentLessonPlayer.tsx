@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -12,7 +12,8 @@ import { db } from "@/lib/firebaseConfig";
 import { translations } from "@/lib/translations";
 import { convertLessonFromStorage } from "@/lib/dataConverters";
 import { PDFSlideViewer } from "@/components/pdf-viewer/PDFSlideViewer";
-import { LessonChatbot } from "@/components/chatbot/LessonChatbot";
+import { LessonChatbot, LessonChatbotRef } from "@/components/chatbot/LessonChatbot";
+import { TextSelectionHandler } from "@/components/chatbot/TextSelectionHandler";
 
 export default function StudentLessonPlayer() {
   const { id: lessonId } = useParams<{ id: string }>();
@@ -30,6 +31,7 @@ export default function StudentLessonPlayer() {
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const chatbotRef = useRef<LessonChatbotRef>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -368,6 +370,25 @@ export default function StudentLessonPlayer() {
 
               {/* Summary View */}
               <TabsContent value="summary" className="mt-0 !mt-0">
+                <TextSelectionHandler
+                  enabled={activeTab === "summary"}
+                  onExplain={async (selectedText) => {
+                    // Open chatbot if collapsed
+                    if (sidebarCollapsed) {
+                      setSidebarCollapsed(false);
+                      // Wait a bit for the sidebar to open
+                      await new Promise(resolve => setTimeout(resolve, 300));
+                    }
+                    
+                    // Format prompt in Romanian
+                    const prompt = `Explica-mi te rog mai multe despre: ${selectedText}`;
+                    
+                    // Send message to chatbot
+                    if (chatbotRef.current) {
+                      await chatbotRef.current.sendMessage(prompt);
+                    }
+                  }}
+                />
                 <div className="space-y-6 w-full">
                   {/* Controls */}
                   <div className="flex items-center justify-between">
@@ -424,6 +445,7 @@ export default function StudentLessonPlayer() {
                   {/* Main Content */}
                   <div
                     className="prose prose-lg dark:prose-invert max-w-none"
+                    data-summary-content
                     style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
                   >
                     <style>{`
@@ -746,6 +768,7 @@ export default function StudentLessonPlayer() {
             
             {lesson && user && (
               <LessonChatbot
+                ref={chatbotRef}
                 lessonContent={lesson.contentStudent || lesson.studentSummary || ""}
                 subject={lesson.subjectRaw || lesson.subject || ""}
                 grade={lesson.gradeRaw || lesson.grade || 1}

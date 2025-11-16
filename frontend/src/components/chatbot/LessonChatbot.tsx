@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -17,13 +17,17 @@ interface LessonChatbotProps {
   studentId: string;
 }
 
-export function LessonChatbot({
+export interface LessonChatbotRef {
+  sendMessage: (message: string) => Promise<void>;
+}
+
+export const LessonChatbot = forwardRef<LessonChatbotRef, LessonChatbotProps>(({
   lessonContent,
   subject,
   grade,
   lessonId,
   studentId,
-}: LessonChatbotProps) {
+}, ref) => {
   const { t } = useLanguage();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -97,19 +101,18 @@ export function LessonChatbot({
     });
   };
 
-  const handleSendMessage = async () => {
-    if (!input.trim() || isLoading || isTyping) return;
+  const sendMessageInternal = async (messageText: string) => {
+    if (!messageText.trim() || isLoading || isTyping) return;
 
     const userMessage: ChatMessage = {
       role: "user",
-      content: input.trim(),
+      content: messageText.trim(),
       timestamp: Date.now(),
     };
 
     // Add user message immediately
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
-    setInput("");
     setIsLoading(true);
 
     try {
@@ -182,6 +185,18 @@ export function LessonChatbot({
       setIsLoading(false);
     }
   };
+
+  const handleSendMessage = async () => {
+    if (!input.trim()) return;
+    const messageText = input.trim();
+    setInput("");
+    await sendMessageInternal(messageText);
+  };
+
+  // Expose sendMessage via ref
+  useImperativeHandle(ref, () => ({
+    sendMessage: sendMessageInternal,
+  }));
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -289,5 +304,7 @@ export function LessonChatbot({
       </div>
     </div>
   );
-}
+});
+
+LessonChatbot.displayName = "LessonChatbot";
 
