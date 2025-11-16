@@ -18,7 +18,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageToggle } from "@/components/language-toggle";
 
 interface NavbarProps {
-  role?: "teacher" | "student";
+  role?: "teacher" | "student" | "individual";
 }
 
 export function Navbar({ role = "teacher" }: NavbarProps) {
@@ -33,7 +33,12 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
     navigate("/login");
   };
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => {
+    if (path === "/individual/learning-paths" || path === "/student/learning-paths") {
+      return location.pathname.startsWith("/individual/learning-paths") || location.pathname.startsWith("/student/learning-paths");
+    }
+    return location.pathname === path;
+  };
 
   const teacherLinks = [
     { path: "/teacher/dashboard", label: t.navbar.teacher?.dashboard || t.navbar.student.dashboard },
@@ -45,10 +50,17 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
   const studentLinks = [
     { path: "/student/dashboard", label: t.navbar.student.dashboard },
     { path: "/student/lessons", label: t.navbar.student.myLessons },
+    { path: "/student/learning-paths", label: t.navbar.individual?.learningPaths || "Căi de învățare" },
     { path: "/profile", label: t.navbar.student.account },
   ];
 
-  const links = role === "teacher" ? teacherLinks : studentLinks;
+  const individualLinks = [
+    { path: "/individual/dashboard", label: t.navbar.individual?.dashboard || t.navbar.student.dashboard },
+    { path: "/individual/learning-paths", label: t.navbar.individual?.learningPaths || "Căi de învățare" },
+    { path: "/profile", label: t.navbar.individual?.account || t.navbar.student.account },
+  ];
+
+  const links = role === "teacher" ? teacherLinks : role === "individual" ? individualLinks : studentLinks;
 
   const NavLinks = () => (
     <>
@@ -74,7 +86,7 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo and name */}
-          <Link to={role === "teacher" ? "/teacher/dashboard" : "/student/dashboard"} className="flex items-center space-x-3">
+          <Link to={role === "teacher" ? "/teacher/dashboard" : role === "individual" ? "/individual/dashboard" : "/student/dashboard"} className="flex items-center space-x-3">
             <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary text-primary-foreground font-bold text-xl">
               EA
             </div>
