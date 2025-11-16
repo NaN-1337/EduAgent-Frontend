@@ -206,6 +206,12 @@ export interface Translations {
         subjectLabel: string;
         subjectPlaceholder: string;
         subjectRequired: string;
+        numberOfSlidesLabel: string;
+        numberOfSlidesPlaceholder: string;
+        slides: string;
+        templateLabel: string;
+        templatePlaceholder: string;
+        previewTemplate: string;
         exampleTitle: string;
         exampleTitleLabel: string;
         exampleTitleText: string;
@@ -463,6 +469,9 @@ export interface Translations {
 
   // Teaching fields translations
   teachingFields: Record<string, string>;
+
+  // Template name translations
+  templates: Record<string, string>;
 }
 
 // Romanian translations (main language)
@@ -692,6 +701,12 @@ const ro: Translations = {
         subjectLabel: "Materie",
         subjectPlaceholder: "Selectează materia",
         subjectRequired: "Materia este obligatorie",
+        numberOfSlidesLabel: "Număr de slide-uri",
+        numberOfSlidesPlaceholder: "Selectează numărul de slide-uri",
+        slides: "slide-uri",
+        templateLabel: "Șablon prezentare",
+        templatePlaceholder: "Selectează un șablon",
+        previewTemplate: "Previzualizare",
         exampleTitle: "Exemplu de configurare bună a lecției",
         exampleTitleLabel: "Titlu",
         exampleTitleText: "\"Introducere în Fotosinteză – Clasa a 5-a\"",
@@ -959,6 +974,19 @@ const ro: Translations = {
     "History of Communism in Romania": "Istoria comunismului în România",
     "Sciences": "Științe",
     "Natural Sciences": "Științe naturale",
+  },
+
+  templates: {
+    template_modern: "Modern",
+    template_classic: "Clasic",
+    template_minimal: "Minimalist",
+    template_colorful: "Colorat",
+    template_professional: "Profesional",
+    template_creative: "Creativ",
+    template_educational: "Educațional",
+    template_business: "Business",
+    template_science: "Științific",
+    template_artistic: "Artistic",
   },
 
   mockLessons: {
@@ -1276,6 +1304,12 @@ const en: Translations = {
         subjectLabel: "Subject",
         subjectPlaceholder: "Select subject",
         subjectRequired: "Subject is required",
+        numberOfSlidesLabel: "Number of slides",
+        numberOfSlidesPlaceholder: "Select number of slides",
+        slides: "slides",
+        templateLabel: "Presentation Template",
+        templatePlaceholder: "Select a template",
+        previewTemplate: "Preview",
         exampleTitle: "Example of a good lesson setup",
         exampleTitleLabel: "Title",
         exampleTitleText: "\"Introduction to Photosynthesis – Grade 5\"",
@@ -1543,6 +1577,19 @@ const en: Translations = {
     "History of Communism in Romania": "History of Communism in Romania",
     "Sciences": "Sciences",
     "Natural Sciences": "Natural Sciences",
+  },
+
+  templates: {
+    template_modern: "Modern",
+    template_classic: "Classic",
+    template_minimal: "Minimal",
+    template_colorful: "Colorful",
+    template_professional: "Professional",
+    template_creative: "Creative",
+    template_educational: "Educational",
+    template_business: "Business",
+    template_science: "Science",
+    template_artistic: "Artistic",
   },
 
   mockLessons: {

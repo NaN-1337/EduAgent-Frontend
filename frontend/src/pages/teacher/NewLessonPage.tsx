@@ -20,6 +20,8 @@ interface Step1Data {
   title: string;
   grade: string;
   subject: string;
+  numberOfSlides: number;
+  template?: string;
 }
 
 interface Step2QuestionsData {
@@ -48,6 +50,8 @@ export default function NewLessonPage() {
     title: "",
     grade: "",
     subject: "",
+    numberOfSlides: 10, // Default to 10 slides
+    template: undefined,
   });
 
   const [step2Data, setStep2Data] = useState<Step2QuestionsData>({
@@ -154,6 +158,8 @@ export default function NewLessonPage() {
                 title={step1Data.title}
                 subject={step1Data.subject}
                 grade={step1Data.grade}
+                numberOfSlides={step1Data.numberOfSlides}
+                template={step1Data.template}
                 questions={step2Data.questions}
                 answers={step2Data.answers}
                 onComplete={handleGenerationComplete}

@@ -23,6 +23,8 @@ interface Step3GenerationProps {
   title: string;
   subject: string;
   grade: string;
+  numberOfSlides: number;
+  template?: string;
   questions: Question[];
   answers: Record<string, string>;
   onComplete: (lessonId: string) => void;
@@ -34,6 +36,8 @@ export function Step3Generation({
   title,
   subject,
   grade,
+  numberOfSlides,
+  template,
   questions,
   answers,
   onComplete,
@@ -154,11 +158,14 @@ export function Step3Generation({
           return newSteps;
         });
 
+        // Extract template name without .pdf extension
+        const templateName = template ? template.replace(/\.pdf$/i, "") : "modern";
+        
         const presentationData = await generatePresentation({
           student_version: lectureData.student_version,
-          n_slides: 10,
+          n_slides: numberOfSlides,
           language: "Romanian",
-          template: "modern",
+          template: templateName,
           tone: "educational",
           verbosity: "standard",
           export_as: "pdf",

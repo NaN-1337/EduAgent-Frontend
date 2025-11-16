@@ -13,6 +13,7 @@ interface PDFSlideViewerProps {
   currentPage?: number;
   onPageChange?: (page: number) => void;
   className?: string;
+  showNavigation?: boolean;
 }
 
 export function PDFSlideViewer({
@@ -20,6 +21,7 @@ export function PDFSlideViewer({
   currentPage = 0,
   onPageChange,
   className,
+  showNavigation = true,
 }: PDFSlideViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [page, setPage] = useState(currentPage);
@@ -89,7 +91,7 @@ export function PDFSlideViewer({
       </Card>
 
       {/* Navigation Controls */}
-      {numPages > 0 && (
+      {showNavigation && numPages > 0 && (
         <div className="flex items-center justify-between gap-4">
           <Button
             variant="outline"
@@ -137,4 +139,3 @@ export function PDFSlideViewer({
     </div>
   );
 }
-

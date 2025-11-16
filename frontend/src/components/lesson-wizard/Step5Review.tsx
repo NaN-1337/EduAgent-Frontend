@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translations } from "@/lib/translations";
 import { convertLessonFromStorage, gradeToStorage, teachingFieldToStorage } from "@/lib/dataConverters";
-import { CheckCircle2, Save, FileCheck, ChevronLeft, ChevronRight, Minus, Plus, Volume2 } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Minus, Plus, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { db } from "@/lib/firebaseConfig";
@@ -51,7 +50,6 @@ interface LessonData {
 
 export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
   const { t, language } = useLanguage();
-  const navigate = useNavigate();
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [loadingLesson, setLoadingLesson] = useState(true);
   const [activeTab, setActiveTab] = useState("summary");
@@ -262,10 +260,6 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
     switch (status) {
       case "ready":
         return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800";
-      case "fact-check pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800";
-      case "draft":
-        return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800/30 dark:text-gray-300 dark:border-gray-700";
       default:
         return "";
     }
@@ -296,18 +290,12 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Badge className={cn(getStatusColor(lesson.status), "border")}>
-              {lesson.status === "ready" && <CheckCircle2 className="h-3 w-3 mr-1" />}
-              {t.common.status[lesson.status as keyof typeof t.common.status] || (lesson.status.charAt(0).toUpperCase() + lesson.status.slice(1))}
-            </Badge>
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/teacher/lessons/${lessonId}/fact-check`)}
-              size="sm"
-            >
-              <FileCheck className="h-4 w-4 mr-2" />
-              {t.teacher.lessonEditor.runFactCheck}
-            </Button>
+            {lesson.status === "ready" && (
+              <Badge className={cn(getStatusColor(lesson.status), "border")}>
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                {t.common.status[lesson.status as keyof typeof t.common.status] || (lesson.status.charAt(0).toUpperCase() + lesson.status.slice(1))}
+              </Badge>
+            )}
           </div>
         </div>
       </div>
@@ -1219,15 +1207,7 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
       </div>
 
       {/* Bottom Action Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t sticky bottom-0 bg-background z-30">
-        <Button
-          variant="outline"
-          onClick={() => handleSave()}
-          disabled={isSaving}
-        >
-          <Save className="h-4 w-4 mr-2" />
-          {isSaving ? t.teacher.lessonEditor.saving : t.teacher.lessonEditor.saveDraft}
-        </Button>
+      <div className="flex flex-col sm:flex-row items-center justify-end gap-4 pt-6 border-t sticky bottom-0 bg-background z-30">
         <Button
           onClick={async () => {
             await handleSave("ready");
