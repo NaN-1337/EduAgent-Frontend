@@ -315,9 +315,10 @@ export function Step3Generation({
           updatedAt: serverTimestamp(),
         };
 
-        // Add podcast URL if available
-        if (podcastData.firebase?.download_url) {
-          updateData.podcastUrl = podcastData.firebase.download_url;
+        // Add podcast path and duration if available
+        // Store the path instead of signed URL - we'll use Firebase SDK to get download URL on frontend
+        if (podcastData.firebase?.path) {
+          updateData.podcastPath = podcastData.firebase.path;
           updateData.podcastDuration = podcastData.duration_seconds;
         }
 

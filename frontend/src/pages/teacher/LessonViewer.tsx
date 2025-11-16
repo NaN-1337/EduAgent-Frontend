@@ -9,11 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { translations } from "@/lib/translations";
-import { convertLessonFromStorage } from "@/lib/dataConverters";
+import { convertLessonFromStorage, gradeToStorage, teachingFieldToStorage } from "@/lib/dataConverters";
 import { PDFSlideViewer } from "@/components/pdf-viewer/PDFSlideViewer";
+import { generateQuiz, QuizQuestion } from "@/lib/api";
+import { GenerateQuizModal } from "@/components/quiz/GenerateQuizModal";
+import { QuizDisplayReadOnly } from "@/components/quiz/QuizDisplayReadOnly";
+import { Loader2 } from "lucide-react";
 
 interface Slide {
   id?: string;
@@ -34,6 +38,7 @@ interface LessonData {
   slides: Slide[];
   presentationFileUrl?: string;
   presentationFileType?: "pdf";
+  quizId?: string | null;
   teacherGuidelines?: {
     content?: string; // HTML content from API
     objectives?: string;
@@ -55,6 +60,10 @@ export default function LessonViewer() {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [fontSize, setFontSize] = useState(16);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [quiz, setQuiz] = useState<{ questions: QuizQuestion[]; title: string; totalQuestions: number } | null>(null);
+  const [loadingQuiz, setLoadingQuiz] = useState(false);
+  const [generateQuizModalOpen, setGenerateQuizModalOpen] = useState(false);
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || userData?.role !== "teacher")) {
@@ -137,6 +146,7 @@ export default function LessonViewer() {
           slides: slides,
           presentationFileUrl: data.presentationFileUrl,
           presentationFileType: data.presentationFileType,
+          quizId: data.quizId || null,
           teacherGuidelines: teacherGuidelines,
         };
 
@@ -152,7 +162,107 @@ export default function LessonViewer() {
     if (lessonId && user) {
       fetchLesson();
     }
-  }, [lessonId, user, navigate]);
+  }, [lessonId, user, navigate, language]);
+
+  // Fetch quiz data when quizId is available
+  useEffect(() => {
+    const fetchQuiz = async () => {
+      if (!lesson?.quizId || !user) {
+        setQuiz(null);
+        return;
+      }
+
+      try {
+        setLoadingQuiz(true);
+        const quizDocRef = doc(db, "quizzes", lesson.quizId);
+        const quizDocSnap = await getDoc(quizDocRef);
+
+        if (quizDocSnap.exists()) {
+          const quizData = quizDocSnap.data();
+          setQuiz({
+            questions: quizData.questions || [],
+            title: quizData.title || "Quiz",
+            totalQuestions: quizData.totalQuestions || quizData.questions?.length || 0,
+          });
+        } else {
+          setQuiz(null);
+        }
+      } catch (error) {
+        console.error("Error fetching quiz:", error);
+        setQuiz(null);
+      } finally {
+        setLoadingQuiz(false);
+      }
+    };
+
+    fetchQuiz();
+  }, [lesson?.quizId, user]);
+
+  // Handle quiz generation
+  const handleGenerateQuiz = async (title: string, numQuestions: number) => {
+    if (!lesson || !user) return;
+
+    try {
+      setIsGeneratingQuiz(true);
+
+      // Convert grade and subject for API
+      const gradeNum = gradeToStorage(lesson.grade);
+      const subjectStorage = teachingFieldToStorage(lesson.subject);
+
+      if (gradeNum === null || !subjectStorage) {
+        throw new Error("Invalid grade or subject");
+      }
+
+      // Generate quiz from API
+      const quizData = await generateQuiz({
+        student_version: lesson.studentSummary,
+        num_questions: numQuestions,
+      });
+
+      // Create quiz document in Firestore
+      const quizDocData = {
+        lectureId: lesson.id,
+        teacherId: user.uid,
+        title: title,
+        subject: subjectStorage,
+        grade: gradeNum,
+        totalQuestions: quizData.questions.length,
+        createdAt: serverTimestamp(),
+        questions: quizData.questions.map((q) => ({
+          id: q.id,
+          text: q.text,
+          options: q.options.map((opt) => ({
+            id: opt.id,
+            text: opt.text,
+          })),
+          correctAnswerId: q.correctAnswerId,
+        })),
+      };
+
+      const quizDocRef = await addDoc(collection(db, "quizzes"), quizDocData);
+      const quizId = quizDocRef.id;
+
+      // Update lesson with quizId
+      const lessonDocRef = doc(db, "lessons", lesson.id);
+      await updateDoc(lessonDocRef, {
+        quizId: quizId,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Update local state
+      setLesson((prev) => (prev ? { ...prev, quizId } : null));
+      setQuiz({
+        questions: quizData.questions,
+        title: title,
+        totalQuestions: quizData.questions.length,
+      });
+    } catch (error: any) {
+      console.error("Error generating quiz:", error);
+      throw error;
+    } finally {
+      setIsGeneratingQuiz(false);
+    }
+  };
 
   const formatSummary = (text: string) => {
     const lines = text.split("\n");
@@ -295,6 +405,9 @@ export default function LessonViewer() {
                 </TabsTrigger>
                 <TabsTrigger value="guidelines" className="flex-1">
                   {t.teacher.lessonEditor.tabs.teacherGuidelines}
+                </TabsTrigger>
+                <TabsTrigger value="quiz" className="flex-1">
+                  {t.teacher.lessonEditor.tabs.quiz || "Quiz"}
                 </TabsTrigger>
               </TabsList>
 
@@ -558,6 +671,43 @@ export default function LessonViewer() {
                         )}
                       </>
                     )
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Quiz View */}
+              <TabsContent value="quiz" className="mt-0">
+                <div className="space-y-6">
+                  {loadingQuiz ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : quiz ? (
+                    <QuizDisplayReadOnly
+                      questions={quiz.questions}
+                      title={quiz.title}
+                      totalQuestions={quiz.totalQuestions}
+                    />
+                  ) : (
+                    <div className="text-center py-12 space-y-4">
+                      <p className="text-muted-foreground">
+                        {t.teacher.lessonEditor.quiz?.noQuiz || "No quiz has been generated for this lesson yet."}
+                      </p>
+                      <Button
+                        onClick={() => setGenerateQuizModalOpen(true)}
+                        size="lg"
+                        disabled={isGeneratingQuiz}
+                      >
+                        {isGeneratingQuiz ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {t.teacher.lessonEditor.quiz?.generating || "Generating..."}
+                          </>
+                        ) : (
+                          t.teacher.lessonEditor.quiz?.generateButton || "Generate Quiz"
+                        )}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </TabsContent>
@@ -1184,6 +1334,14 @@ export default function LessonViewer() {
           </SheetContent>
         </Sheet>
       </div>
+
+      {/* Generate Quiz Modal */}
+      <GenerateQuizModal
+        open={generateQuizModalOpen}
+        onOpenChange={setGenerateQuizModalOpen}
+        onGenerate={handleGenerateQuiz}
+        defaultTitle={lesson ? `Test: ${lesson.title}` : ""}
+      />
     </div>
   );
 }

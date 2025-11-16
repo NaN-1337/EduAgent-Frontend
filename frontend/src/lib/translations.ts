@@ -322,12 +322,48 @@ export interface Translations {
         studentSummary: string;
         slides: string;
         teacherGuidelines: string;
+        podcast?: string;
+        quiz?: string;
+      };
+      downloadSlides?: string;
+      podcast?: {
+        title: string;
+        duration: string;
+        download: string;
+        notSupported: string;
+        description: string;
+        notAvailable: string;
       };
       deleteTitle: string;
       deleteDescription: (title: string) => string;
       saving: string;
       saveDraft: string;
       markReadyForStudents: string;
+      quiz?: {
+        generateButton: string;
+        generating: string;
+        noQuiz: string;
+        generateModal: {
+          title: string;
+          description: string;
+          titleLabel: string;
+          titlePlaceholder: string;
+          questionsLabel: string;
+          questionsHint: string;
+          generateButton: string;
+          generating: string;
+          errors: {
+            titleRequired: string;
+            invalidQuestionCount: string;
+            generationFailed: string;
+          };
+        };
+        readOnly: {
+          totalQuestions: string;
+          readOnly: string;
+          correct: string;
+        };
+      };
     };
     lessonViewer: {
       slideCounter: (current: number, total: number) => string;
@@ -462,22 +498,21 @@ export interface Translations {
         emptyState: string;
       };
       quiz: {
-        questionLabel: (index: number, question: string) => string;
         answeredCount: (answered: number, total: number) => string;
         submitButton: string;
         submitButtonLoading: string;
-        submitWarning: string;
-        success: {
-          title: string;
-          score: (correct: number, total: number, percentage: number) => string;
-          message: string;
-          feedbackMessage: string;
-        };
+        emptyState: string;
         errors: {
           notAllAnswered: string;
-          submitFailed: string;
         };
-        emptyState: string;
+        results: {
+          completed: string;
+          score: string;
+          correct: string;
+          incorrect: string;
+          yourAnswer: string;
+          correctAnswer: string;
+        };
       };
       keyTerms: {
         title: string;
@@ -901,6 +936,7 @@ const ro: Translations = {
         slides: "Slide-uri",
         teacherGuidelines: "Ghiduri profesor",
         podcast: "Podcast",
+        quiz: "Test",
       },
       downloadSlides: "Descarcă slide-urile",
       podcast: {
@@ -916,6 +952,31 @@ const ro: Translations = {
       saving: "Se salvează...",
       saveDraft: "Salvează ciorna",
       markReadyForStudents: "Marchează ca gata pentru elevi",
+      quiz: {
+        generateButton: "Generează test",
+        generating: "Se generează...",
+        noQuiz: "Nu a fost generat încă niciun test pentru această lecție.",
+        generateModal: {
+          title: "Generează test",
+          description: "Creează un test bazat pe conținutul lecției. Testul va conține întrebări cu alegere multiplă.",
+          titleLabel: "Titlul testului",
+          titlePlaceholder: "ex: Test: Celula - Structura și funcțiile",
+          questionsLabel: "Număr de întrebări",
+          questionsHint: "Între 1 și 50 de întrebări",
+          generateButton: "Generează test",
+          generating: "Se generează...",
+          errors: {
+            titleRequired: "Titlul testului este obligatoriu",
+            invalidQuestionCount: "Numărul de întrebări trebuie să fie între 1 și 50",
+            generationFailed: "Eroare la generarea testului",
+          },
+        },
+        readOnly: {
+          totalQuestions: "Total întrebări",
+          readOnly: "Doar citire",
+          correct: "Corect",
+        },
+      },
     },
     lessonViewer: {
       slideCounter: (current: number, total: number) => `Slide ${current} din ${total}`,
@@ -1045,23 +1106,21 @@ const ro: Translations = {
         emptyState: "Nu sunt slide-uri disponibile pentru această lecție.",
       },
       quiz: {
-        questionLabel: (index: number, question: string) => `Întrebarea ${index + 1}: ${question}`,
-        answeredCount: (answered: number, total: number) => `${answered} din ${total} întrebări răspunse`,
+        answeredCount: (answered: number, total: number) => `Răspunse: ${answered} / ${total}`,
         submitButton: "Trimite testul",
         submitButtonLoading: "Se trimite...",
-        submitWarning: "Te rugăm să răspunzi la toate întrebările înainte de a trimite.",
-        success: {
-          title: "Test trimis cu succes!",
-          score: (correct: number, total: number, percentage: number) =>
-            `Scorul tău: ${correct} / ${total} (${percentage}%)`,
-          message: "Testul tău a fost trimis și așteaptă feedback-ul profesorului.",
-          feedbackMessage: "Profesorul tău va revizui răspunsurile tale și va oferi feedback în curând.",
-        },
+        emptyState: "Nu este disponibil niciun test pentru această lecție.",
         errors: {
           notAllAnswered: "Te rugăm să răspunzi la toate întrebările înainte de a trimite.",
-          submitFailed: "Trimiterea testului a eșuat. Te rugăm să încerci din nou.",
         },
-        emptyState: "Nu este disponibil niciun test pentru această lecție.",
+        results: {
+          completed: "Test completat",
+          score: "Scorul tău",
+          correct: "Corect",
+          incorrect: "Incorect",
+          yourAnswer: "Răspunsul tău",
+          correctAnswer: "Răspuns corect",
+        },
       },
       keyTerms: {
         title: "Termeni cheie",
@@ -1581,6 +1640,7 @@ const en: Translations = {
         slides: "Slides",
         teacherGuidelines: "Teacher guidelines",
         podcast: "Podcast",
+        quiz: "Quiz",
       },
       downloadSlides: "Download Slides",
       podcast: {
@@ -1596,6 +1656,31 @@ const en: Translations = {
       saving: "Saving...",
       saveDraft: "Save draft",
       markReadyForStudents: "Mark as ready for students",
+      quiz: {
+        generateButton: "Generate Quiz",
+        generating: "Generating...",
+        noQuiz: "No quiz has been generated for this lesson yet.",
+        generateModal: {
+          title: "Generate Quiz",
+          description: "Create a quiz based on the lesson content. The quiz will contain multiple-choice questions.",
+          titleLabel: "Quiz Title",
+          titlePlaceholder: "e.g., Test: Celula - Structura și funcțiile",
+          questionsLabel: "Number of Questions",
+          questionsHint: "Between 1 and 50 questions",
+          generateButton: "Generate Quiz",
+          generating: "Generating...",
+          errors: {
+            titleRequired: "Quiz title is required",
+            invalidQuestionCount: "Number of questions must be between 1 and 50",
+            generationFailed: "Failed to generate quiz",
+          },
+        },
+        readOnly: {
+          totalQuestions: "Total questions",
+          readOnly: "Read Only",
+          correct: "Correct",
+        },
+      },
     },
     lessonViewer: {
       slideCounter: (current: number, total: number) => `Slide ${current} of ${total}`,
@@ -1725,23 +1810,21 @@ const en: Translations = {
         emptyState: "No slides available for this lesson.",
       },
       quiz: {
-        questionLabel: (index: number, question: string) => `Question ${index + 1}: ${question}`,
-        answeredCount: (answered: number, total: number) => `${answered} of ${total} questions answered`,
+        answeredCount: (answered: number, total: number) => `Answered: ${answered} / ${total}`,
         submitButton: "Submit Quiz",
         submitButtonLoading: "Submitting...",
-        submitWarning: "Please answer all questions before submitting.",
-        success: {
-          title: "Quiz Submitted Successfully!",
-          score: (correct: number, total: number, percentage: number) =>
-            `Your Score: ${correct} / ${total} (${percentage}%)`,
-          message: "Your quiz has been submitted and is waiting for teacher feedback.",
-          feedbackMessage: "Your teacher will review your answers and provide feedback soon.",
-        },
+        emptyState: "No quiz available for this lesson.",
         errors: {
           notAllAnswered: "Please answer all questions before submitting.",
-          submitFailed: "Failed to submit quiz. Please try again.",
         },
-        emptyState: "No quiz available for this lesson.",
+        results: {
+          completed: "Quiz completed",
+          score: "Your Score",
+          correct: "Correct",
+          incorrect: "Incorrect",
+          yourAnswer: "Your Answer",
+          correctAnswer: "Correct Answer",
+        },
       },
       keyTerms: {
         title: "Key Terms",

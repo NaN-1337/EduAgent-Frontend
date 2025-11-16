@@ -7,13 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, CheckCircle2, Loader2, ChevronsRight, ChevronsLeft, Bot, Download, Headphones } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { doc, updateDoc, arrayUnion, serverTimestamp, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebaseConfig";
+import { doc, updateDoc, arrayUnion, serverTimestamp, getDoc, collection, addDoc, query, where, getDocs } from "firebase/firestore";
+import { db, storage } from "@/lib/firebaseConfig";
+import { ref, getDownloadURL } from "firebase/storage";
 import { translations } from "@/lib/translations";
 import { convertLessonFromStorage } from "@/lib/dataConverters";
 import { PDFSlideViewer } from "@/components/pdf-viewer/PDFSlideViewer";
 import { LessonChatbot, LessonChatbotRef } from "@/components/chatbot/LessonChatbot";
 import { TextSelectionHandler } from "@/components/chatbot/TextSelectionHandler";
+import { QuizQuestion } from "@/lib/api";
+import { QuizInteractive } from "@/components/quiz/QuizInteractive";
+import { QuizResults } from "@/components/quiz/QuizResults";
 
 export default function StudentLessonPlayer() {
   const { id: lessonId } = useParams<{ id: string }>();
@@ -27,10 +31,10 @@ export default function StudentLessonPlayer() {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [fontSize, setFontSize] = useState(16); // base font size in pixels
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const [quizAnswers, setQuizAnswers] = useState<Record<string, number | null>>({});
-  const [quizSubmitted, setQuizSubmitted] = useState(false);
-  const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [quiz, setQuiz] = useState<{ questions: QuizQuestion[]; title: string; totalQuestions: number; quizId: string } | null>(null);
+  const [quizSubmission, setQuizSubmission] = useState<any>(null);
+  const [loadingQuiz, setLoadingQuiz] = useState(false);
+  const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
   const chatbotRef = useRef<LessonChatbotRef>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -121,15 +125,28 @@ export default function StudentLessonPlayer() {
           slides: slides,
           presentationFileUrl: data.presentationFileUrl,
           presentationFileType: data.presentationFileType,
-          podcastUrl: data.podcastUrl,
+          podcastUrl: data.podcastUrl, // Legacy: keep for backward compatibility
+          podcastPath: data.podcastPath,
           podcastDuration: data.podcastDuration,
           learningObjectives: learningObjectives.length > 0 ? learningObjectives : [
             "Understand the main concepts",
             "Apply knowledge to examples",
             "Complete the lesson activities"
           ],
-          quiz: [], // Quiz functionality can be added later
+          quizId: data.quizId || null,
         };
+
+        // If we have a podcast path, get a fresh download URL using Firebase SDK
+        // This ensures proper CORS and range request support for audio streaming
+        if (lessonData.podcastPath && !lessonData.podcastUrl) {
+          try {
+            const storageRef = ref(storage, lessonData.podcastPath);
+            const downloadURL = await getDownloadURL(storageRef);
+            lessonData.podcastUrl = downloadURL;
+          } catch (error) {
+            console.error("Error getting podcast download URL:", error);
+          }
+        }
 
         setLesson(lessonData);
       } catch (error) {
@@ -144,6 +161,113 @@ export default function StudentLessonPlayer() {
       fetchLesson();
     }
   }, [lessonId, language, navigate]);
+
+  // Fetch quiz data and check for existing submission
+  useEffect(() => {
+    const fetchQuizData = async () => {
+      if (!lesson?.quizId || !user) {
+        setQuiz(null);
+        setQuizSubmission(null);
+        return;
+      }
+
+      try {
+        setLoadingQuiz(true);
+
+        // Fetch quiz
+        const quizDocRef = doc(db, "quizzes", lesson.quizId);
+        const quizDocSnap = await getDoc(quizDocRef);
+
+        if (!quizDocSnap.exists()) {
+          setQuiz(null);
+          setQuizSubmission(null);
+          return;
+        }
+
+        const quizData = quizDocSnap.data();
+        setQuiz({
+          questions: quizData.questions || [],
+          title: quizData.title || "Quiz",
+          totalQuestions: quizData.totalQuestions || quizData.questions?.length || 0,
+          quizId: lesson.quizId,
+        });
+
+        // Check for existing submission
+        const submissionsQuery = query(
+          collection(db, "quiz_submissions"),
+          where("quizId", "==", lesson.quizId),
+          where("studentId", "==", user.uid)
+        );
+        const submissionsSnapshot = await getDocs(submissionsQuery);
+
+        if (!submissionsSnapshot.empty) {
+          const submissionDoc = submissionsSnapshot.docs[0];
+          setQuizSubmission(submissionDoc.data());
+        } else {
+          setQuizSubmission(null);
+        }
+      } catch (error) {
+        console.error("Error fetching quiz data:", error);
+        setQuiz(null);
+        setQuizSubmission(null);
+      } finally {
+        setLoadingQuiz(false);
+      }
+    };
+
+    fetchQuizData();
+  }, [lesson?.quizId, user]);
+
+  // Handle quiz submission
+  const handleQuizSubmit = async (answers: Record<string, string>) => {
+    if (!quiz || !user || !lesson) return;
+
+    try {
+      setIsSubmittingQuiz(true);
+
+      // Calculate results
+      const submissionAnswers = quiz.questions.map((question) => {
+        const selectedAnswerId = answers[question.id];
+        const isCorrect = selectedAnswerId === question.correctAnswerId;
+        return {
+          questionId: question.id,
+          selectedAnswerId: selectedAnswerId || "",
+          correctAnswerId: question.correctAnswerId,
+          isCorrect: isCorrect,
+        };
+      });
+
+      const correctAnswers = submissionAnswers.filter((a) => a.isCorrect).length;
+      const incorrectAnswers = submissionAnswers.filter((a) => !a.isCorrect).length;
+
+      // Get teacherId from quiz document
+      const quizDocRef = doc(db, "quizzes", quiz.quizId);
+      const quizDocSnap = await getDoc(quizDocRef);
+      const quizData = quizDocSnap.data();
+
+      // Create submission document
+      const submissionData = {
+        quizId: quiz.quizId,
+        lectureId: lesson.id,
+        studentId: user.uid,
+        teacherId: quizData?.teacherId || "",
+        correctAnswers: correctAnswers,
+        incorrectAnswers: incorrectAnswers,
+        answers: submissionAnswers,
+        submittedAt: serverTimestamp(),
+      };
+
+      const submissionDocRef = await addDoc(collection(db, "quiz_submissions"), submissionData);
+      const submissionDoc = await getDoc(submissionDocRef);
+      
+      setQuizSubmission(submissionDoc.data());
+    } catch (error: any) {
+      console.error("Error submitting quiz:", error);
+      throw error;
+    } finally {
+      setIsSubmittingQuiz(false);
+    }
+  };
 
   // Mark lesson as completed when student views it
   useEffect(() => {
@@ -404,58 +528,6 @@ export default function StudentLessonPlayer() {
     window.speechSynthesis.speak(utterance);
   };
 
-  const handleQuizSubmit = async () => {
-    if (!user || !lesson.quiz || lesson.quiz.length === 0) return;
-
-      // Check if all questions are answered
-      const allAnswered = lesson.quiz.every((q) => quizAnswers[q.id] !== null && quizAnswers[q.id] !== undefined);
-      if (!allAnswered) {
-        alert(t.student.lessonPlayer.quiz.errors.notAllAnswered);
-        return;
-      }
-
-    setIsSubmitting(true);
-
-    try {
-      // Calculate score
-      let correct = 0;
-      const total = lesson.quiz.length;
-
-      lesson.quiz.forEach((question) => {
-        if (quizAnswers[question.id] === question.correctAnswer) {
-          correct++;
-        }
-      });
-
-      const score = { correct, total };
-      setQuizScore(score);
-
-      // Save to Firestore in student's document
-      const studentDocRef = doc(db, "users", user.uid);
-      
-      const quizSubmission = {
-        lessonId: lessonId || lesson.id,
-        lessonTitle: lesson.title,
-        answers: quizAnswers,
-        score: score,
-        submittedAt: serverTimestamp(),
-        status: "pending", // pending, reviewed
-      };
-
-      await updateDoc(studentDocRef, {
-        quizSubmissions: arrayUnion(quizSubmission),
-        updatedAt: serverTimestamp(),
-      });
-
-      setQuizSubmitted(true);
-    } catch (error) {
-      console.error("Error submitting quiz:", error);
-      alert(t.student.lessonPlayer.quiz.errors.submitFailed);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
 
   return (
     <div className="min-h-screen bg-background flex flex-col w-full overflow-x-hidden">
@@ -513,9 +585,9 @@ export default function StudentLessonPlayer() {
                 <TabsTrigger value="podcast" className="flex-1">
                   {t.student.lessonPlayer.tabs.podcast || "Podcast"}
                 </TabsTrigger>
-                {lesson.quiz && lesson.quiz.length > 0 && (
+                {lesson?.quizId && (
                   <TabsTrigger value="quiz" className="flex-1">
-                    {t.student.lessonPlayer.tabs.quiz}
+                    {t.student.lessonPlayer.tabs.quiz || "Quiz"}
                   </TabsTrigger>
                 )}
               </TabsList>
@@ -810,7 +882,8 @@ export default function StudentLessonPlayer() {
                           <audio
                             controls
                             className="w-full"
-                            src={lesson.podcastUrl}
+                            src={lesson.podcastUrl ? `${lesson.podcastUrl}?t=${Date.now()}` : undefined}
+                            preload="metadata"
                           >
                             {t.student.lessonPlayer.podcast?.notSupported || "Your browser does not support the audio element."}
                           </audio>
@@ -835,133 +908,32 @@ export default function StudentLessonPlayer() {
 
               {/* Quiz View */}
               <TabsContent value="quiz" className="mt-0">
-                <div className="space-y-8">
-                  {lesson.quiz && lesson.quiz.length > 0 ? (
-                    <>
-                      {quizSubmitted ? (
-                        /* Success Message */
-                        <Card className="border-2 border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800">
-                          <CardContent className="pt-6">
-                            <div className="flex flex-col items-center text-center space-y-4">
-                              <CheckCircle2 className="h-16 w-16 text-green-600" />
-                              <div>
-                                <h3 className="text-2xl font-bold text-green-800 dark:text-green-300 mb-2">
-                                  {t.student.lessonPlayer.quiz.success.title}
-                                </h3>
-                                {quizScore && (
-                                  <p className="text-lg text-green-700 dark:text-green-400 mb-4">
-                                    {t.student.lessonPlayer.quiz.success.score(
-                                      quizScore.correct,
-                                      quizScore.total,
-                                      Math.round((quizScore.correct / quizScore.total) * 100)
-                                    )}
-                                  </p>
-                                )}
-                                <p className="text-base text-muted-foreground">
-                                  {t.student.lessonPlayer.quiz.success.message}
-                                </p>
-                                <p className="text-sm text-muted-foreground mt-2">
-                                  {t.student.lessonPlayer.quiz.success.feedbackMessage}
-                                </p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ) : (
-                        /* Quiz Questions */
-                        <>
-                          {lesson.quiz.map((question, questionIndex) => (
-                            <Card key={question.id} className="border-2">
-                              <CardContent className="pt-6">
-                                <div className="space-y-4">
-                                  <div className="flex items-start justify-between gap-4">
-                                    <h3 className="text-xl font-semibold">
-                                      {t.student.lessonPlayer.quiz.questionLabel(questionIndex + 1, question.question)}
-                                    </h3>
-                                  </div>
-
-                                  <div className="space-y-3">
-                                    {question.options.map((option, optionIndex) => (
-                                      <button
-                                        key={optionIndex}
-                                        onClick={() => {
-                                          setQuizAnswers({
-                                            ...quizAnswers,
-                                            [question.id]: optionIndex,
-                                          });
-                                        }}
-                                        className={cn(
-                                          "w-full text-left p-4 rounded-lg border-2 transition-colors",
-                                          quizAnswers[question.id] === optionIndex
-                                            ? "border-primary bg-primary/5"
-                                            : "border-border hover:border-primary/50"
-                                        )}
-                                      >
-                                        <div className="flex items-center gap-3">
-                                          <div
-                                            className={cn(
-                                              "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
-                                              quizAnswers[question.id] === optionIndex
-                                                ? "border-primary bg-primary"
-                                                : "border-muted-foreground"
-                                            )}
-                                          >
-                                            {quizAnswers[question.id] === optionIndex && (
-                                              <div className="w-2 h-2 rounded-full bg-primary-foreground" />
-                                            )}
-                                          </div>
-                                          <span className="flex-1">{option}</span>
-                                        </div>
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-
-                          {/* Submit Button */}
-                          <Card className="border-2">
-                            <CardContent className="pt-6">
-                              <div className="flex flex-col items-center space-y-4">
-                                <p className="text-sm text-muted-foreground text-center">
-                                  {t.student.lessonPlayer.quiz.answeredCount(
-                                    lesson.quiz.filter((q) => quizAnswers[q.id] !== null && quizAnswers[q.id] !== undefined).length,
-                                    lesson.quiz.length
-                                  )}
-                                </p>
-                                <Button
-                                  onClick={handleQuizSubmit}
-                                  disabled={
-                                    isSubmitting ||
-                                    lesson.quiz.some((q) => quizAnswers[q.id] === null || quizAnswers[q.id] === undefined)
-                                  }
-                                  size="lg"
-                                  className="w-full sm:w-auto min-w-[200px]"
-                                >
-                                  {isSubmitting ? (
-                                    <>
-                                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                      {t.student.lessonPlayer.quiz.submitButtonLoading}
-                                    </>
-                                  ) : (
-                                    t.student.lessonPlayer.quiz.submitButton
-                                  )}
-                                </Button>
-                                {lesson.quiz.some((q) => quizAnswers[q.id] === null || quizAnswers[q.id] === undefined) && (
-                                  <p className="text-xs text-muted-foreground text-center">
-                                    {t.student.lessonPlayer.quiz.submitWarning}
-                                  </p>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </>
-                      )}
-                    </>
+                <div className="space-y-6">
+                  {loadingQuiz ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : quiz ? (
+                    quizSubmission ? (
+                      <QuizResults
+                        questions={quiz.questions}
+                        title={quiz.title}
+                        answers={quizSubmission.answers || []}
+                        correctAnswers={quizSubmission.correctAnswers || 0}
+                        incorrectAnswers={quizSubmission.incorrectAnswers || 0}
+                        totalQuestions={quiz.totalQuestions}
+                      />
+                    ) : (
+                      <QuizInteractive
+                        questions={quiz.questions}
+                        title={quiz.title}
+                        onSubmit={handleQuizSubmit}
+                        isSubmitting={isSubmittingQuiz}
+                      />
+                    )
                   ) : (
                     <p className="text-center text-muted-foreground py-12">
-                      {t.student.lessonPlayer.quiz.emptyState}
+                      {t.student.lessonPlayer.quiz?.emptyState || "No quiz available for this lesson."}
                     </p>
                   )}
                 </div>

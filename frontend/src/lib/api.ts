@@ -310,3 +310,57 @@ export async function continueChat(
   return data.data;
 }
 
+// ===========================
+// Quiz API
+// ===========================
+
+export interface QuizOption {
+  id: string;
+  text: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  text: string;
+  options: QuizOption[];
+  correctAnswerId: string;
+}
+
+export interface GenerateQuizRequest {
+  student_version: string;
+  num_questions?: number;
+}
+
+export interface GenerateQuizResponse {
+  success: boolean;
+  data: {
+    questions: QuizQuestion[];
+  };
+}
+
+/**
+ * Generate quiz from lecture content
+ */
+export async function generateQuiz(
+  request: GenerateQuizRequest
+): Promise<GenerateQuizResponse["data"]> {
+  const response = await fetch(`${API_BASE_URL}/api/generate-quiz`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      student_version: request.student_version,
+      num_questions: request.num_questions || 10,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to generate quiz");
+  }
+
+  const data: GenerateQuizResponse = await response.json();
+  return data.data;
+}
+
