@@ -258,7 +258,10 @@ VITE_FIREBASE_PROJECT_ID=your_project_id
 VITE_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
 VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
+VITE_API_BASE_URL=http://localhost:5000
 ```
+
+**Note**: `VITE_API_BASE_URL` is optional and defaults to `http://localhost:5000` if not set. This is the base URL for the Romanian Education RAG System API that generates lesson content.
 
 **Note**: In Vite, environment variables must be prefixed with `VITE_` to be accessible in the browser.
 
