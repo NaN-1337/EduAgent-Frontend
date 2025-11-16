@@ -1,9 +1,16 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { generateLecture, generatePresentation, downloadFile, Question } from "@/lib/api";
+import { gradeToStorage, teachingFieldToStorage } from "@/lib/dataConverters";
+import { useAuth } from "@/contexts/AuthContext";
+import { db } from "@/lib/firebaseConfig";
+import { collection, addDoc, serverTimestamp, updateDoc, doc } from "firebase/firestore";
+import { storage } from "@/lib/firebaseConfig";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 interface GenerationStep {
   id: string;
@@ -13,122 +20,252 @@ interface GenerationStep {
 }
 
 interface Step3GenerationProps {
-  onComplete: () => void;
+  title: string;
+  subject: string;
+  grade: string;
+  questions: Question[];
+  answers: Record<string, string>;
+  onComplete: (lessonId: string) => void;
   onContinue?: () => void;
   canContinue?: boolean;
 }
 
-export function Step3Generation({ onComplete, onContinue, canContinue }: Step3GenerationProps) {
+export function Step3Generation({
+  title,
+  subject,
+  grade,
+  questions,
+  answers,
+  onComplete,
+  onContinue,
+  canContinue,
+}: Step3GenerationProps) {
   const { t } = useLanguage();
-  
-  const initialSteps = useMemo<GenerationStep[]>(() => [
-    {
-      id: "understanding",
-      label: t.teacher.newLesson.step3.steps?.understanding || "Understanding request",
-      status: "pending",
-    },
-    {
-      id: "researching",
-      label: t.teacher.newLesson.step3.steps?.researching || "Researching topic",
-      status: "pending",
-    },
-    {
-      id: "drafting",
-      label: t.teacher.newLesson.step3.steps?.drafting || "Drafting student summary",
-      status: "pending",
-    },
-    {
-      id: "slides",
-      label: t.teacher.newLesson.step3.steps?.slides || "Creating slides outline",
-      status: "pending",
-    },
-    {
-      id: "guidelines",
-      label: t.teacher.newLesson.step3.steps?.guidelines || "Writing teacher guidelines",
-      status: "pending",
-    },
-    {
-      id: "factcheck",
-      label: t.teacher.newLesson.step3.steps?.factcheck || "Running fact-check checks",
-      status: "pending",
-    },
-  ], [t]);
+  const { user } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const [lessonId, setLessonId] = useState<string | null>(null);
 
-  const stepDescriptions = useMemo<Record<string, string>>(() => ({
-    understanding: t.teacher.newLesson.step3.descriptions?.understanding || "Analyzing your lesson requirements and objectives...",
-    researching: t.teacher.newLesson.step3.descriptions?.researching || "Scanning your uploaded PDF and trusted sources...",
-    drafting: t.teacher.newLesson.step3.descriptions?.drafting || "Creating a clear, age-appropriate summary for students...",
-    slides: t.teacher.newLesson.step3.descriptions?.slides || "Organizing content into structured presentation slides...",
-    guidelines: t.teacher.newLesson.step3.descriptions?.guidelines || "Preparing teaching notes and activity suggestions...",
-    factcheck: t.teacher.newLesson.step3.descriptions?.factcheck || "Verifying facts against trusted sources...",
-  }), [t]);
+  const initialSteps = useMemo<GenerationStep[]>(
+    () => [
+      {
+        id: "lecture",
+        label: t.teacher.newLesson.step3.steps?.lecture || "Generating lecture content",
+        status: "pending",
+      },
+      {
+        id: "presentation",
+        label: t.teacher.newLesson.step3.steps?.presentation || "Creating presentation",
+        status: "pending",
+      },
+      {
+        id: "saving",
+        label: t.teacher.newLesson.step3.steps?.saving || "Saving lesson",
+        status: "pending",
+      },
+    ],
+    [t]
+  );
+
+  const stepDescriptions = useMemo<Record<string, string>>(
+    () => ({
+      lecture:
+        t.teacher.newLesson.step3.descriptions?.lecture ||
+        "Generating student and teacher versions...",
+      presentation:
+        t.teacher.newLesson.step3.descriptions?.presentation ||
+        "Creating PowerPoint presentation...",
+      saving:
+        t.teacher.newLesson.step3.descriptions?.saving ||
+        "Uploading files and saving to database...",
+    }),
+    [t]
+  );
 
   const [steps, setSteps] = useState<GenerationStep[]>(initialSteps);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [hasCompleted, setHasCompleted] = useState(false);
+  const hasStartedRef = useRef(false);
 
   // Update steps when language changes
   useEffect(() => {
     setSteps(initialSteps);
   }, [initialSteps]);
 
+  // Start generation when component mounts
   useEffect(() => {
-    if (currentStepIndex >= initialSteps.length) {
+    if (hasCompleted || !user || questions.length === 0 || hasStartedRef.current) {
       return;
     }
 
-    // Mark first step as in-progress immediately
-    if (currentStepIndex === 0) {
-      setSteps((prevSteps) => {
-        const newSteps = [...prevSteps];
-        newSteps[0] = {
-          ...newSteps[0],
-          status: "in-progress",
-          description: stepDescriptions[newSteps[0].id],
-        };
-        return newSteps;
-      });
-    }
+    hasStartedRef.current = true;
 
-    // Simulate generation progress
-    const timeout = setTimeout(() => {
-      setSteps((prevSteps) => {
-        const newSteps = [...prevSteps];
-        
-        // Complete current step
-        if (currentStepIndex < newSteps.length) {
-          newSteps[currentStepIndex] = {
-            ...newSteps[currentStepIndex],
+    const runGeneration = async () => {
+      try {
+        setError(null);
+
+        // Convert grade and subject
+        const gradeNum = gradeToStorage(grade);
+        const subjectStorage = teachingFieldToStorage(subject);
+
+        if (gradeNum === null || !subjectStorage) {
+          throw new Error("Invalid grade or subject");
+        }
+
+        // Step 1: Generate lecture
+        setCurrentStepIndex(0);
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          newSteps[0] = {
+            ...newSteps[0],
+            status: "in-progress",
+            description: stepDescriptions.lecture,
+          };
+          return newSteps;
+        });
+
+        const lectureData = await generateLecture({
+          title,
+          subject: subjectStorage,
+          grade: gradeNum,
+          questions,
+          answers,
+        });
+
+        // Mark lecture step as completed
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          newSteps[0] = {
+            ...newSteps[0],
             status: "completed",
             description: undefined,
           };
-        }
+          return newSteps;
+        });
 
-        // Start next step if available
-        if (currentStepIndex < initialSteps.length - 1) {
-          const nextIndex = currentStepIndex + 1;
-          newSteps[nextIndex] = {
-            ...newSteps[nextIndex],
+        // Step 2: Generate presentation
+        setCurrentStepIndex(1);
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          newSteps[1] = {
+            ...newSteps[1],
             status: "in-progress",
-            description: stepDescriptions[newSteps[nextIndex].id],
+            description: stepDescriptions.presentation,
           };
-          setCurrentStepIndex(nextIndex);
-        } else {
-          // All steps completed - only call onComplete once
-          if (!hasCompleted) {
-            setHasCompleted(true);
-            setTimeout(() => {
-              onComplete();
-            }, 500);
+          return newSteps;
+        });
+
+        const presentationData = await generatePresentation({
+          student_version: lectureData.student_version,
+          n_slides: 10,
+          language: "Romanian",
+          template: "modern",
+          tone: "educational",
+          verbosity: "standard",
+          export_as: "pdf",
+        });
+
+        // Mark presentation step as completed
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          newSteps[1] = {
+            ...newSteps[1],
+            status: "completed",
+            description: undefined,
+          };
+          return newSteps;
+        });
+
+        // Step 3: Download PDF and upload to Firebase Storage
+        setCurrentStepIndex(2);
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          newSteps[2] = {
+            ...newSteps[2],
+            status: "in-progress",
+            description: stepDescriptions.saving,
+          };
+          return newSteps;
+        });
+
+        // Download PDF from presentation API
+        const pdfBlob = await downloadFile(presentationData.presentation.download_url);
+        const pdfFile = new File([pdfBlob], "presentation.pdf", { type: "application/pdf" });
+
+        // Create lesson document in Firestore first
+        const lessonData: any = {
+          teacherId: user.uid,
+          title,
+          grade: gradeNum,
+          subject: subjectStorage,
+          status: "draft",
+          studentSummary: lectureData.student_version, // Store HTML
+          teacherGuidelines: {
+            content: lectureData.teacher_version, // Store HTML
+          },
+          slides: presentationData.slides.map((slide, index) => ({
+            id: `slide-${index}`,
+            title: slide.content.title || `Slide ${index + 1}`,
+            content: slide.content.body || "",
+            speakerNote: slide.speaker_note,
+            slideIndex: slide.slide_index,
+          })),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          lastModified: serverTimestamp(),
+        };
+
+        const docRef = await addDoc(collection(db, "lessons"), lessonData);
+        const finalLessonId = docRef.id;
+
+        // Upload PDF to Firebase Storage
+        const storagePath = `${user.uid}/${gradeNum}/${finalLessonId}/presentation.pdf`;
+        const storageRef = ref(storage, storagePath);
+        await uploadBytes(storageRef, pdfFile);
+        const downloadURL = await getDownloadURL(storageRef);
+
+        // Update lesson with presentation file URL
+        await updateDoc(docRef, {
+          presentationFileUrl: downloadURL,
+          presentationFileType: "pdf",
+          updatedAt: serverTimestamp(),
+        });
+
+        // Mark saving step as completed
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          newSteps[2] = {
+            ...newSteps[2],
+            status: "completed",
+            description: undefined,
+          };
+          return newSteps;
+        });
+
+        setLessonId(finalLessonId);
+        setHasCompleted(true);
+        onComplete(finalLessonId);
+      } catch (err: any) {
+        console.error("Error during generation:", err);
+        setError(err.message || "An error occurred during generation");
+        
+        // Mark current step as failed
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          if (currentStepIndex < newSteps.length) {
+            newSteps[currentStepIndex] = {
+              ...newSteps[currentStepIndex],
+              status: "failed",
+              description: err.message || "Failed",
+            };
           }
-        }
+          return newSteps;
+        });
+      }
+    };
 
-        return newSteps;
-      });
-    }, 2000);
-
-    return () => clearTimeout(timeout);
-  }, [currentStepIndex, onComplete, initialSteps.length, stepDescriptions, hasCompleted]);
+    runGeneration();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount - dependencies are checked inside
 
   const getStepIcon = (status: GenerationStep["status"]) => {
     switch (status) {
@@ -139,7 +276,9 @@ export function Step3Generation({ onComplete, onContinue, canContinue }: Step3Ge
       case "failed":
         return <AlertCircle className="h-5 w-5 text-destructive" />;
       default:
-        return <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30" />;
+        return (
+          <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30" />
+        );
     }
   };
 
@@ -157,6 +296,12 @@ export function Step3Generation({ onComplete, onContinue, canContinue }: Step3Ge
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
+
           <div className="space-y-4">
             {steps.map((step, index) => (
               <div
@@ -172,7 +317,8 @@ export function Step3Generation({ onComplete, onContinue, canContinue }: Step3Ge
                     className={cn(
                       "font-semibold text-base",
                       step.status === "completed" && "text-muted-foreground",
-                      step.status === "in-progress" && "text-primary"
+                      step.status === "in-progress" && "text-primary",
+                      step.status === "failed" && "text-destructive"
                     )}
                   >
                     {step.label}
@@ -189,7 +335,8 @@ export function Step3Generation({ onComplete, onContinue, canContinue }: Step3Ge
             <>
               <div className="mt-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
                 <p className="text-sm text-muted-foreground text-center">
-                  You can review and adjust all content before sharing with students.
+                  {t.teacher.newLesson.step3.completedMessage ||
+                    "Generation complete! You can review and adjust all content before sharing with students."}
                 </p>
               </div>
               {onContinue && (
@@ -206,4 +353,3 @@ export function Step3Generation({ onComplete, onContinue, canContinue }: Step3Ge
     </div>
   );
 }
-

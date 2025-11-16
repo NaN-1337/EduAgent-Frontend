@@ -25,6 +25,8 @@ interface Slide {
   title: string;
   content: string;
   hasIssue?: boolean;
+  speakerNote?: string;
+  slideIndex?: number;
 }
 
 interface LessonData {
@@ -38,6 +40,7 @@ interface LessonData {
   presentationFileUrl?: string;
   presentationFileType?: "pdf";
   teacherGuidelines?: {
+    content?: string; // HTML content from API
     objectives?: string;
     timing?: string;
     questions?: string;
@@ -80,9 +83,23 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
         let slides: Slide[] = [];
         if (data.slides) {
           if (Array.isArray(data.slides)) {
-            slides = data.slides;
+            slides = data.slides.map((slide: any) => ({
+              id: slide.id || `slide-${slide.slideIndex || 0}`,
+              title: slide.title || `Slide ${(slide.slideIndex || 0) + 1}`,
+              content: slide.content || "",
+              hasIssue: slide.hasIssue || false,
+              speakerNote: slide.speakerNote || slide.speaker_note || "",
+              slideIndex: slide.slideIndex !== undefined ? slide.slideIndex : slide.slide_index,
+            }));
           } else if (typeof data.slides === 'object') {
-            slides = Object.values(data.slides);
+            slides = Object.values(data.slides).map((slide: any) => ({
+              id: slide.id || `slide-${slide.slideIndex || 0}`,
+              title: slide.title || `Slide ${(slide.slideIndex || 0) + 1}`,
+              content: slide.content || "",
+              hasIssue: slide.hasIssue || false,
+              speakerNote: slide.speakerNote || slide.speaker_note || "",
+              slideIndex: slide.slideIndex !== undefined ? slide.slideIndex : slide.slide_index,
+            }));
           }
         }
 
@@ -91,6 +108,7 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
         if (data.teacherGuidelines) {
           if (typeof data.teacherGuidelines === 'object') {
             teacherGuidelines = {
+              content: data.teacherGuidelines.content || "", // HTML content from API
               objectives: data.teacherGuidelines.objectives || "",
               timing: data.teacherGuidelines.timing || "",
               questions: data.teacherGuidelines.questions || "",
@@ -353,10 +371,55 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
 
                   {/* Main Content */}
                   <div
-                    className="max-w-none"
+                    className="max-w-none prose prose-lg dark:prose-invert max-w-none"
                     style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
                   >
-                    <div className="space-y-4">{formatSummary(lesson.studentSummary)}</div>
+                    <style>{`
+                      .prose h1 {
+                        font-size: 2em;
+                        font-weight: bold;
+                        margin-top: 1em;
+                        margin-bottom: 0.5em;
+                      }
+                      .prose h2 {
+                        font-size: 1.5em;
+                        font-weight: 600;
+                        margin-top: 0.75em;
+                        margin-bottom: 0.5em;
+                      }
+                      .prose h3 {
+                        font-size: 1.25em;
+                        font-weight: 600;
+                        margin-top: 0.5em;
+                        margin-bottom: 0.25em;
+                      }
+                      .prose p {
+                        margin-bottom: 1em;
+                      }
+                      .prose ul, .prose ol {
+                        margin-bottom: 1em;
+                        padding-left: 1.5em;
+                      }
+                      .prose li {
+                        margin-bottom: 0.5em;
+                      }
+                      .prose strong {
+                        font-weight: 600;
+                      }
+                      .prose em {
+                        font-style: italic;
+                      }
+                    `}</style>
+                    {lesson.studentSummary && lesson.studentSummary.startsWith("<") ? (
+                      // Render HTML content
+                      <div
+                        dangerouslySetInnerHTML={{ __html: lesson.studentSummary }}
+                        className="space-y-4"
+                      />
+                    ) : (
+                      // Render plain text with formatting
+                      <div className="space-y-4">{formatSummary(lesson.studentSummary || "")}</div>
+                    )}
                   </div>
                 </div>
               </TabsContent>
@@ -451,49 +514,83 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
               {/* Teacher Guidelines View */}
               <TabsContent value="guidelines" className="mt-0">
                 <div className="space-y-6">
-                  {lesson.teacherGuidelines && (
-                    <>
-                      {lesson.teacherGuidelines.objectives && (
-                        <Card>
-                          <CardContent className="pt-6">
-                            <h3 className="text-lg font-semibold mb-3">Objectives</h3>
-                            <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.objectives}</p>
-                          </CardContent>
-                        </Card>
-                      )}
-                      {lesson.teacherGuidelines.timing && (
-                        <Card>
-                          <CardContent className="pt-6">
-                            <h3 className="text-lg font-semibold mb-3">Timing</h3>
-                            <p>{lesson.teacherGuidelines.timing}</p>
-                          </CardContent>
-                        </Card>
-                      )}
-                      {lesson.teacherGuidelines.questions && (
-                        <Card>
-                          <CardContent className="pt-6">
-                            <h3 className="text-lg font-semibold mb-3">Questions</h3>
-                            <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.questions}</p>
-                          </CardContent>
-                        </Card>
-                      )}
-                      {lesson.teacherGuidelines.differentiation && (
-                        <Card>
-                          <CardContent className="pt-6">
-                            <h3 className="text-lg font-semibold mb-3">Differentiation</h3>
-                            <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.differentiation}</p>
-                          </CardContent>
-                        </Card>
-                      )}
-                      {lesson.teacherGuidelines.assessment && (
-                        <Card>
-                          <CardContent className="pt-6">
-                            <h3 className="text-lg font-semibold mb-3">Assessment</h3>
-                            <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.assessment}</p>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </>
+                  {lesson.teacherGuidelines?.content ? (
+                    // Render HTML content from API
+                    <div
+                      className="prose prose-lg dark:prose-invert max-w-none"
+                      style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
+                    >
+                      <style>{`
+                        .teacher-note {
+                          background-color: #fff3cd;
+                          border-left: 4px solid #ffc107;
+                          padding: 15px;
+                          margin: 20px 0;
+                          font-style: italic;
+                          border-radius: 4px;
+                        }
+                        .dark .teacher-note {
+                          background-color: rgba(255, 243, 205, 0.1);
+                          border-left-color: #ffc107;
+                        }
+                        .emphasis {
+                          font-weight: bold;
+                          color: #d32f2f;
+                        }
+                        .dark .emphasis {
+                          color: #ef5350;
+                        }
+                      `}</style>
+                      <div
+                        dangerouslySetInnerHTML={{ __html: lesson.teacherGuidelines.content }}
+                      />
+                    </div>
+                  ) : (
+                    // Fallback to structured fields
+                    lesson.teacherGuidelines && (
+                      <>
+                        {lesson.teacherGuidelines.objectives && (
+                          <Card>
+                            <CardContent className="pt-6">
+                              <h3 className="text-lg font-semibold mb-3">Objectives</h3>
+                              <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.objectives}</p>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {lesson.teacherGuidelines.timing && (
+                          <Card>
+                            <CardContent className="pt-6">
+                              <h3 className="text-lg font-semibold mb-3">Timing</h3>
+                              <p>{lesson.teacherGuidelines.timing}</p>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {lesson.teacherGuidelines.questions && (
+                          <Card>
+                            <CardContent className="pt-6">
+                              <h3 className="text-lg font-semibold mb-3">Questions</h3>
+                              <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.questions}</p>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {lesson.teacherGuidelines.differentiation && (
+                          <Card>
+                            <CardContent className="pt-6">
+                              <h3 className="text-lg font-semibold mb-3">Differentiation</h3>
+                              <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.differentiation}</p>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {lesson.teacherGuidelines.assessment && (
+                          <Card>
+                            <CardContent className="pt-6">
+                              <h3 className="text-lg font-semibold mb-3">Assessment</h3>
+                              <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.assessment}</p>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </>
+                    )
                   )}
                 </div>
               </TabsContent>
@@ -519,8 +616,15 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
                 if (isViewingPDF) {
                   const slideNumber = currentSlideIndex + 1;
                   
-                  // Generate slide-specific notes based on slide number
-                  let notes = `Slide ${slideNumber}: ${lesson.teacherGuidelines?.objectives ? `Obiective: ${lesson.teacherGuidelines.objectives}` : "Informații despre acest slide"}`;
+                  // Find the current slide's speaker note from the slides array
+                  const currentSlide = lesson.slides.find(
+                    (s) => s.slideIndex === currentSlideIndex || s.id === `slide-${currentSlideIndex}`
+                  );
+                  
+                  // Use speaker note from presentation API if available
+                  const notes = currentSlide?.speakerNote || 
+                    `Slide ${slideNumber}: ${lesson.teacherGuidelines?.objectives ? `Obiective: ${lesson.teacherGuidelines.objectives}` : "Informații despre acest slide"}`;
+                  
                   const tips: string[] = [];
                   const resources: string[] = [];
                   
@@ -804,8 +908,14 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
                   if (isViewingPDF) {
                     const slideNumber = currentSlideIndex + 1;
                     
-                    // Generate slide-specific notes based on slide number
-                    let notes = `Slide ${slideNumber}: ${lesson.teacherGuidelines?.objectives ? `Obiective: ${lesson.teacherGuidelines.objectives}` : "Informații despre acest slide"}`;
+                    // Find the current slide's speaker note from the slides array
+                    const currentSlide = lesson.slides.find(
+                      (s) => s.slideIndex === currentSlideIndex || s.id === `slide-${currentSlideIndex}`
+                    );
+                    
+                    // Use speaker note from presentation API if available
+                    const notes = currentSlide?.speakerNote || 
+                      `Slide ${slideNumber}: ${lesson.teacherGuidelines?.objectives ? `Obiective: ${lesson.teacherGuidelines.objectives}` : "Informații despre acest slide"}`;
                     const tips: string[] = [];
                     const resources: string[] = [];
                     
