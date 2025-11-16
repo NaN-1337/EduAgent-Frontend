@@ -36,10 +36,10 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
   const isActive = (path: string) => location.pathname === path;
 
   const teacherLinks = [
-    { path: "/teacher/dashboard", label: t.navbar.student.dashboard },
-    { path: "/teacher/lessons", label: t.navbar.student.myLessons },
+    { path: "/teacher/dashboard", label: t.navbar.teacher?.dashboard || t.navbar.student.dashboard },
+    { path: "/teacher/lessons", label: t.navbar.teacher?.myLessons || t.navbar.student.myLessons },
     { path: "/teacher/students", label: t.teacher.studentsView.title },
-    { path: "/profile", label: t.navbar.student.account },
+    { path: "/profile", label: t.navbar.teacher?.account || t.navbar.student.account },
   ];
 
   const studentLinks = [

@@ -4,13 +4,16 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translations } from "@/lib/translations";
 import { convertLessonFromStorage } from "@/lib/dataConverters";
 import { db } from "@/lib/firebaseConfig";
 import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
-import { BookOpen, GraduationCap, ArrowRight, Plus } from "lucide-react";
+import { BookOpen, ArrowRight, Plus, ChevronDown, ChevronRight, Filter, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface Lesson {
   uid: string;
@@ -23,13 +26,22 @@ interface Lesson {
   createdAt?: any;
 }
 
+interface SubjectGroup {
+  subject: string;
+  lessons: Lesson[];
+  expanded: boolean;
+}
+
 export default function MyLessons() {
   const navigate = useNavigate();
   const { user, userData, loading } = useAuth();
   const { t, language } = useLanguage();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loadingLessons, setLoadingLessons] = useState(true);
-  const [lessonsByGrade, setLessonsByGrade] = useState<Record<string, Lesson[]>>({});
+  const [subjects, setSubjects] = useState<SubjectGroup[]>([]);
+  const [selectedSubjects, setSelectedSubjects] = useState<Set<string>>(new Set());
+  const [showFiltered, setShowFiltered] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (!loading && (!user || userData?.role !== "teacher")) {
@@ -79,17 +91,26 @@ export default function MyLessons() {
 
         setLessons(lessonsData);
 
-        // Group by grade
+        // Group by subject
         const grouped: Record<string, Lesson[]> = {};
         lessonsData.forEach((lesson) => {
-          const grade = lesson.grade || "Unknown";
-          if (!grouped[grade]) {
-            grouped[grade] = [];
+          const subject = lesson.subject || "Unknown";
+          if (!grouped[subject]) {
+            grouped[subject] = [];
           }
-          grouped[grade].push(lesson);
+          grouped[subject].push(lesson);
         });
 
-        setLessonsByGrade(grouped);
+          // Create subject groups
+          const subjectGroups: SubjectGroup[] = Object.keys(grouped)
+            .sort()
+            .map((subject) => ({
+              subject,
+              lessons: grouped[subject],
+              expanded: false,
+            }));
+
+        setSubjects(subjectGroups);
       } catch (error) {
         console.error("Error fetching lessons:", error);
         // If query fails (e.g., missing index), try without orderBy
@@ -127,17 +148,26 @@ export default function MyLessons() {
 
           setLessons(lessonsData);
 
-          // Group by grade
+          // Group by subject
           const grouped: Record<string, Lesson[]> = {};
           lessonsData.forEach((lesson) => {
-            const grade = lesson.grade || "Unknown";
-            if (!grouped[grade]) {
-              grouped[grade] = [];
+            const subject = lesson.subject || "Unknown";
+            if (!grouped[subject]) {
+              grouped[subject] = [];
             }
-            grouped[grade].push(lesson);
+            grouped[subject].push(lesson);
           });
 
-          setLessonsByGrade(grouped);
+          // Create subject groups
+          const subjectGroups: SubjectGroup[] = Object.keys(grouped)
+            .sort()
+            .map((subject) => ({
+              subject,
+              lessons: grouped[subject],
+              expanded: false,
+            }));
+
+          setSubjects(subjectGroups);
         } catch (fallbackError) {
           console.error("Error in fallback query:", fallbackError);
         }
@@ -149,7 +179,75 @@ export default function MyLessons() {
     if (user && userData && userData.role === "teacher") {
       fetchLessons();
     }
-  }, [user, userData]);
+  }, [user, userData, language]);
+
+  const toggleSubjectExpanded = (subject: string) => {
+    const currentSubject = subjects.find((s) => s.subject === subject);
+    const isCurrentlyExpanded = currentSubject?.expanded || false;
+    
+    // Toggle expanded state
+    setSubjects((prev) =>
+      prev.map((s) =>
+        s.subject === subject ? { ...s, expanded: !s.expanded } : s
+      )
+    );
+    
+    // Also toggle selection when clicking to expand/collapse
+    setSelectedSubjects((prev) => {
+      const newSet = new Set(prev);
+      if (isCurrentlyExpanded) {
+        // Collapsing - remove from selection
+        newSet.delete(subject);
+      } else {
+        // Expanding - add to selection
+        newSet.add(subject);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSubjectSelected = (subject: string) => {
+    setSelectedSubjects((prev) => {
+      const newSet = new Set(prev);
+      const wasSelected = newSet.has(subject);
+      if (wasSelected) {
+        newSet.delete(subject);
+        // Collapse when deselected
+        setSubjects((prevSubjects) =>
+          prevSubjects.map((s) =>
+            s.subject === subject ? { ...s, expanded: false } : s
+          )
+        );
+      } else {
+        newSet.add(subject);
+        // Expand when selected
+        setSubjects((prevSubjects) =>
+          prevSubjects.map((s) =>
+            s.subject === subject ? { ...s, expanded: true } : s
+          )
+        );
+      }
+      return newSet;
+    });
+  };
+
+  const handleShowSelectedLessons = () => {
+    setShowFiltered(true);
+    // Expand all selected subjects
+    setSubjects((prev) =>
+      prev.map((s) =>
+        selectedSubjects.has(s.subject) ? { ...s, expanded: true } : s
+      )
+    );
+  };
+
+  const handleShowAllLessons = () => {
+    setShowFiltered(false);
+    setSelectedSubjects(new Set());
+    setSubjects((prev) =>
+      prev.map((s) => ({ ...s, expanded: false }))
+    );
+  };
 
   if (loading || loadingLessons) {
     return (
@@ -196,11 +294,44 @@ export default function MyLessons() {
     navigate(`/teacher/lessons/${lessonId}/edit`);
   };
 
-  const gradeOrder = Object.keys(lessonsByGrade).sort((a, b) => {
-    const gradeA = parseInt(a.replace(/\D/g, "")) || 0;
-    const gradeB = parseInt(b.replace(/\D/g, "")) || 0;
-    return gradeA - gradeB;
-  });
+  // Filter subjects based on search query and selection
+  const displayedSubjects = (() => {
+    let filtered = subjects;
+    
+    // First apply search filter if there's a query
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      filtered = filtered.map((subjectGroup) => {
+        // Check if subject name matches
+        const subjectMatches = subjectGroup.subject.toLowerCase().includes(query);
+        
+        // Check if any lesson title matches
+        const lessonsMatch = subjectGroup.lessons.some((lesson) =>
+          lesson.title.toLowerCase().includes(query)
+        );
+        
+        // If subject or any lesson matches, include it but filter lessons
+        if (subjectMatches || lessonsMatch) {
+          return {
+            ...subjectGroup,
+            lessons: subjectMatches
+              ? subjectGroup.lessons // If subject matches, show all lessons
+              : subjectGroup.lessons.filter((lesson) =>
+                  lesson.title.toLowerCase().includes(query)
+                ), // If only lessons match, filter lessons
+          };
+        }
+        return null;
+      }).filter((s) => s !== null) as SubjectGroup[];
+    }
+    
+    // Then apply selection filter if showFiltered is true
+    if (showFiltered) {
+      filtered = filtered.filter((s) => selectedSubjects.has(s.subject));
+    }
+    
+    return filtered;
+  })();
 
   return (
     <div className="min-h-screen bg-background">
@@ -237,74 +368,175 @@ export default function MyLessons() {
             </Card>
           ) : (
             <div className="space-y-6">
-              {gradeOrder.map((grade) => (
-                <Card key={grade} className="border-2">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <GraduationCap className="h-5 w-5 text-primary" />
-                      {translations[language].grades[grade as keyof typeof translations.ro.grades] || grade}
-                      <span className="text-base font-normal text-muted-foreground">
-                        ({lessonsByGrade[grade].length} {lessonsByGrade[grade].length === 1 ? t.teacher.myLessons.lesson : t.teacher.myLessons.lessons})
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {lessonsByGrade[grade].map((lesson) => (
-                        <div
-                          key={lesson.uid}
-                          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer"
-                          onClick={() => handleLessonClick(lesson.uid)}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              handleLessonClick(lesson.uid);
-                            }
-                          }}
-                        >
-                          <div className="flex-1 space-y-1">
-                            <h3 className="font-semibold text-lg">{lesson.title}</h3>
-                            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                              <span>{lesson.subject}</span>
-                              {lesson.duration && (
-                                <>
-                                  <span>·</span>
-                                  <span>{lesson.duration}</span>
-                                </>
-                              )}
-                              <span>·</span>
-                              <span>
-                                {formatDate(lesson.lastModified || lesson.createdAt)}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <Badge
-                              className={`${getStatusColor(lesson.status)} border capitalize`}
-                            >
-                              {t.common.status[lesson.status as keyof typeof t.common.status] || lesson.status}
-                            </Badge>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="shrink-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleLessonClick(lesson.uid);
-                              }}
-                            >
-                              {t.teacher.myLessons.open}
-                              <ArrowRight className="ml-2 h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+              {/* Subjects list with lessons */}
+              <Card className="border-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                    {t.teacher.myLessons.subjectsTitle}
+                  </CardTitle>
+                  <CardDescription>
+                    {t.teacher.myLessons.subjectsDescription}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {/* Search input */}
+                  <div className="mb-6">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="text"
+                        placeholder={t.teacher.myLessons.searchPlaceholder}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                  
+                  {displayedSubjects.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">
+                      {t.teacher.myLessons.noResults}
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {displayedSubjects.map((subjectGroup) => {
+                      const isSelected = selectedSubjects.has(subjectGroup.subject);
+                      return (
+                        <div
+                          key={subjectGroup.subject}
+                          className={cn(
+                            "rounded-lg border transition-colors",
+                            isSelected && "bg-primary/5 border-primary/20"
+                          )}
+                        >
+                          {/* Subject header */}
+                          <div className="flex items-center gap-3 p-3">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleSubjectSelected(subjectGroup.subject)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <button
+                              onClick={() => toggleSubjectExpanded(subjectGroup.subject)}
+                              className="flex-1 flex items-center justify-between text-left hover:bg-accent/50 rounded-md p-2 -m-2 transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                {subjectGroup.expanded ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                )}
+                                <span className="font-semibold text-base">{subjectGroup.subject}</span>
+                                <Badge variant="secondary" className="text-xs">
+                                  {subjectGroup.lessons.length} {subjectGroup.lessons.length === 1 ? t.teacher.myLessons.lesson : t.teacher.myLessons.lessons}
+                                </Badge>
+                              </div>
+                            </button>
+                          </div>
+
+                          {/* Lessons list - only shown when expanded */}
+                          {subjectGroup.expanded && (
+                            <div className="px-3 pb-3 pt-0 border-t mt-2">
+                              {subjectGroup.lessons.length === 0 ? (
+                                <p className="text-muted-foreground text-center py-8 text-sm">
+                                  {t.teacher.myLessons.noLessonsInSubject}
+                                </p>
+                              ) : (
+                                <div className="space-y-2 mt-3">
+                                  {subjectGroup.lessons.map((lesson) => (
+                                    <div
+                                      key={lesson.uid}
+                                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer"
+                                      onClick={() => handleLessonClick(lesson.uid)}
+                                      role="button"
+                                      tabIndex={0}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          handleLessonClick(lesson.uid);
+                                        }
+                                      }}
+                                    >
+                                      <div className="flex-1 space-y-1">
+                                        <h3 className="font-semibold text-base">{lesson.title}</h3>
+                                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                                          <span>{lesson.grade}</span>
+                                          {lesson.duration && (
+                                            <>
+                                              <span>·</span>
+                                              <span>{lesson.duration}</span>
+                                            </>
+                                          )}
+                                          <span>·</span>
+                                          <span>
+                                            {formatDate(lesson.lastModified || lesson.createdAt)}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-3">
+                                        <Badge
+                                          className={`${getStatusColor(lesson.status)} border capitalize text-xs`}
+                                        >
+                                          {t.common.status[lesson.status as keyof typeof t.common.status] || lesson.status}
+                                        </Badge>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="shrink-0"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleLessonClick(lesson.uid);
+                                          }}
+                                        >
+                                          {t.teacher.myLessons.open}
+                                          <ArrowRight className="ml-2 h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    </div>
+                  )}
+
+                  {selectedSubjects.size > 0 && !showFiltered && (
+                    <div className="mt-6 flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">
+                      <div>
+                        <p className="font-medium">
+                          {t.teacher.myLessons.selectedCount(selectedSubjects.size)}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={handleShowSelectedLessons} className="flex items-center gap-2">
+                          <Filter className="h-4 w-4" />
+                          {t.teacher.myLessons.showSelectedLessons}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {showFiltered && (
+                    <div className="mt-6 flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">
+                      <div>
+                        <p className="font-medium">
+                          {t.teacher.myLessons.selectedCount(selectedSubjects.size)}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" onClick={handleShowAllLessons}>
+                          {t.teacher.myLessons.showAllLessons}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           )}
         </div>
@@ -312,4 +544,3 @@ export default function MyLessons() {
     </div>
   );
 }
-

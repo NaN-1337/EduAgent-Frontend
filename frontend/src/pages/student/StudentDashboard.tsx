@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translations } from "@/lib/translations";
 import { convertLessonFromStorage, gradeToStorage, teachingFieldFromStorage } from "@/lib/dataConverters";
-import { BookOpen, Users, ArrowRight, GraduationCap, User } from "lucide-react";
+import { BookOpen, Users, ArrowRight, GraduationCap, User, BookMarked } from "lucide-react";
 import { db } from "@/lib/firebaseConfig";
 import { doc, getDoc, collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,7 +17,8 @@ interface Teacher {
   uid: string;
   name: string;
   email: string;
-  teachingField?: string;
+  teachingField?: string; // Display value (translated)
+  teachingFieldStorage?: string; // Storage key (for navigation/search)
   teacherCode?: string;
   photoURL?: string;
 }
@@ -72,6 +73,8 @@ export default function StudentDashboard() {
           
           if (teacherDocSnap.exists()) {
             const data = teacherDocSnap.data();
+            // Get current language for translations
+            const currentLanguage = language;
             return {
               uid: data.uid,
               name: data.name,
@@ -79,9 +82,10 @@ export default function StudentDashboard() {
               teachingField: data.teachingField 
                 ? (() => {
                     const englishKey = teachingFieldFromStorage(data.teachingField);
-                    return englishKey ? (translations[language].teachingFields[englishKey] || data.teachingField) : data.teachingField;
+                    return englishKey ? (translations[currentLanguage].teachingFields[englishKey] || data.teachingField) : data.teachingField;
                   })()
                 : undefined,
+              teachingFieldStorage: data.teachingField, // Keep original storage key
               teacherCode: data.teacherCode,
               photoURL: data.photoURL,
             } as Teacher;
@@ -102,7 +106,7 @@ export default function StudentDashboard() {
     if (userData && userData.role === "student") {
       fetchTeachers();
     }
-  }, [userData]);
+  }, [userData, language]);
 
   useEffect(() => {
     const fetchLessons = async () => {
@@ -207,14 +211,15 @@ export default function StudentDashboard() {
 
         await Promise.all(lessonPromises);
 
-        // Sort by lastModified (most recent first)
+        // Sort by createdAt (most recent first) and limit to 3
         lessonsData.sort((a, b) => {
-          const dateA = a.lastModified?.toDate?.() || a.createdAt?.toDate?.() || new Date(0);
-          const dateB = b.lastModified?.toDate?.() || b.createdAt?.toDate?.() || new Date(0);
+          const dateA = a.createdAt?.toDate?.() || new Date(0);
+          const dateB = b.createdAt?.toDate?.() || new Date(0);
           return dateB.getTime() - dateA.getTime();
         });
 
-        setMyLessons(lessonsData);
+        // Limit to 3 most recent lessons
+        setMyLessons(lessonsData.slice(0, 3));
       } catch (error) {
         console.error("Error fetching lessons:", error);
       } finally {
@@ -293,6 +298,65 @@ export default function StudentDashboard() {
             </Card>
           </div>
 
+          {/* My Subjects Card */}
+          <Card className="border-2 shadow-sm mb-6">
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                <BookMarked className="h-5 w-5 text-primary" />
+                {language === "ro" ? "Materiile mele" : "My Subjects"}
+              </CardTitle>
+              <CardDescription>
+                {language === "ro" ? "Materiile la care ești înscris, organizate pe profesori" : "Subjects you are enrolled in, organized by teacher"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingTeachers ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                </div>
+              ) : enrolledTeachers.length === 0 ? (
+                <div className="text-center py-8">
+                  <BookMarked className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">
+                    {language === "ro" ? "Nu ești înscris la nicio materie încă." : "You are not enrolled in any subjects yet."}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {enrolledTeachers
+                    .filter((teacher) => teacher.teachingField)
+                    .map((teacher) => (
+                      <div
+                        key={teacher.uid}
+                        onClick={() => navigate(`/student/lessons?subject=${encodeURIComponent(teacher.teachingFieldStorage || "")}`)}
+                        className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            navigate(`/student/lessons?subject=${encodeURIComponent(teacher.teachingFieldStorage || "")}`);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <p className="font-semibold text-base">
+                              {teacher.teachingField}
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {teacher.name}
+                            </p>
+                          </div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Enrolled Teachers Card */}
           <Card className="border-2 shadow-sm mb-6">
             <CardHeader>
@@ -341,7 +405,7 @@ export default function StudentDashboard() {
                         <p className="font-semibold truncate">{teacher.name}</p>
                         {teacher.teachingField && (
                           <p className="text-sm text-muted-foreground truncate">
-                            {translations[language].teachingFields[teacher.teachingField as keyof typeof translations.ro.teachingFields] || teacher.teachingField}
+                            {teacher.teachingField}
                           </p>
                         )}
                         {teacher.teacherCode && (
@@ -364,7 +428,7 @@ export default function StudentDashboard() {
                 {t.student.dashboard.myLessons.title}
               </CardTitle>
               <CardDescription>
-                {t.student.dashboard.myLessons.description}
+                {language === "ro" ? "Ultimele 3 lecții adăugate" : "Latest 3 lessons added"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -377,50 +441,64 @@ export default function StudentDashboard() {
                   {t.student.dashboard.myLessons.emptyState}
                 </p>
               ) : (
-                myLessons.map((lesson) => (
-                  <div
-                    key={lesson.id}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 rounded-lg border hover:bg-accent/50 transition-colors duration-200 cursor-pointer focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2"
-                    onClick={() => navigate(`/lesson/${lesson.id}`)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        navigate(`/lesson/${lesson.id}`);
-                      }
-                    }}
-                    aria-label={t.student.dashboard.myLessons.lessonAriaLabel(lesson.title)}
-                  >
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-lg">{lesson.title}</h3>
+                <>
+                  {myLessons.map((lesson) => (
+                    <div
+                      key={lesson.id}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 rounded-lg border hover:bg-accent/50 transition-colors duration-200 cursor-pointer focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2"
+                      onClick={() => navigate(`/lesson/${lesson.id}`)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          navigate(`/lesson/${lesson.id}`);
+                        }
+                      }}
+                      aria-label={t.student.dashboard.myLessons.lessonAriaLabel(lesson.title)}
+                    >
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-lg">{lesson.title}</h3>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                          <span>{lesson.subject}</span>
+                          <span>·</span>
+                          <span>{translations[language].grades[lesson.grade as keyof typeof translations.ro.grades] || lesson.grade}</span>
+                          <span>·</span>
+                          <span>{lesson.teacherName}</span>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <span>{lesson.subject}</span>
-                        <span>·</span>
-                        <span>{translations[language].grades[lesson.grade as keyof typeof translations.ro.grades] || lesson.grade}</span>
-                        <span>·</span>
-                        <span>{lesson.teacherName}</span>
+                      <div className="flex items-center gap-3">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/lesson/${lesson.id}`);
+                          }}
+                          aria-label={t.student.dashboard.myLessons.openAriaLabel(lesson.title)}
+                        >
+                          {t.student.dashboard.myLessons.openButton}
+                          <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                  ))}
+                  {myLessons.length >= 3 && (
+                    <div className="pt-4 border-t">
                       <Button
-                        variant="ghost"
-                        size="sm"
-                        className="shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/lesson/${lesson.id}`);
-                        }}
-                        aria-label={t.student.dashboard.myLessons.openAriaLabel(lesson.title)}
+                        variant="outline"
+                        onClick={() => navigate("/student/lessons")}
+                        className="w-full"
                       >
-                        {t.student.dashboard.myLessons.openButton}
-                        <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                        {language === "ro" ? "Vezi toate lecțiile" : "View all lessons"}
+                        <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </div>
-                  </div>
-                ))
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
