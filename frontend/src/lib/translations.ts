@@ -67,6 +67,11 @@ export interface Translations {
       myLessons: string;
       account: string;
     };
+    teacher?: {
+      dashboard: string;
+      myLessons: string;
+      account: string;
+    };
     profile: string;
     logout: string;
     menu: string;
@@ -184,6 +189,16 @@ export interface Translations {
       lessons: string;
       open: string;
       unknownDate: string;
+      unknownTitle: string;
+      subjectsTitle: string;
+      subjectsDescription: string;
+      showSelectedLessons: string;
+      showAllLessons: string;
+      noLessonsInSubject: string;
+      selectSubjects: string;
+      selectedCount: (count: number) => string;
+      searchPlaceholder: string;
+      noResults: string;
     };
     newLesson: {
       steps: {
@@ -351,6 +366,14 @@ export interface Translations {
       openAriaLabel: (title: string) => string;
       lessonAriaLabel: (title: string) => string;
       completed?: string;
+      searchPlaceholder: string;
+      noResults: string;
+      lesson: string;
+      lessons: string;
+      subjectSelected: string;
+      subjectsSelected: string;
+      showSelectedLessons: string;
+      showAllLessons: string;
     };
 
     // Lesson Player
@@ -548,6 +571,11 @@ const ro: Translations = {
       myLessons: "Lecțiile mele",
       account: "Cont",
     },
+    teacher: {
+      dashboard: "Panou",
+      myLessons: "Materiile mele",
+      account: "Cont",
+    },
     profile: "Profil",
     logout: "Deconectare",
     menu: "Meniu",
@@ -658,8 +686,8 @@ const ro: Translations = {
       students: "elevi",
     },
     myLessons: {
-      title: "Lecțiile mele",
-      description: "Vezi și gestionează toate lecțiile tale, organizate pe niveluri de clasă.",
+      title: "Materiile mele",
+      description: "Vezi și gestionează lecțiile tale, organizate pe materii.",
       newLesson: "Lecție nouă",
       emptyTitle: "Nicio lecție încă",
       emptyDescription: "Nu ai creat încă nicio lecție. Creează prima ta lecție pentru a începe cu EduAgent.",
@@ -669,6 +697,15 @@ const ro: Translations = {
       open: "Deschide",
       unknownDate: "Dată necunoscută",
       unknownTitle: "Lecție fără titlu",
+      subjectsTitle: "Materiile mele",
+      subjectsDescription: "Selectează una sau mai multe materii pentru a vedea lecțiile",
+      showSelectedLessons: "Afișează lecțiile selectate",
+      showAllLessons: "Afișează toate lecțiile",
+      noLessonsInSubject: "Nu există lecții pentru această materie",
+      selectSubjects: "Selectează materii",
+      selectedCount: (count: number) => `${count} ${count === 1 ? "materie selectată" : "materii selectate"}`,
+      searchPlaceholder: "Caută după materie sau titlu lecție...",
+      noResults: "Nu s-au găsit materii",
     },
     newLesson: {
       steps: {
@@ -848,6 +885,14 @@ const ro: Translations = {
       openAriaLabel: (title: string) => `Deschide ${title}`,
       lessonAriaLabel: (title: string) => `Deschide lecția: ${title}`,
       completed: "Finalizată",
+      searchPlaceholder: "Caută după materie sau titlu lecție...",
+      noResults: "Nu s-au găsit materii",
+      lesson: "lecție",
+      lessons: "lecții",
+      subjectSelected: "materie selectată",
+      subjectsSelected: "materii selectate",
+      showSelectedLessons: "Afișează lecțiile selectate",
+      showAllLessons: "Afișează toate lecțiile",
     },
 
     lessonPlayer: {
@@ -1131,6 +1176,11 @@ const en: Translations = {
       myLessons: "My Lessons",
       account: "Account",
     },
+    teacher: {
+      dashboard: "Dashboard",
+      myLessons: "My Subjects",
+      account: "Account",
+    },
     profile: "Profile",
     logout: "Logout",
     menu: "Menu",
@@ -1241,8 +1291,8 @@ const en: Translations = {
       students: "students",
     },
     myLessons: {
-      title: "My Lessons",
-      description: "View and manage all your lessons, organized by grade level.",
+      title: "My Subjects",
+      description: "View and manage your lessons, organized by subject.",
       newLesson: "New Lesson",
       emptyTitle: "No lessons yet",
       emptyDescription: "You haven't created any lessons yet. Create your first lesson to get started with EduAgent.",
@@ -1252,6 +1302,15 @@ const en: Translations = {
       open: "Open",
       unknownDate: "Unknown date",
       unknownTitle: "Untitled Lesson",
+      subjectsTitle: "My Subjects",
+      subjectsDescription: "Select one or more subjects to view lessons",
+      showSelectedLessons: "Show Selected Lessons",
+      showAllLessons: "Show All Lessons",
+      noLessonsInSubject: "No lessons for this subject",
+      selectSubjects: "Select Subjects",
+      selectedCount: (count: number) => `${count} ${count === 1 ? "subject selected" : "subjects selected"}`,
+      searchPlaceholder: "Search by subject or lesson title...",
+      noResults: "No subjects found",
     },
     newLesson: {
       steps: {
@@ -1431,6 +1490,14 @@ const en: Translations = {
       openAriaLabel: (title: string) => `Open ${title}`,
       lessonAriaLabel: (title: string) => `Open lesson: ${title}`,
       completed: "Completed",
+      searchPlaceholder: "Search by subject or lesson title...",
+      noResults: "No subjects found",
+      lesson: "lesson",
+      lessons: "lessons",
+      subjectSelected: "subject selected",
+      subjectsSelected: "subjects selected",
+      showSelectedLessons: "Show Selected Lessons",
+      showAllLessons: "Show All Lessons",
     },
 
     lessonPlayer: {
