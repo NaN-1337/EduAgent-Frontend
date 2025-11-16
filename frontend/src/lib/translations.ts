@@ -27,6 +27,7 @@ export interface Translations {
     noResults: string;
     welcome: string;
     welcomeBack: (name: string) => string;
+    retry: string;
     messages: {
       loading: string;
       error: string;
@@ -41,6 +42,7 @@ export interface Translations {
       factcheckneeded: string;
       factcheckpending: string;
       ready: string;
+      sentToStudents: string;
     };
     labels: {
       status: string;
@@ -212,9 +214,29 @@ export interface Translations {
         generation: string;
         factCheck: string;
         reviewFinish: string;
+        questions: string;
       };
       back: string;
       next: string;
+      generateQuestions: string;
+      generateLesson: string;
+      loadingQuestions?: {
+        title: string;
+        subtitle: string;
+        steps: {
+          analyze: string;
+          context: string;
+          questions: string;
+        };
+      };
+      loadingGeneration?: {
+        title: string;
+        subtitle: string;
+        steps: {
+          prepare: string;
+          process: string;
+        };
+      };
       step1: {
         titleLabel: string;
         titlePlaceholder: string;
@@ -225,6 +247,12 @@ export interface Translations {
         subjectLabel: string;
         subjectPlaceholder: string;
         subjectRequired: string;
+        numberOfSlidesLabel: string;
+        numberOfSlidesPlaceholder: string;
+        slides: string;
+        templateLabel: string;
+        templatePlaceholder: string;
+        previewTemplate: string;
         exampleTitle: string;
         exampleTitleLabel: string;
         exampleTitleText: string;
@@ -241,11 +269,29 @@ export interface Translations {
         aboutDescription: string;
         promptTipsTitle: string;
         promptTipsDescription: string;
+        questionsTitle?: string;
+        questionsDescription?: string;
+        loadingQuestions?: string;
+        customAnswerPlaceholder?: string;
+        allQuestionsAnswered?: string;
       };
       step3: {
         title: string;
         description: string;
         continueButton: string;
+        completedMessage?: string;
+        steps?: {
+          analyzing: string;
+          lecture: string;
+          presentation: string;
+          finalizing: string;
+        };
+        descriptions?: {
+          analyzing: string;
+          lecture: string;
+          presentation: string;
+          finalizing: string;
+        };
       };
       step4: {
         title: string;
@@ -281,12 +327,48 @@ export interface Translations {
         studentSummary: string;
         slides: string;
         teacherGuidelines: string;
+        podcast?: string;
+        quiz?: string;
+      };
+      downloadSlides?: string;
+      podcast?: {
+        title: string;
+        duration: string;
+        download: string;
+        notSupported: string;
+        description: string;
+        notAvailable: string;
       };
       deleteTitle: string;
       deleteDescription: (title: string) => string;
       saving: string;
       saveDraft: string;
       markReadyForStudents: string;
+      quiz?: {
+        generateButton: string;
+        generating: string;
+        noQuiz: string;
+        generateModal: {
+          title: string;
+          description: string;
+          titleLabel: string;
+          titlePlaceholder: string;
+          questionsLabel: string;
+          questionsHint: string;
+          generateButton: string;
+          generating: string;
+          errors: {
+            titleRequired: string;
+            invalidQuestionCount: string;
+            generationFailed: string;
+          };
+        };
+        readOnly: {
+          totalQuestions: string;
+          readOnly: string;
+          correct: string;
+        };
+      };
     };
     lessonViewer: {
       slideCounter: (current: number, total: number) => string;
@@ -426,6 +508,16 @@ export interface Translations {
         summary: string;
         slides: string;
         quiz: string;
+        podcast?: string;
+      };
+      downloadSlides?: string;
+      podcast?: {
+        title: string;
+        duration: string;
+        download: string;
+        notSupported: string;
+        description: string;
+        notAvailable: string;
       };
       summary: {
         learningObjectives: string;
@@ -433,7 +525,11 @@ export interface Translations {
           decrease: string;
           increase: string;
           listen: string;
+          stop: string;
           listenTooltip: string;
+          ttsNotSupported: string;
+          noContent: string;
+          ttsError: string;
         };
       };
       slides: {
@@ -445,22 +541,21 @@ export interface Translations {
         emptyState: string;
       };
       quiz: {
-        questionLabel: (index: number, question: string) => string;
         answeredCount: (answered: number, total: number) => string;
         submitButton: string;
         submitButtonLoading: string;
-        submitWarning: string;
-        success: {
-          title: string;
-          score: (correct: number, total: number, percentage: number) => string;
-          message: string;
-          feedbackMessage: string;
-        };
+        emptyState: string;
         errors: {
           notAllAnswered: string;
-          submitFailed: string;
         };
-        emptyState: string;
+        results: {
+          completed: string;
+          score: string;
+          correct: string;
+          incorrect: string;
+          yourAnswer: string;
+          correctAnswer: string;
+        };
       };
       keyTerms: {
         title: string;
@@ -472,6 +567,14 @@ export interface Translations {
         teachingField: string;
         grade: string;
       };
+    };
+
+    chatbot: {
+      title: string;
+      subtitle: string;
+      welcomeMessage: string;
+      inputPlaceholder: string;
+      errorMessage: string;
     };
   };
 
@@ -528,6 +631,9 @@ export interface Translations {
 
   // Teaching fields translations
   teachingFields: Record<string, string>;
+
+  // Template name translations
+  templates: Record<string, string>;
 }
 
 // Romanian translations (main language)
@@ -551,6 +657,7 @@ const ro: Translations = {
     noResults: "Nu s-au găsit rezultate",
     welcome: "Bun venit",
     welcomeBack: (name: string) => `Bine ai revenit, ${name}!`,
+    retry: "Încearcă din nou",
     messages: {
       loading: "Se încarcă...",
       error: "A apărut o eroare",
@@ -565,6 +672,7 @@ const ro: Translations = {
       factcheckneeded: "Necesită verificare",
       factcheckpending: "Verificare în așteptare",
       ready: "Gata",
+      sentToStudents: "Trimisă la elevi",
     },
     labels: {
       status: "Status",
@@ -762,9 +870,29 @@ const ro: Translations = {
         generation: "Generare",
         factCheck: "Verificare fapte",
         reviewFinish: "Revizuire și finalizare",
+        questions: "Întrebări clarificatoare",
       },
       back: "Înapoi",
       next: "Următorul",
+      generateQuestions: "Generează întrebări",
+      generateLesson: "Generează lecția",
+      loadingQuestions: {
+        title: "Analizăm lecția ta",
+        subtitle: "AI-ul nostru pregătește întrebări clarificatoare",
+        steps: {
+          analyze: "Analizăm parametrii lecției",
+          context: "Înțelegem contextul educațional",
+          questions: "Generăm întrebări clarificatoare",
+        },
+      },
+      loadingGeneration: {
+        title: "Pregătim generarea de conținut",
+        subtitle: "Ne pregătim să creăm lecția ta",
+        steps: {
+          prepare: "Pregătim modelele AI",
+          process: "Procesăm răspunsurile tale",
+        },
+      },
       step1: {
         titleLabel: "Titlul lecției",
         titlePlaceholder: "ex: Fotosinteză – Clasa a 5-a",
@@ -775,6 +903,12 @@ const ro: Translations = {
         subjectLabel: "Materie",
         subjectPlaceholder: "Selectează materia",
         subjectRequired: "Materia este obligatorie",
+        numberOfSlidesLabel: "Număr de slide-uri",
+        numberOfSlidesPlaceholder: "Selectează numărul de slide-uri",
+        slides: "slide-uri",
+        templateLabel: "Șablon prezentare",
+        templatePlaceholder: "Selectează un șablon",
+        previewTemplate: "Previzualizare",
         exampleTitle: "Exemplu de configurare bună a lecției",
         exampleTitleLabel: "Titlu",
         exampleTitleText: "\"Introducere în Fotosinteză – Clasa a 5-a\"",
@@ -791,26 +925,28 @@ const ro: Translations = {
         aboutDescription: "EduAgent folosește aceste surse pentru a genera și verifica conținutul. Cu cât mai multe surse relevante furnizezi, cu atât lecția ta va fi mai precisă și aliniată.",
         promptTipsTitle: "Sfaturi pentru un prompt bun",
         promptTipsDescription: "Un prompt bun este clar și specific. Include detalii despre subiect, nivelul clasei, și ce vrei să acoperi lecția. Acest conținut va fi modificat ulterior.",
+        questionsTitle: "Întrebări clarificatoare",
+        questionsDescription: "Te rugăm să răspunzi la aceste întrebări pentru a ne ajuta să generăm cel mai bun conținut de lecție pentru elevii tăi.",
+        loadingQuestions: "Generăm întrebările...",
+        customAnswerPlaceholder: "Introdu răspunsul tău...",
+        allQuestionsAnswered: "Toate întrebările au fost răspunse! Poți continua la pasul următor.",
       },
       step3: {
-        title: "Generează lecția ta…",
+        title: "Generăm lecția ta…",
         description: "Acest proces poate dura câteva momente. Te rugăm să nu închizi această pagină.",
-        continueButton: "Continuă la rezumatul verificării faptelor",
+        continueButton: "Continuă la revizuire",
+        completedMessage: "Generare finalizată! Poți revizui și ajusta tot conținutul înainte de a-l distribui elevilor.",
         steps: {
-          understanding: "Înțelegerea cererii",
-          researching: "Căutarea subiectului",
-          drafting: "Redactarea rezumatului pentru elevi",
-          slides: "Crearea structurii slide-urilor",
-          guidelines: "Scrierea ghidurilor pentru profesor",
-          factcheck: "Rularea verificărilor de fapte",
+          analyzing: "Ne gândim la nevoile elevilor",
+          lecture: "Creăm conținutul lecției",
+          presentation: "Proiectăm slide-urile prezentării",
+          finalizing: "Finalizăm lecția ta",
         },
         descriptions: {
-          understanding: "Analizarea cerințelor și obiectivelor lecției tale...",
-          researching: "Scanarea PDF-ului încărcat și a surselor de încredere...",
-          drafting: "Crearea unui rezumat clar, potrivit vârstei pentru elevi...",
-          slides: "Organizarea conținutului în slide-uri de prezentare structurate...",
-          guidelines: "Pregătirea notițelor de predare și a sugestiilor de activități...",
-          factcheck: "Verificarea faptelor față de surse de încredere...",
+          analyzing: "Analizăm obiectivele educaționale și contextul elevilor...",
+          lecture: "Generăm conținut captivant pentru elevi și ghiduri complete pentru profesor...",
+          presentation: "Creăm slide-uri frumoase cu șablonul tău selectat...",
+          finalizing: "Încărcăm fișierele și pregătim lecția pentru revizuire...",
         },
       },
       step4: {
@@ -847,12 +983,48 @@ const ro: Translations = {
         studentSummary: "Rezumat elev",
         slides: "Slide-uri",
         teacherGuidelines: "Ghiduri profesor",
+        podcast: "Podcast",
+        quiz: "Test",
+      },
+      downloadSlides: "Descarcă slide-urile",
+      podcast: {
+        title: "Podcast educațional",
+        duration: "Durată",
+        download: "Descarcă",
+        notSupported: "Browserul tău nu suportă elementul audio.",
+        description: "Ascultă un dialog educațional despre această lecție. Podcastul prezintă o conversație între un profesor și un elev, făcând subiectele complexe mai ușor de înțeles.",
+        notAvailable: "Podcast-ul nu este disponibil pentru această lecție.",
       },
       deleteTitle: "Șterge lecția?",
       deleteDescription: (title: string) => `Această acțiune nu poate fi anulată. Aceasta va șterge permanent lecția "${title}".`,
       saving: "Se salvează...",
       saveDraft: "Salvează ciorna",
       markReadyForStudents: "Marchează ca gata pentru elevi",
+      quiz: {
+        generateButton: "Generează test",
+        generating: "Se generează...",
+        noQuiz: "Nu a fost generat încă niciun test pentru această lecție.",
+        generateModal: {
+          title: "Generează test",
+          description: "Creează un test bazat pe conținutul lecției. Testul va conține întrebări cu alegere multiplă.",
+          titleLabel: "Titlul testului",
+          titlePlaceholder: "ex: Test: Celula - Structura și funcțiile",
+          questionsLabel: "Număr de întrebări",
+          questionsHint: "Între 1 și 50 de întrebări",
+          generateButton: "Generează test",
+          generating: "Se generează...",
+          errors: {
+            titleRequired: "Titlul testului este obligatoriu",
+            invalidQuestionCount: "Numărul de întrebări trebuie să fie între 1 și 50",
+            generationFailed: "Eroare la generarea testului",
+          },
+        },
+        readOnly: {
+          totalQuestions: "Total întrebări",
+          readOnly: "Doar citire",
+          correct: "Corect",
+        },
+      },
     },
     lessonViewer: {
       slideCounter: (current: number, total: number) => `Slide ${current} din ${total}`,
@@ -987,6 +1159,16 @@ const ro: Translations = {
         summary: "Rezumat",
         slides: "Slide-uri",
         quiz: "Test",
+        podcast: "Podcast",
+      },
+      downloadSlides: "Descarcă slide-urile",
+      podcast: {
+        title: "Podcast educațional",
+        duration: "Durată",
+        download: "Descarcă",
+        notSupported: "Browserul tău nu suportă elementul audio.",
+        description: "Ascultă un dialog educațional despre această lecție. Podcastul prezintă o conversație între un profesor și un elev, făcând subiectele complexe mai ușor de înțeles.",
+        notAvailable: "Podcast-ul nu este disponibil pentru această lecție.",
       },
       summary: {
         learningObjectives: "La sfârșitul acestei lecții vei putea…",
@@ -994,7 +1176,11 @@ const ro: Translations = {
           decrease: "Micșorează dimensiunea fontului",
           increase: "Mărește dimensiunea fontului",
           listen: "Ascultă",
-          listenTooltip: "Funcția de citire cu voce tare va fi disponibilă în curând",
+          stop: "Oprește",
+          listenTooltip: "Ascultă conținutul lecției",
+          ttsNotSupported: "Citirea cu voce tare nu este suportată în browserul dvs.",
+          noContent: "Nu există conținut disponibil pentru citire.",
+          ttsError: "A apărut o eroare la citirea textului.",
         },
       },
       slides: {
@@ -1006,23 +1192,21 @@ const ro: Translations = {
         emptyState: "Nu sunt slide-uri disponibile pentru această lecție.",
       },
       quiz: {
-        questionLabel: (index: number, question: string) => `Întrebarea ${index + 1}: ${question}`,
-        answeredCount: (answered: number, total: number) => `${answered} din ${total} întrebări răspunse`,
+        answeredCount: (answered: number, total: number) => `Răspunse: ${answered} / ${total}`,
         submitButton: "Trimite testul",
         submitButtonLoading: "Se trimite...",
-        submitWarning: "Te rugăm să răspunzi la toate întrebările înainte de a trimite.",
-        success: {
-          title: "Test trimis cu succes!",
-          score: (correct: number, total: number, percentage: number) =>
-            `Scorul tău: ${correct} / ${total} (${percentage}%)`,
-          message: "Testul tău a fost trimis și așteaptă feedback-ul profesorului.",
-          feedbackMessage: "Profesorul tău va revizui răspunsurile tale și va oferi feedback în curând.",
-        },
+        emptyState: "Nu este disponibil niciun test pentru această lecție.",
         errors: {
           notAllAnswered: "Te rugăm să răspunzi la toate întrebările înainte de a trimite.",
-          submitFailed: "Trimiterea testului a eșuat. Te rugăm să încerci din nou.",
         },
-        emptyState: "Nu este disponibil niciun test pentru această lecție.",
+        results: {
+          completed: "Test completat",
+          score: "Scorul tău",
+          correct: "Corect",
+          incorrect: "Incorect",
+          yourAnswer: "Răspunsul tău",
+          correctAnswer: "Răspuns corect",
+        },
       },
       keyTerms: {
         title: "Termeni cheie",
@@ -1034,6 +1218,14 @@ const ro: Translations = {
         teachingField: "Materie",
         grade: "Clasă",
       },
+    },
+
+    chatbot: {
+      title: "Asistent de Învățare",
+      subtitle: "Întreabă-mă orice despre lecție",
+      welcomeMessage: "Bună! Sunt aici să te ajut să înțelegi această lecție. Simte-te liber să-mi pui orice întrebări! 😊",
+      inputPlaceholder: "Scrie întrebarea ta...",
+      errorMessage: "Ne pare rău, am întâmpinat o eroare. Te rog încearcă din nou.",
     },
   },
 
@@ -1088,6 +1280,19 @@ const ro: Translations = {
     "History of Communism in Romania": "Istoria comunismului în România",
     "Sciences": "Științe",
     "Natural Sciences": "Științe naturale",
+  },
+
+  templates: {
+    template_modern: "Modern",
+    template_classic: "Clasic",
+    template_minimal: "Minimalist",
+    template_colorful: "Colorat",
+    template_professional: "Profesional",
+    template_creative: "Creativ",
+    template_educational: "Educațional",
+    template_business: "Business",
+    template_science: "Științific",
+    template_artistic: "Artistic",
   },
 
   mockLessons: {
@@ -1199,6 +1404,7 @@ const en: Translations = {
     noResults: "No results found",
     welcome: "Welcome",
     welcomeBack: (name: string) => `Welcome back, ${name}!`,
+    retry: "Retry",
     messages: {
       loading: "Loading...",
       error: "An error occurred",
@@ -1213,6 +1419,7 @@ const en: Translations = {
       factcheckneeded: "Fact-check needed",
       factcheckpending: "Fact-check pending",
       ready: "Ready",
+      sentToStudents: "Sent to students",
     },
     labels: {
       status: "Status",
@@ -1410,9 +1617,29 @@ const en: Translations = {
         generation: "Generation",
         factCheck: "Fact-check",
         reviewFinish: "Review & finish",
+        questions: "Clarifying questions",
       },
       back: "Back",
       next: "Next",
+      generateQuestions: "Generate Questions",
+      generateLesson: "Generate Lesson",
+      loadingQuestions: {
+        title: "Analyzing Your Lesson",
+        subtitle: "Our AI is preparing clarifying questions",
+        steps: {
+          analyze: "Analyzing lesson parameters",
+          context: "Understanding educational context",
+          questions: "Generating clarifying questions",
+        },
+      },
+      loadingGeneration: {
+        title: "Preparing Content Generation",
+        subtitle: "Getting ready to create your lesson",
+        steps: {
+          prepare: "Preparing AI models",
+          process: "Processing your answers",
+        },
+      },
       step1: {
         titleLabel: "Lesson title",
         titlePlaceholder: "e.g., Photosynthesis – Grade 5",
@@ -1423,6 +1650,12 @@ const en: Translations = {
         subjectLabel: "Subject",
         subjectPlaceholder: "Select subject",
         subjectRequired: "Subject is required",
+        numberOfSlidesLabel: "Number of slides",
+        numberOfSlidesPlaceholder: "Select number of slides",
+        slides: "slides",
+        templateLabel: "Presentation Template",
+        templatePlaceholder: "Select a template",
+        previewTemplate: "Preview",
         exampleTitle: "Example of a good lesson setup",
         exampleTitleLabel: "Title",
         exampleTitleText: "\"Introduction to Photosynthesis – Grade 5\"",
@@ -1439,26 +1672,28 @@ const en: Translations = {
         aboutDescription: "EduAgent uses these sources to generate and fact-check content. The more relevant sources you provide, the more accurate and aligned your lesson will be.",
         promptTipsTitle: "Tips for a good prompt",
         promptTipsDescription: "A good prompt is clear and specific. Include details about the subject, grade level, and what you want the lesson to cover. This content will be modified later.",
+        questionsTitle: "Clarifying Questions",
+        questionsDescription: "Please answer these questions to help us generate the best lesson content for your students.",
+        loadingQuestions: "Generating questions...",
+        customAnswerPlaceholder: "Enter your answer...",
+        allQuestionsAnswered: "All questions answered! You can proceed to the next step.",
       },
       step3: {
         title: "Generating your lesson…",
         description: "This may take a few moments. Please don't close this page.",
-        continueButton: "Continue to fact-check summary",
+        continueButton: "Continue to review",
+        completedMessage: "Generation complete! You can review and adjust all content before sharing with students.",
         steps: {
-          understanding: "Understanding request",
-          researching: "Researching topic",
-          drafting: "Drafting student summary",
-          slides: "Creating slides outline",
-          guidelines: "Writing teacher guidelines",
-          factcheck: "Running fact-check checks",
+          analyzing: "Thinking about student needs",
+          lecture: "Crafting lesson content",
+          presentation: "Designing presentation slides",
+          finalizing: "Finalizing your lesson",
         },
         descriptions: {
-          understanding: "Analyzing your lesson requirements and objectives...",
-          researching: "Scanning your uploaded PDF and trusted sources...",
-          drafting: "Creating a clear, age-appropriate summary for students...",
-          slides: "Organizing content into structured presentation slides...",
-          guidelines: "Preparing teaching notes and activity suggestions...",
-          factcheck: "Verifying facts against trusted sources...",
+          analyzing: "Analyzing educational objectives and student context...",
+          lecture: "Generating engaging content for students and comprehensive teacher guidelines...",
+          presentation: "Creating beautiful slides with your selected template...",
+          finalizing: "Uploading files and preparing your lesson for review...",
         },
       },
       step4: {
@@ -1495,12 +1730,48 @@ const en: Translations = {
         studentSummary: "Student summary",
         slides: "Slides",
         teacherGuidelines: "Teacher guidelines",
+        podcast: "Podcast",
+        quiz: "Quiz",
+      },
+      downloadSlides: "Download Slides",
+      podcast: {
+        title: "Educational Podcast",
+        duration: "Duration",
+        download: "Download",
+        notSupported: "Your browser does not support the audio element.",
+        description: "Listen to an educational dialogue about this lesson. The podcast features a conversation between a teacher and student, making complex topics easier to understand.",
+        notAvailable: "Podcast not available for this lesson.",
       },
       deleteTitle: "Delete lesson?",
       deleteDescription: (title: string) => `This action cannot be undone. This will permanently delete the lesson "${title}".`,
       saving: "Saving...",
       saveDraft: "Save draft",
       markReadyForStudents: "Mark as ready for students",
+      quiz: {
+        generateButton: "Generate Quiz",
+        generating: "Generating...",
+        noQuiz: "No quiz has been generated for this lesson yet.",
+        generateModal: {
+          title: "Generate Quiz",
+          description: "Create a quiz based on the lesson content. The quiz will contain multiple-choice questions.",
+          titleLabel: "Quiz Title",
+          titlePlaceholder: "e.g., Test: Celula - Structura și funcțiile",
+          questionsLabel: "Number of Questions",
+          questionsHint: "Between 1 and 50 questions",
+          generateButton: "Generate Quiz",
+          generating: "Generating...",
+          errors: {
+            titleRequired: "Quiz title is required",
+            invalidQuestionCount: "Number of questions must be between 1 and 50",
+            generationFailed: "Failed to generate quiz",
+          },
+        },
+        readOnly: {
+          totalQuestions: "Total questions",
+          readOnly: "Read Only",
+          correct: "Correct",
+        },
+      },
     },
     lessonViewer: {
       slideCounter: (current: number, total: number) => `Slide ${current} of ${total}`,
@@ -1635,6 +1906,16 @@ const en: Translations = {
         summary: "Summary",
         slides: "Slides",
         quiz: "Quiz",
+        podcast: "Podcast",
+      },
+      downloadSlides: "Download Slides",
+      podcast: {
+        title: "Educational Podcast",
+        duration: "Duration",
+        download: "Download",
+        notSupported: "Your browser does not support the audio element.",
+        description: "Listen to an educational dialogue about this lesson. The podcast features a conversation between a teacher and student, making complex topics easier to understand.",
+        notAvailable: "Podcast not available for this lesson.",
       },
       summary: {
         learningObjectives: "By the end of this lesson you will be able to…",
@@ -1642,7 +1923,11 @@ const en: Translations = {
           decrease: "Decrease font size",
           increase: "Increase font size",
           listen: "Listen",
-          listenTooltip: "Read aloud feature coming soon",
+          stop: "Stop",
+          listenTooltip: "Listen to the lesson content",
+          ttsNotSupported: "Text-to-speech is not supported in your browser.",
+          noContent: "No content available to read.",
+          ttsError: "An error occurred while reading the text.",
         },
       },
       slides: {
@@ -1654,23 +1939,21 @@ const en: Translations = {
         emptyState: "No slides available for this lesson.",
       },
       quiz: {
-        questionLabel: (index: number, question: string) => `Question ${index + 1}: ${question}`,
-        answeredCount: (answered: number, total: number) => `${answered} of ${total} questions answered`,
+        answeredCount: (answered: number, total: number) => `Answered: ${answered} / ${total}`,
         submitButton: "Submit Quiz",
         submitButtonLoading: "Submitting...",
-        submitWarning: "Please answer all questions before submitting.",
-        success: {
-          title: "Quiz Submitted Successfully!",
-          score: (correct: number, total: number, percentage: number) =>
-            `Your Score: ${correct} / ${total} (${percentage}%)`,
-          message: "Your quiz has been submitted and is waiting for teacher feedback.",
-          feedbackMessage: "Your teacher will review your answers and provide feedback soon.",
-        },
+        emptyState: "No quiz available for this lesson.",
         errors: {
           notAllAnswered: "Please answer all questions before submitting.",
-          submitFailed: "Failed to submit quiz. Please try again.",
         },
-        emptyState: "No quiz available for this lesson.",
+        results: {
+          completed: "Quiz completed",
+          score: "Your Score",
+          correct: "Correct",
+          incorrect: "Incorrect",
+          yourAnswer: "Your Answer",
+          correctAnswer: "Correct Answer",
+        },
       },
       keyTerms: {
         title: "Key Terms",
@@ -1682,6 +1965,14 @@ const en: Translations = {
         teachingField: "Subject",
         grade: "Grade",
       },
+    },
+
+    chatbot: {
+      title: "Learning Assistant",
+      subtitle: "Ask me anything about this lesson",
+      welcomeMessage: "Hi! I'm here to help you understand this lesson. Feel free to ask me any questions! 😊",
+      inputPlaceholder: "Type your question...",
+      errorMessage: "Sorry, I encountered an error. Please try again.",
     },
   },
 
@@ -1736,6 +2027,19 @@ const en: Translations = {
     "History of Communism in Romania": "History of Communism in Romania",
     "Sciences": "Sciences",
     "Natural Sciences": "Natural Sciences",
+  },
+
+  templates: {
+    template_modern: "Modern",
+    template_classic: "Classic",
+    template_minimal: "Minimal",
+    template_colorful: "Colorful",
+    template_professional: "Professional",
+    template_creative: "Creative",
+    template_educational: "Educational",
+    template_business: "Business",
+    template_science: "Science",
+    template_artistic: "Artistic",
   },
 
   mockLessons: {

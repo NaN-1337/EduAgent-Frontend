@@ -1,25 +1,31 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Navbar } from "@/components/layout/Navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, Edit, FileCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { translations } from "@/lib/translations";
-import { convertLessonFromStorage } from "@/lib/dataConverters";
+import { convertLessonFromStorage, gradeToStorage, teachingFieldToStorage } from "@/lib/dataConverters";
+import { PDFSlideViewer } from "@/components/pdf-viewer/PDFSlideViewer";
+import { generateQuiz, QuizQuestion } from "@/lib/api";
+import { GenerateQuizModal } from "@/components/quiz/GenerateQuizModal";
+import { QuizDisplayReadOnly } from "@/components/quiz/QuizDisplayReadOnly";
+import { Loader2 } from "lucide-react";
 
 interface Slide {
   id?: string;
   title: string;
   content: string;
   hasIssue?: boolean;
+  speakerNote?: string;
+  slideIndex?: number;
 }
 
 interface LessonData {
@@ -30,7 +36,11 @@ interface LessonData {
   status: "draft" | "fact-check pending" | "ready";
   studentSummary: string;
   slides: Slide[];
+  presentationFileUrl?: string;
+  presentationFileType?: "pdf";
+  quizId?: string | null;
   teacherGuidelines?: {
+    content?: string; // HTML content from API
     objectives?: string;
     timing?: string;
     questions?: string;
@@ -50,6 +60,10 @@ export default function LessonViewer() {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [fontSize, setFontSize] = useState(16);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [quiz, setQuiz] = useState<{ questions: QuizQuestion[]; title: string; totalQuestions: number } | null>(null);
+  const [loadingQuiz, setLoadingQuiz] = useState(false);
+  const [generateQuizModalOpen, setGenerateQuizModalOpen] = useState(false);
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || userData?.role !== "teacher")) {
@@ -81,9 +95,23 @@ export default function LessonViewer() {
         let slides: Slide[] = [];
         if (data.slides) {
           if (Array.isArray(data.slides)) {
-            slides = data.slides;
+            slides = data.slides.map((slide: any) => ({
+              id: slide.id || `slide-${slide.slideIndex || 0}`,
+              title: slide.title || `Slide ${(slide.slideIndex || 0) + 1}`,
+              content: slide.content || "",
+              hasIssue: slide.hasIssue || false,
+              speakerNote: slide.speakerNote || slide.speaker_note || "",
+              slideIndex: slide.slideIndex !== undefined ? slide.slideIndex : slide.slide_index,
+            }));
           } else if (typeof data.slides === 'object') {
-            slides = Object.values(data.slides);
+            slides = Object.values(data.slides).map((slide: any) => ({
+              id: slide.id || `slide-${slide.slideIndex || 0}`,
+              title: slide.title || `Slide ${(slide.slideIndex || 0) + 1}`,
+              content: slide.content || "",
+              hasIssue: slide.hasIssue || false,
+              speakerNote: slide.speakerNote || slide.speaker_note || "",
+              slideIndex: slide.slideIndex !== undefined ? slide.slideIndex : slide.slide_index,
+            }));
           }
         }
 
@@ -92,6 +120,7 @@ export default function LessonViewer() {
         if (data.teacherGuidelines) {
           if (typeof data.teacherGuidelines === 'object') {
             teacherGuidelines = {
+              content: data.teacherGuidelines.content || "", // HTML content from API
               objectives: data.teacherGuidelines.objectives || "",
               timing: data.teacherGuidelines.timing || "",
               questions: data.teacherGuidelines.questions || "",
@@ -115,6 +144,9 @@ export default function LessonViewer() {
           status: data.status || "draft",
           studentSummary: data.studentSummary || "",
           slides: slides,
+          presentationFileUrl: data.presentationFileUrl,
+          presentationFileType: data.presentationFileType,
+          quizId: data.quizId || null,
           teacherGuidelines: teacherGuidelines,
         };
 
@@ -130,7 +162,107 @@ export default function LessonViewer() {
     if (lessonId && user) {
       fetchLesson();
     }
-  }, [lessonId, user, navigate]);
+  }, [lessonId, user, navigate, language]);
+
+  // Fetch quiz data when quizId is available
+  useEffect(() => {
+    const fetchQuiz = async () => {
+      if (!lesson?.quizId || !user) {
+        setQuiz(null);
+        return;
+      }
+
+      try {
+        setLoadingQuiz(true);
+        const quizDocRef = doc(db, "quizzes", lesson.quizId);
+        const quizDocSnap = await getDoc(quizDocRef);
+
+        if (quizDocSnap.exists()) {
+          const quizData = quizDocSnap.data();
+          setQuiz({
+            questions: quizData.questions || [],
+            title: quizData.title || "Quiz",
+            totalQuestions: quizData.totalQuestions || quizData.questions?.length || 0,
+          });
+        } else {
+          setQuiz(null);
+        }
+      } catch (error) {
+        console.error("Error fetching quiz:", error);
+        setQuiz(null);
+      } finally {
+        setLoadingQuiz(false);
+      }
+    };
+
+    fetchQuiz();
+  }, [lesson?.quizId, user]);
+
+  // Handle quiz generation
+  const handleGenerateQuiz = async (title: string, numQuestions: number) => {
+    if (!lesson || !user) return;
+
+    try {
+      setIsGeneratingQuiz(true);
+
+      // Convert grade and subject for API
+      const gradeNum = gradeToStorage(lesson.grade);
+      const subjectStorage = teachingFieldToStorage(lesson.subject);
+
+      if (gradeNum === null || !subjectStorage) {
+        throw new Error("Invalid grade or subject");
+      }
+
+      // Generate quiz from API
+      const quizData = await generateQuiz({
+        student_version: lesson.studentSummary,
+        num_questions: numQuestions,
+      });
+
+      // Create quiz document in Firestore
+      const quizDocData = {
+        lectureId: lesson.id,
+        teacherId: user.uid,
+        title: title,
+        subject: subjectStorage,
+        grade: gradeNum,
+        totalQuestions: quizData.questions.length,
+        createdAt: serverTimestamp(),
+        questions: quizData.questions.map((q) => ({
+          id: q.id,
+          text: q.text,
+          options: q.options.map((opt) => ({
+            id: opt.id,
+            text: opt.text,
+          })),
+          correctAnswerId: q.correctAnswerId,
+        })),
+      };
+
+      const quizDocRef = await addDoc(collection(db, "quizzes"), quizDocData);
+      const quizId = quizDocRef.id;
+
+      // Update lesson with quizId
+      const lessonDocRef = doc(db, "lessons", lesson.id);
+      await updateDoc(lessonDocRef, {
+        quizId: quizId,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Update local state
+      setLesson((prev) => (prev ? { ...prev, quizId } : null));
+      setQuiz({
+        questions: quizData.questions,
+        title: title,
+        totalQuestions: quizData.questions.length,
+      });
+    } catch (error: any) {
+      console.error("Error generating quiz:", error);
+      throw error;
+    } finally {
+      setIsGeneratingQuiz(false);
+    }
+  };
 
   const formatSummary = (text: string) => {
     const lines = text.split("\n");
@@ -217,10 +349,8 @@ export default function LessonViewer() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Navbar role="teacher" />
-      
       {/* Top Bar */}
-      <header className="sticky top-16 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left: Lesson Info */}
@@ -236,16 +366,8 @@ export default function LessonViewer() {
             {/* Right: Actions */}
             <div className="flex items-center gap-3">
               <Badge className={cn(getStatusColor(lesson.status), "border")}>
-                {t.common.status[lesson.status as keyof typeof t.common.status] || lesson.status}
+                {lesson.status === "ready" ? t.common.status.sentToStudents : (t.common.status[lesson.status as keyof typeof t.common.status] || lesson.status)}
               </Badge>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(`/teacher/lessons/${lessonId}/fact-check`)}
-              >
-                <FileCheck className="h-4 w-4 mr-2" />
-                {t.teacher.lessonEditor.runFactCheck}
-              </Button>
               <Button
                 variant="default"
                 size="sm"
@@ -283,6 +405,9 @@ export default function LessonViewer() {
                 </TabsTrigger>
                 <TabsTrigger value="guidelines" className="flex-1">
                   {t.teacher.lessonEditor.tabs.teacherGuidelines}
+                </TabsTrigger>
+                <TabsTrigger value="quiz" className="flex-1">
+                  {t.teacher.lessonEditor.tabs.quiz || "Quiz"}
                 </TabsTrigger>
               </TabsList>
 
@@ -326,10 +451,55 @@ export default function LessonViewer() {
 
                   {/* Main Content */}
                   <div
-                    className="max-w-none"
+                    className="max-w-none prose prose-lg dark:prose-invert max-w-none"
                     style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
                   >
-                    <div className="space-y-4">{formatSummary(lesson.studentSummary)}</div>
+                    <style>{`
+                      .prose h1 {
+                        font-size: 2em;
+                        font-weight: bold;
+                        margin-top: 1em;
+                        margin-bottom: 0.5em;
+                      }
+                      .prose h2 {
+                        font-size: 1.5em;
+                        font-weight: 600;
+                        margin-top: 0.75em;
+                        margin-bottom: 0.5em;
+                      }
+                      .prose h3 {
+                        font-size: 1.25em;
+                        font-weight: 600;
+                        margin-top: 0.5em;
+                        margin-bottom: 0.25em;
+                      }
+                      .prose p {
+                        margin-bottom: 1em;
+                      }
+                      .prose ul, .prose ol {
+                        margin-bottom: 1em;
+                        padding-left: 1.5em;
+                      }
+                      .prose li {
+                        margin-bottom: 0.5em;
+                      }
+                      .prose strong {
+                        font-weight: 600;
+                      }
+                      .prose em {
+                        font-style: italic;
+                      }
+                    `}</style>
+                    {lesson.studentSummary && lesson.studentSummary.startsWith("<") ? (
+                      // Render HTML content
+                      <div
+                        dangerouslySetInnerHTML={{ __html: lesson.studentSummary }}
+                        className="space-y-4"
+                      />
+                    ) : (
+                      // Render plain text with formatting
+                      <div className="space-y-4">{formatSummary(lesson.studentSummary || "")}</div>
+                    )}
                   </div>
                 </div>
               </TabsContent>
@@ -337,7 +507,14 @@ export default function LessonViewer() {
               {/* Slides View */}
               <TabsContent value="slides" className="mt-0">
                 <div className="space-y-6">
-                  {lesson.slides && lesson.slides.length > 0 ? (
+                  {/* Show PDF viewer if presentation file is available */}
+                  {lesson.presentationFileUrl && lesson.presentationFileType === "pdf" ? (
+                    <PDFSlideViewer
+                      fileUrl={lesson.presentationFileUrl}
+                      currentPage={currentSlideIndex}
+                      onPageChange={(page) => setCurrentSlideIndex(page)}
+                    />
+                  ) : lesson.slides && lesson.slides.length > 0 ? (
                     <>
                       {/* Slide Counter */}
                       <div className="text-center text-sm text-muted-foreground">
@@ -417,49 +594,120 @@ export default function LessonViewer() {
               {/* Teacher Guidelines View */}
               <TabsContent value="guidelines" className="mt-0">
                 <div className="space-y-6">
-                  {lesson.teacherGuidelines && (
-                    <>
-                      {lesson.teacherGuidelines.objectives && (
-                        <Card>
-                          <CardContent className="pt-6">
-                            <h3 className="text-lg font-semibold mb-3">Objectives</h3>
-                            <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.objectives}</p>
-                          </CardContent>
-                        </Card>
-                      )}
-                      {lesson.teacherGuidelines.timing && (
-                        <Card>
-                          <CardContent className="pt-6">
-                            <h3 className="text-lg font-semibold mb-3">Timing</h3>
-                            <p>{lesson.teacherGuidelines.timing}</p>
-                          </CardContent>
-                        </Card>
-                      )}
-                      {lesson.teacherGuidelines.questions && (
-                        <Card>
-                          <CardContent className="pt-6">
-                            <h3 className="text-lg font-semibold mb-3">Questions</h3>
-                            <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.questions}</p>
-                          </CardContent>
-                        </Card>
-                      )}
-                      {lesson.teacherGuidelines.differentiation && (
-                        <Card>
-                          <CardContent className="pt-6">
-                            <h3 className="text-lg font-semibold mb-3">Differentiation</h3>
-                            <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.differentiation}</p>
-                          </CardContent>
-                        </Card>
-                      )}
-                      {lesson.teacherGuidelines.assessment && (
-                        <Card>
-                          <CardContent className="pt-6">
-                            <h3 className="text-lg font-semibold mb-3">Assessment</h3>
-                            <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.assessment}</p>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </>
+                  {lesson.teacherGuidelines?.content ? (
+                    // Render HTML content from API
+                    <div
+                      className="prose prose-lg dark:prose-invert max-w-none"
+                      style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
+                    >
+                      <style>{`
+                        .teacher-note {
+                          background-color: #fff3cd;
+                          border-left: 4px solid #ffc107;
+                          padding: 15px;
+                          margin: 20px 0;
+                          font-style: italic;
+                          border-radius: 4px;
+                        }
+                        .dark .teacher-note {
+                          background-color: rgba(255, 243, 205, 0.1);
+                          border-left-color: #ffc107;
+                        }
+                        .emphasis {
+                          font-weight: bold;
+                          color: #d32f2f;
+                        }
+                        .dark .emphasis {
+                          color: #ef5350;
+                        }
+                      `}</style>
+                      <div
+                        dangerouslySetInnerHTML={{ __html: lesson.teacherGuidelines.content }}
+                      />
+                    </div>
+                  ) : (
+                    // Fallback to structured fields
+                    lesson.teacherGuidelines && (
+                      <>
+                        {lesson.teacherGuidelines.objectives && (
+                          <Card>
+                            <CardContent className="pt-6">
+                              <h3 className="text-lg font-semibold mb-3">Objectives</h3>
+                              <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.objectives}</p>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {lesson.teacherGuidelines.timing && (
+                          <Card>
+                            <CardContent className="pt-6">
+                              <h3 className="text-lg font-semibold mb-3">Timing</h3>
+                              <p>{lesson.teacherGuidelines.timing}</p>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {lesson.teacherGuidelines.questions && (
+                          <Card>
+                            <CardContent className="pt-6">
+                              <h3 className="text-lg font-semibold mb-3">Questions</h3>
+                              <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.questions}</p>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {lesson.teacherGuidelines.differentiation && (
+                          <Card>
+                            <CardContent className="pt-6">
+                              <h3 className="text-lg font-semibold mb-3">Differentiation</h3>
+                              <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.differentiation}</p>
+                            </CardContent>
+                          </Card>
+                        )}
+                        {lesson.teacherGuidelines.assessment && (
+                          <Card>
+                            <CardContent className="pt-6">
+                              <h3 className="text-lg font-semibold mb-3">Assessment</h3>
+                              <p className="whitespace-pre-wrap">{lesson.teacherGuidelines.assessment}</p>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </>
+                    )
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Quiz View */}
+              <TabsContent value="quiz" className="mt-0">
+                <div className="space-y-6">
+                  {loadingQuiz ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : quiz ? (
+                    <QuizDisplayReadOnly
+                      questions={quiz.questions}
+                      title={quiz.title}
+                      totalQuestions={quiz.totalQuestions}
+                    />
+                  ) : (
+                    <div className="text-center py-12 space-y-4">
+                      <p className="text-muted-foreground">
+                        {t.teacher.lessonEditor.quiz?.noQuiz || "No quiz has been generated for this lesson yet."}
+                      </p>
+                      <Button
+                        onClick={() => setGenerateQuizModalOpen(true)}
+                        size="lg"
+                        disabled={isGeneratingQuiz}
+                      >
+                        {isGeneratingQuiz ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {t.teacher.lessonEditor.quiz?.generating || "Generating..."}
+                          </>
+                        ) : (
+                          t.teacher.lessonEditor.quiz?.generateButton || "Generate Quiz"
+                        )}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </TabsContent>
@@ -467,45 +715,291 @@ export default function LessonViewer() {
           </div>
         </main>
 
-        {/* Right Side Panel - Teacher Guidelines Summary */}
-        <aside className="hidden lg:block w-80 border-l bg-muted/30 overflow-y-auto">
-          <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">
-                {t.teacher.lessonViewer?.slideInfo?.title || "Teaching Notes"}
-              </h3>
-            </div>
-
-            {lesson.teacherGuidelines && (
-              <div className="space-y-4">
-                {lesson.teacherGuidelines.objectives && (
-                  <div className="space-y-1">
-                    <h4 className="font-semibold text-sm">Objectives</h4>
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {lesson.teacherGuidelines.objectives}
-                    </p>
-                  </div>
-                )}
-                {lesson.teacherGuidelines.questions && (
-                  <div className="space-y-1">
-                    <h4 className="font-semibold text-sm">Questions</h4>
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {lesson.teacherGuidelines.questions}
-                    </p>
-                  </div>
-                )}
-                {lesson.teacherGuidelines.differentiation && (
-                  <div className="space-y-1">
-                    <h4 className="font-semibold text-sm">Differentiation</h4>
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                      {lesson.teacherGuidelines.differentiation}
-                    </p>
-                  </div>
-                )}
+        {/* Right Side Panel - Slide-specific Information */}
+        {activeTab === "slides" ? (
+          <aside className="hidden lg:block w-80 border-l bg-muted/30 overflow-y-auto">
+            <div className="p-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">
+                  {t.teacher.lessonViewer?.slideInfo?.title || "Slide Information"}
+                </h3>
               </div>
-            )}
-          </div>
-        </aside>
+
+              {(() => {
+                // Only show slide-specific info if we're viewing text-based slides (not PDF)
+                const isViewingPDF = lesson.presentationFileUrl && lesson.presentationFileType === "pdf";
+                
+                // If viewing PDF, show slide-specific info based on current page
+                if (isViewingPDF) {
+                  const slideNumber = currentSlideIndex + 1;
+                  
+                  // Find the current slide's speaker note from the slides array
+                  const currentSlide = lesson.slides.find(
+                    (s) => s.slideIndex === currentSlideIndex || s.id === `slide-${currentSlideIndex}`
+                  );
+                  
+                  // Use speaker note from presentation API if available
+                  const notes = currentSlide?.speakerNote || 
+                    `Slide ${slideNumber}: ${lesson.teacherGuidelines?.objectives ? `Obiective: ${lesson.teacherGuidelines.objectives}` : "Informații despre acest slide"}`;
+                  
+                  const tips: string[] = [];
+                  const resources: string[] = [];
+                  
+                  // Add slide-specific tips based on position
+                  if (slideNumber === 1) {
+                    tips.push("Începe cu o întrebare provocatoare pentru a capta atenția elevilor");
+                    tips.push("Folosește exemple concrete din viața de zi cu zi");
+                    if (lesson.teacherGuidelines?.questions) {
+                      tips.push(lesson.teacherGuidelines.questions);
+                    }
+                  } else {
+                    tips.push("Folosește diagrame și ilustrații pentru claritate");
+                    tips.push("Permite elevilor să pună întrebări");
+                    if (lesson.teacherGuidelines?.differentiation) {
+                      tips.push(lesson.teacherGuidelines.differentiation);
+                    }
+                  }
+                  
+                  // Add resources if available
+                  if (lesson.teacherGuidelines?.assessment) {
+                    resources.push(lesson.teacherGuidelines.assessment);
+                  }
+                  
+                  return (
+                    <div className="space-y-4">
+                      {/* Notes */}
+                      <div>
+                        <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                          {t.teacher.lessonViewer?.slideInfo?.notes || "Notes"}
+                        </h4>
+                        <p className="text-sm leading-relaxed">
+                          {notes}
+                        </p>
+                      </div>
+
+                      {/* Tips */}
+                      {tips.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                            {t.teacher.lessonViewer?.slideInfo?.tips || "Tips"}
+                          </h4>
+                          <ul className="space-y-2">
+                            {tips.map((tip, index) => (
+                              <li key={index} className="text-sm flex items-start gap-2">
+                                <span className="text-primary mt-1">•</span>
+                                <span>{tip}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Resources */}
+                      {resources.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                            {t.teacher.lessonViewer?.slideInfo?.resources || "Resources"}
+                          </h4>
+                          <ul className="space-y-2">
+                            {resources.map((resource, index) => (
+                              <li key={index} className="text-sm flex items-start gap-2">
+                                <span className="text-primary mt-1">•</span>
+                                <span>{resource}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                
+                // For text-based slides, show slide-specific info
+                const currentSlide = lesson.slides?.[currentSlideIndex];
+                if (!currentSlide) {
+                  // Fallback if slide doesn't exist
+                  const fallbackNotes = lesson.teacherGuidelines?.objectives || "";
+                  const fallbackTips = lesson.teacherGuidelines?.questions ? [lesson.teacherGuidelines.questions] : [];
+                  const fallbackResources = lesson.teacherGuidelines?.assessment ? [lesson.teacherGuidelines.assessment] : [];
+                  
+                  return (
+                    <div className="space-y-4">
+                      {/* Notes */}
+                      <div>
+                        <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                          {t.teacher.lessonViewer?.slideInfo?.notes || "Notes"}
+                        </h4>
+                        <p className="text-sm leading-relaxed">
+                          {fallbackNotes}
+                        </p>
+                      </div>
+
+                      {/* Tips */}
+                      {fallbackTips.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                            {t.teacher.lessonViewer?.slideInfo?.tips || "Tips"}
+                          </h4>
+                          <ul className="space-y-2">
+                            {fallbackTips.map((tip, index) => (
+                              <li key={index} className="text-sm flex items-start gap-2">
+                                <span className="text-primary mt-1">•</span>
+                                <span>{tip}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Resources */}
+                      {fallbackResources.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                            {t.teacher.lessonViewer?.slideInfo?.resources || "Resources"}
+                          </h4>
+                          <ul className="space-y-2">
+                            {fallbackResources.map((resource, index) => (
+                              <li key={index} className="text-sm flex items-start gap-2">
+                                <span className="text-primary mt-1">•</span>
+                                <span>{resource}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                
+                const slideNumber = currentSlideIndex + 1;
+                const totalSlides = lesson.slides.length;
+                
+                // Generate slide-specific notes based on position and content
+                let notes = "";
+                let tips: string[] = [];
+                let resources: string[] = [];
+
+                if (currentSlideIndex === 0) {
+                  // First slide
+                  notes = lesson.teacherGuidelines?.objectives || 
+                    `Acesta este primul slide despre ${currentSlide.title}. ${lesson.teacherGuidelines?.timing ? `Durata estimată: ${lesson.teacherGuidelines.timing}.` : ""}`;
+                  if (lesson.teacherGuidelines?.questions) {
+                    tips.push(lesson.teacherGuidelines.questions);
+                  }
+                  tips.push("Începe cu o întrebare provocatoare pentru a capta atenția elevilor");
+                  tips.push("Folosește exemple concrete din viața de zi cu zi");
+                } else if (currentSlideIndex === totalSlides - 1) {
+                  // Last slide
+                  notes = lesson.teacherGuidelines?.assessment || 
+                    `Slide-ul final pentru consolidare. ${lesson.teacherGuidelines?.questions ? `Întrebări de discuție: ${lesson.teacherGuidelines.questions}` : ""}`;
+                  if (lesson.teacherGuidelines?.questions) {
+                    tips.push(lesson.teacherGuidelines.questions);
+                  }
+                  tips.push("Rezolvă împreună câteva exemple");
+                  tips.push("Asigură-te că toți elevii înțeleg înainte de a continua");
+                  if (lesson.teacherGuidelines?.assessment) {
+                    resources.push(lesson.teacherGuidelines.assessment);
+                  }
+                } else {
+                  // Middle slides
+                  notes = `Slide ${slideNumber}: ${currentSlide.title}. ${lesson.teacherGuidelines?.differentiation ? `Diferențiere: ${lesson.teacherGuidelines.differentiation}` : ""}`;
+                  if (lesson.teacherGuidelines?.differentiation) {
+                    tips.push(lesson.teacherGuidelines.differentiation);
+                  }
+                  tips.push("Folosește diagrame și ilustrații pentru claritate");
+                  tips.push("Permite elevilor să pună întrebări");
+                }
+
+                return (
+                  <div className="space-y-4">
+                    {/* Notes */}
+                    <div>
+                      <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                        {t.teacher.lessonViewer?.slideInfo?.notes || "Notes"}
+                      </h4>
+                      <p className="text-sm leading-relaxed">
+                        {notes}
+                      </p>
+                    </div>
+
+                    {/* Tips */}
+                    {tips.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                          {t.teacher.lessonViewer?.slideInfo?.tips || "Tips"}
+                        </h4>
+                        <ul className="space-y-2">
+                          {tips.map((tip, index) => (
+                            <li key={index} className="text-sm flex items-start gap-2">
+                              <span className="text-primary mt-1">•</span>
+                              <span>{tip}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Resources */}
+                    {resources.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                          {t.teacher.lessonViewer?.slideInfo?.resources || "Resources"}
+                        </h4>
+                        <ul className="space-y-2">
+                          {resources.map((resource, index) => (
+                            <li key={index} className="text-sm flex items-start gap-2">
+                              <span className="text-primary mt-1">•</span>
+                              <span>{resource}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </aside>
+        ) : (
+          <aside className="hidden lg:block w-80 border-l bg-muted/30 overflow-y-auto">
+            <div className="p-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">
+                  {t.teacher.lessonViewer?.slideInfo?.title || "Teaching Notes"}
+                </h3>
+              </div>
+
+              {lesson.teacherGuidelines && (
+                <div className="space-y-4">
+                  {lesson.teacherGuidelines.objectives && (
+                    <div className="space-y-1">
+                      <h4 className="font-semibold text-sm">Objectives</h4>
+                      <p className="text-sm text-muted-foreground line-clamp-3">
+                        {lesson.teacherGuidelines.objectives}
+                      </p>
+                    </div>
+                  )}
+                  {lesson.teacherGuidelines.questions && (
+                    <div className="space-y-1">
+                      <h4 className="font-semibold text-sm">Questions</h4>
+                      <p className="text-sm text-muted-foreground line-clamp-3">
+                        {lesson.teacherGuidelines.questions}
+                      </p>
+                    </div>
+                  )}
+                  {lesson.teacherGuidelines.differentiation && (
+                    <div className="space-y-1">
+                      <h4 className="font-semibold text-sm">Differentiation</h4>
+                      <p className="text-sm text-muted-foreground line-clamp-3">
+                        {lesson.teacherGuidelines.differentiation}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </aside>
+        )}
 
         {/* Mobile Sidebar */}
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -523,38 +1017,331 @@ export default function LessonViewer() {
               <SheetTitle>{t.teacher.lessonViewer?.slideInfo?.title || "Teaching Notes"}</SheetTitle>
             </SheetHeader>
             <div className="mt-6 space-y-4">
-              {lesson.teacherGuidelines && (
-                <>
-                  {lesson.teacherGuidelines.objectives && (
-                    <div className="space-y-1">
-                      <h4 className="font-semibold text-sm">Objectives</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {lesson.teacherGuidelines.objectives}
-                      </p>
-                    </div>
-                  )}
-                  {lesson.teacherGuidelines.questions && (
-                    <div className="space-y-1">
-                      <h4 className="font-semibold text-sm">Questions</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {lesson.teacherGuidelines.questions}
-                      </p>
-                    </div>
-                  )}
-                  {lesson.teacherGuidelines.differentiation && (
-                    <div className="space-y-1">
-                      <h4 className="font-semibold text-sm">Differentiation</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {lesson.teacherGuidelines.differentiation}
-                      </p>
-                    </div>
-                  )}
-                </>
+              {activeTab === "slides" ? (
+                (() => {
+                  // Only show slide-specific info if we're viewing text-based slides (not PDF)
+                  const isViewingPDF = lesson.presentationFileUrl && lesson.presentationFileType === "pdf";
+                  // If viewing PDF, show slide-specific info based on current page
+                  if (isViewingPDF) {
+                    const slideNumber = currentSlideIndex + 1;
+                    
+                    // Find the current slide's speaker note from the slides array
+                    const currentSlide = lesson.slides.find(
+                      (s) => s.slideIndex === currentSlideIndex || s.id === `slide-${currentSlideIndex}`
+                    );
+                    
+                    // Use speaker note from presentation API if available
+                    const notes = currentSlide?.speakerNote || 
+                      `Slide ${slideNumber}: ${lesson.teacherGuidelines?.objectives ? `Obiective: ${lesson.teacherGuidelines.objectives}` : "Informații despre acest slide"}`;
+                    const tips: string[] = [];
+                    const resources: string[] = [];
+                    
+                    // Add slide-specific tips based on position
+                    if (slideNumber === 1) {
+                      tips.push("Începe cu o întrebare provocatoare pentru a capta atenția elevilor");
+                      tips.push("Folosește exemple concrete din viața de zi cu zi");
+                      if (lesson.teacherGuidelines?.questions) {
+                        tips.push(lesson.teacherGuidelines.questions);
+                      }
+                    } else {
+                      tips.push("Folosește diagrame și ilustrații pentru claritate");
+                      tips.push("Permite elevilor să pună întrebări");
+                      if (lesson.teacherGuidelines?.differentiation) {
+                        tips.push(lesson.teacherGuidelines.differentiation);
+                      }
+                    }
+                    
+                    // Add resources if available
+                    if (lesson.teacherGuidelines?.assessment) {
+                      resources.push(lesson.teacherGuidelines.assessment);
+                    }
+                    
+                    return (
+                      <>
+                        {/* Notes */}
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                            {t.teacher.lessonViewer?.slideInfo?.notes || "Notes"}
+                          </h4>
+                          <p className="text-sm leading-relaxed">
+                            {notes}
+                          </p>
+                        </div>
+
+                        {/* Tips */}
+                        {tips.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                              {t.teacher.lessonViewer?.slideInfo?.tips || "Tips"}
+                            </h4>
+                            <ul className="space-y-2">
+                              {tips.map((tip, index) => (
+                                <li key={index} className="text-sm flex items-start gap-2">
+                                  <span className="text-primary mt-1">•</span>
+                                  <span>{tip}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Resources */}
+                        {resources.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                              {t.teacher.lessonViewer?.slideInfo?.resources || "Resources"}
+                            </h4>
+                            <ul className="space-y-2">
+                              {resources.map((resource, index) => (
+                                <li key={index} className="text-sm flex items-start gap-2">
+                                  <span className="text-primary mt-1">•</span>
+                                  <span>{resource}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </>
+                    );
+                  }
+                  
+                  // For text-based slides, show slide-specific info
+                  if (!lesson.slides || lesson.slides.length === 0) {
+                    const fallbackNotes = lesson.teacherGuidelines?.objectives || "";
+                    const fallbackTips = lesson.teacherGuidelines?.questions ? [lesson.teacherGuidelines.questions] : [];
+                    const fallbackResources = lesson.teacherGuidelines?.assessment ? [lesson.teacherGuidelines.assessment] : [];
+                    
+                    return (
+                      <>
+                        {/* Notes */}
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                            {t.teacher.lessonViewer?.slideInfo?.notes || "Notes"}
+                          </h4>
+                          <p className="text-sm leading-relaxed">
+                            {fallbackNotes}
+                          </p>
+                        </div>
+
+                        {/* Tips */}
+                        {fallbackTips.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                              {t.teacher.lessonViewer?.slideInfo?.tips || "Tips"}
+                            </h4>
+                            <ul className="space-y-2">
+                              {fallbackTips.map((tip, index) => (
+                                <li key={index} className="text-sm flex items-start gap-2">
+                                  <span className="text-primary mt-1">•</span>
+                                  <span>{tip}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Resources */}
+                        {fallbackResources.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                              {t.teacher.lessonViewer?.slideInfo?.resources || "Resources"}
+                            </h4>
+                            <ul className="space-y-2">
+                              {fallbackResources.map((resource, index) => (
+                                <li key={index} className="text-sm flex items-start gap-2">
+                                  <span className="text-primary mt-1">•</span>
+                                  <span>{resource}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </>
+                    );
+                  }
+                  
+                  const currentSlide = lesson.slides[currentSlideIndex];
+                  if (!currentSlide) {
+                    // Fallback if slide doesn't exist
+                    const fallbackNotes = lesson.teacherGuidelines?.objectives || "";
+                    const fallbackTips = lesson.teacherGuidelines?.questions ? [lesson.teacherGuidelines.questions] : [];
+                    const fallbackResources = lesson.teacherGuidelines?.assessment ? [lesson.teacherGuidelines.assessment] : [];
+                    
+                    return (
+                      <>
+                        {/* Notes */}
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                            {t.teacher.lessonViewer?.slideInfo?.notes || "Notes"}
+                          </h4>
+                          <p className="text-sm leading-relaxed">
+                            {fallbackNotes}
+                          </p>
+                        </div>
+
+                        {/* Tips */}
+                        {fallbackTips.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                              {t.teacher.lessonViewer?.slideInfo?.tips || "Tips"}
+                            </h4>
+                            <ul className="space-y-2">
+                              {fallbackTips.map((tip, index) => (
+                                <li key={index} className="text-sm flex items-start gap-2">
+                                  <span className="text-primary mt-1">•</span>
+                                  <span>{tip}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Resources */}
+                        {fallbackResources.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                              {t.teacher.lessonViewer?.slideInfo?.resources || "Resources"}
+                            </h4>
+                            <ul className="space-y-2">
+                              {fallbackResources.map((resource, index) => (
+                                <li key={index} className="text-sm flex items-start gap-2">
+                                  <span className="text-primary mt-1">•</span>
+                                  <span>{resource}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </>
+                    );
+                  }
+                  
+                  const slideNumber = currentSlideIndex + 1;
+                  const totalSlides = lesson.slides.length;
+                  
+                  // Generate slide-specific notes based on position and content
+                  let notes = "";
+                  let tips: string[] = [];
+                  let resources: string[] = [];
+
+                  if (currentSlideIndex === 0) {
+                    notes = lesson.teacherGuidelines?.objectives || 
+                      `Acesta este primul slide despre ${currentSlide.title}. ${lesson.teacherGuidelines?.timing ? `Durata estimată: ${lesson.teacherGuidelines.timing}.` : ""}`;
+                    if (lesson.teacherGuidelines?.questions) {
+                      tips.push(lesson.teacherGuidelines.questions);
+                    }
+                    tips.push("Începe cu o întrebare provocatoare pentru a capta atenția elevilor");
+                    tips.push("Folosește exemple concrete din viața de zi cu zi");
+                  } else if (currentSlideIndex === totalSlides - 1) {
+                    notes = lesson.teacherGuidelines?.assessment || 
+                      `Slide-ul final pentru consolidare. ${lesson.teacherGuidelines?.questions ? `Întrebări de discuție: ${lesson.teacherGuidelines.questions}` : ""}`;
+                    if (lesson.teacherGuidelines?.questions) {
+                      tips.push(lesson.teacherGuidelines.questions);
+                    }
+                    tips.push("Rezolvă împreună câteva exemple");
+                    tips.push("Asigură-te că toți elevii înțeleg înainte de a continua");
+                    if (lesson.teacherGuidelines?.assessment) {
+                      resources.push(lesson.teacherGuidelines.assessment);
+                    }
+                  } else {
+                    notes = `Slide ${slideNumber}: ${currentSlide.title}. ${lesson.teacherGuidelines?.differentiation ? `Diferențiere: ${lesson.teacherGuidelines.differentiation}` : ""}`;
+                    if (lesson.teacherGuidelines?.differentiation) {
+                      tips.push(lesson.teacherGuidelines.differentiation);
+                    }
+                    tips.push("Folosește diagrame și ilustrații pentru claritate");
+                    tips.push("Permite elevilor să pună întrebări");
+                  }
+
+                  return (
+                    <>
+                      {/* Notes */}
+                      <div>
+                        <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                          {t.teacher.lessonViewer?.slideInfo?.notes || "Notes"}
+                        </h4>
+                        <p className="text-sm leading-relaxed">
+                          {notes}
+                        </p>
+                      </div>
+
+                      {/* Tips */}
+                      {tips.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                            {t.teacher.lessonViewer?.slideInfo?.tips || "Tips"}
+                          </h4>
+                          <ul className="space-y-2">
+                            {tips.map((tip, index) => (
+                              <li key={index} className="text-sm flex items-start gap-2">
+                                <span className="text-primary mt-1">•</span>
+                                <span>{tip}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Resources */}
+                      {resources.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+                            {t.teacher.lessonViewer?.slideInfo?.resources || "Resources"}
+                          </h4>
+                          <ul className="space-y-2">
+                            {resources.map((resource, index) => (
+                              <li key={index} className="text-sm flex items-start gap-2">
+                                <span className="text-primary mt-1">•</span>
+                                <span>{resource}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()
+              ) : (
+                lesson.teacherGuidelines && (
+                  <>
+                    {lesson.teacherGuidelines.objectives && (
+                      <div className="space-y-1">
+                        <h4 className="font-semibold text-sm">Objectives</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {lesson.teacherGuidelines.objectives}
+                        </p>
+                      </div>
+                    )}
+                    {lesson.teacherGuidelines.questions && (
+                      <div className="space-y-1">
+                        <h4 className="font-semibold text-sm">Questions</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {lesson.teacherGuidelines.questions}
+                        </p>
+                      </div>
+                    )}
+                    {lesson.teacherGuidelines.differentiation && (
+                      <div className="space-y-1">
+                        <h4 className="font-semibold text-sm">Differentiation</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {lesson.teacherGuidelines.differentiation}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )
               )}
             </div>
           </SheetContent>
         </Sheet>
       </div>
+
+      {/* Generate Quiz Modal */}
+      <GenerateQuizModal
+        open={generateQuizModalOpen}
+        onOpenChange={setGenerateQuizModalOpen}
+        onGenerate={handleGenerateQuiz}
+        defaultTitle={lesson ? `Test: ${lesson.title}` : ""}
+      />
     </div>
   );
 }

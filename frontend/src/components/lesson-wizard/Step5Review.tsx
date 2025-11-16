@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,12 +7,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translations } from "@/lib/translations";
 import { convertLessonFromStorage, gradeToStorage, teachingFieldToStorage } from "@/lib/dataConverters";
-import { CheckCircle2, Save, FileCheck, ChevronLeft, ChevronRight, Minus, Plus, Volume2 } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Minus, Plus, Volume2, Download, Headphones } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { db } from "@/lib/firebaseConfig";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db, storage } from "@/lib/firebaseConfig";
+import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
+import { ref, getDownloadURL } from "firebase/storage";
 import { PDFSlideViewer } from "@/components/pdf-viewer/PDFSlideViewer";
+import { generateQuiz, QuizQuestion } from "@/lib/api";
+import { GenerateQuizModal } from "@/components/quiz/GenerateQuizModal";
+import { QuizDisplayReadOnly } from "@/components/quiz/QuizDisplayReadOnly";
+import { useAuth } from "@/contexts/AuthContext";
+import { Loader2 } from "lucide-react";
 
 interface Step5ReviewProps {
   lessonId: string;
@@ -39,6 +44,10 @@ interface LessonData {
   slides: Slide[];
   presentationFileUrl?: string;
   presentationFileType?: "pdf";
+  podcastUrl?: string;
+  podcastPath?: string;
+  podcastDuration?: number;
+  quizId?: string | null;
   teacherGuidelines?: {
     content?: string; // HTML content from API
     objectives?: string;
@@ -51,7 +60,7 @@ interface LessonData {
 
 export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
   const { t, language } = useLanguage();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [loadingLesson, setLoadingLesson] = useState(true);
   const [activeTab, setActiveTab] = useState("summary");
@@ -59,6 +68,10 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
   const [fontSize, setFontSize] = useState(16);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [quiz, setQuiz] = useState<{ questions: QuizQuestion[]; title: string; totalQuestions: number } | null>(null);
+  const [loadingQuiz, setLoadingQuiz] = useState(false);
+  const [generateQuizModalOpen, setGenerateQuizModalOpen] = useState(false);
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
 
   useEffect(() => {
     const fetchLesson = async () => {
@@ -134,8 +147,24 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
           slides: slides,
           presentationFileUrl: data.presentationFileUrl,
           presentationFileType: data.presentationFileType,
+          podcastUrl: data.podcastUrl, // Legacy: keep for backward compatibility
+          podcastPath: data.podcastPath,
+          podcastDuration: data.podcastDuration,
+          quizId: data.quizId || null,
           teacherGuidelines: teacherGuidelines,
         };
+
+        // If we have a podcast path, get a fresh download URL using Firebase SDK
+        // This ensures proper CORS and range request support for audio streaming
+        if (lessonData.podcastPath && !lessonData.podcastUrl) {
+          try {
+            const storageRef = ref(storage, lessonData.podcastPath);
+            const downloadURL = await getDownloadURL(storageRef);
+            lessonData.podcastUrl = downloadURL;
+          } catch (error) {
+            console.error("Error getting podcast download URL:", error);
+          }
+        }
 
         setLesson(lessonData);
       } catch (error) {
@@ -148,7 +177,107 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
     if (lessonId) {
       fetchLesson();
     }
-  }, [lessonId]);
+  }, [lessonId, language]);
+
+  // Fetch quiz data when quizId is available
+  useEffect(() => {
+    const fetchQuiz = async () => {
+      if (!lesson?.quizId || !user) {
+        setQuiz(null);
+        return;
+      }
+
+      try {
+        setLoadingQuiz(true);
+        const quizDocRef = doc(db, "quizzes", lesson.quizId);
+        const quizDocSnap = await getDoc(quizDocRef);
+
+        if (quizDocSnap.exists()) {
+          const quizData = quizDocSnap.data();
+          setQuiz({
+            questions: quizData.questions || [],
+            title: quizData.title || "Quiz",
+            totalQuestions: quizData.totalQuestions || quizData.questions?.length || 0,
+          });
+        } else {
+          setQuiz(null);
+        }
+      } catch (error) {
+        console.error("Error fetching quiz:", error);
+        setQuiz(null);
+      } finally {
+        setLoadingQuiz(false);
+      }
+    };
+
+    fetchQuiz();
+  }, [lesson?.quizId, user]);
+
+  // Handle quiz generation
+  const handleGenerateQuiz = async (title: string, numQuestions: number) => {
+    if (!lesson || !user) return;
+
+    try {
+      setIsGeneratingQuiz(true);
+
+      // Convert grade and subject for API
+      const gradeNum = gradeToStorage(lesson.grade);
+      const subjectStorage = teachingFieldToStorage(lesson.subject);
+
+      if (gradeNum === null || !subjectStorage) {
+        throw new Error("Invalid grade or subject");
+      }
+
+      // Generate quiz from API
+      const quizData = await generateQuiz({
+        student_version: lesson.studentSummary,
+        num_questions: numQuestions,
+      });
+
+      // Create quiz document in Firestore
+      const quizDocData = {
+        lectureId: lesson.id,
+        teacherId: user.uid,
+        title: title,
+        subject: subjectStorage,
+        grade: gradeNum,
+        totalQuestions: quizData.questions.length,
+        createdAt: serverTimestamp(),
+        questions: quizData.questions.map((q) => ({
+          id: q.id,
+          text: q.text,
+          options: q.options.map((opt) => ({
+            id: opt.id,
+            text: opt.text,
+          })),
+          correctAnswerId: q.correctAnswerId,
+        })),
+      };
+
+      const quizDocRef = await addDoc(collection(db, "quizzes"), quizDocData);
+      const quizId = quizDocRef.id;
+
+      // Update lesson with quizId
+      const lessonDocRef = doc(db, "lessons", lesson.id);
+      await updateDoc(lessonDocRef, {
+        quizId: quizId,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Update local state
+      setLesson((prev) => (prev ? { ...prev, quizId } : null));
+      setQuiz({
+        questions: quizData.questions,
+        title: title,
+        totalQuestions: quizData.questions.length,
+      });
+    } catch (error: any) {
+      console.error("Error generating quiz:", error);
+      throw error;
+    } finally {
+      setIsGeneratingQuiz(false);
+    }
+  };
 
   const handleTitleChange = (title: string) => {
     if (lesson) {
@@ -262,10 +391,6 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
     switch (status) {
       case "ready":
         return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800";
-      case "fact-check pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800";
-      case "draft":
-        return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800/30 dark:text-gray-300 dark:border-gray-700";
       default:
         return "";
     }
@@ -296,18 +421,12 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Badge className={cn(getStatusColor(lesson.status), "border")}>
-              {lesson.status === "ready" && <CheckCircle2 className="h-3 w-3 mr-1" />}
-              {t.common.status[lesson.status as keyof typeof t.common.status] || (lesson.status.charAt(0).toUpperCase() + lesson.status.slice(1))}
-            </Badge>
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/teacher/lessons/${lessonId}/fact-check`)}
-              size="sm"
-            >
-              <FileCheck className="h-4 w-4 mr-2" />
-              {t.teacher.lessonEditor.runFactCheck}
-            </Button>
+            {lesson.status === "ready" && (
+              <Badge className={cn(getStatusColor(lesson.status), "border")}>
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                {t.common.status[lesson.status as keyof typeof t.common.status] || (lesson.status.charAt(0).toUpperCase() + lesson.status.slice(1))}
+              </Badge>
+            )}
           </div>
         </div>
       </div>
@@ -328,6 +447,12 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
                 </TabsTrigger>
                 <TabsTrigger value="guidelines" className="flex-1">
                   {t.teacher.lessonEditor.tabs.teacherGuidelines}
+                </TabsTrigger>
+                <TabsTrigger value="podcast" className="flex-1">
+                  {t.teacher.lessonEditor.tabs.podcast || "Podcast"}
+                </TabsTrigger>
+                <TabsTrigger value="quiz" className="flex-1">
+                  {t.teacher.lessonEditor.tabs.quiz || "Quiz"}
                 </TabsTrigger>
               </TabsList>
 
@@ -427,6 +552,25 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
               {/* Slides View */}
               <TabsContent value="slides" className="mt-0">
                 <div className="space-y-6">
+                  {/* Download Button */}
+                  {lesson.presentationFileUrl && (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          const link = document.createElement("a");
+                          link.href = lesson.presentationFileUrl!;
+                          link.download = `${lesson.title || "presentation"}.pdf`;
+                          link.click();
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        {t.teacher.lessonEditor.downloadSlides || "Download Slides"}
+                      </Button>
+                    </div>
+                  )}
+                  
                   {/* Show PDF viewer if presentation file is available */}
                   {lesson.presentationFileUrl && lesson.presentationFileType === "pdf" ? (
                     <PDFSlideViewer
@@ -591,6 +735,108 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
                         )}
                       </>
                     )
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Podcast View */}
+              <TabsContent value="podcast" className="mt-0">
+                <div className="space-y-6">
+                  {lesson.podcastUrl ? (
+                    <Card className="border-2">
+                      <CardContent className="p-6 space-y-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Headphones className="h-6 w-6 text-primary" />
+                            <div>
+                              <h3 className="text-lg font-semibold">
+                                {t.teacher.lessonEditor.podcast?.title || "Educational Podcast"}
+                              </h3>
+                              {lesson.podcastDuration && (
+                                <p className="text-sm text-muted-foreground">
+                                  {t.teacher.lessonEditor.podcast?.duration || "Duration"}:{" "}
+                                  {Math.floor(lesson.podcastDuration / 60)}:
+                                  {String(Math.floor(lesson.podcastDuration % 60)).padStart(2, "0")}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              const link = document.createElement("a");
+                              link.href = lesson.podcastUrl!;
+                              link.download = `${lesson.title || "podcast"}.mp3`;
+                              link.click();
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            <Download className="h-4 w-4" />
+                            {t.teacher.lessonEditor.podcast?.download || "Download"}
+                          </Button>
+                        </div>
+                        
+                        <div className="w-full">
+                          <audio
+                            controls
+                            className="w-full"
+                            src={lesson.podcastUrl ? `${lesson.podcastUrl}?t=${Date.now()}` : undefined}
+                            preload="metadata"
+                          >
+                            {t.teacher.lessonEditor.podcast?.notSupported || "Your browser does not support the audio element."}
+                          </audio>
+                        </div>
+                        
+                        <p className="text-sm text-muted-foreground">
+                          {t.teacher.lessonEditor.podcast?.description || 
+                           "Listen to an educational dialogue about this lesson. The podcast features a conversation between a teacher and student, making complex topics easier to understand."}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Headphones className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">
+                        {t.teacher.lessonEditor.podcast?.notAvailable || "Podcast not available for this lesson."}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Quiz View */}
+              <TabsContent value="quiz" className="mt-0">
+                <div className="space-y-6">
+                  {loadingQuiz ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : quiz ? (
+                    <QuizDisplayReadOnly
+                      questions={quiz.questions}
+                      title={quiz.title}
+                      totalQuestions={quiz.totalQuestions}
+                    />
+                  ) : (
+                    <div className="text-center py-12 space-y-4">
+                      <p className="text-muted-foreground">
+                        {t.teacher.lessonEditor.quiz?.noQuiz || "No quiz has been generated for this lesson yet."}
+                      </p>
+                      <Button
+                        onClick={() => setGenerateQuizModalOpen(true)}
+                        size="lg"
+                        disabled={isGeneratingQuiz}
+                      >
+                        {isGeneratingQuiz ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {t.teacher.lessonEditor.quiz?.generating || "Generating..."}
+                          </>
+                        ) : (
+                          t.teacher.lessonEditor.quiz?.generateButton || "Generate Quiz"
+                        )}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </TabsContent>
@@ -1219,15 +1465,7 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
       </div>
 
       {/* Bottom Action Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t sticky bottom-0 bg-background z-30">
-        <Button
-          variant="outline"
-          onClick={() => handleSave()}
-          disabled={isSaving}
-        >
-          <Save className="h-4 w-4 mr-2" />
-          {isSaving ? t.teacher.lessonEditor.saving : t.teacher.lessonEditor.saveDraft}
-        </Button>
+      <div className="flex flex-col sm:flex-row items-center justify-end gap-4 pt-6 border-t sticky bottom-0 bg-background z-30">
         <Button
           onClick={async () => {
             await handleSave("ready");
@@ -1239,6 +1477,14 @@ export function Step5Review({ lessonId, onComplete }: Step5ReviewProps) {
           {t.teacher.lessonEditor.markReadyForStudents}
         </Button>
       </div>
+
+      {/* Generate Quiz Modal */}
+      <GenerateQuizModal
+        open={generateQuizModalOpen}
+        onOpenChange={setGenerateQuizModalOpen}
+        onGenerate={handleGenerateQuiz}
+        defaultTitle={lesson ? `Test: ${lesson.title}` : ""}
+      />
     </div>
   );
 }

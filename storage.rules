@@ -51,6 +51,13 @@ service firebase.storage {
                               isTeacher();
     }
     
+    // Allow reading presentation templates
+    match /presentation_templates/{fileName} {
+      allow read: if isAuthenticated();
+      // Only allow write/delete for admins (you can add admin check if needed)
+      allow write, delete: if false;
+    }
+    
     // Deny all other paths
     match /{allPaths=**} {
       allow read, write: if false;

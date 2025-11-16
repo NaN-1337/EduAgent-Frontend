@@ -291,7 +291,7 @@ export default function MyLessons() {
   };
 
   const handleLessonClick = (lessonId: string) => {
-    navigate(`/teacher/lessons/${lessonId}/edit`);
+    navigate(`/teacher/lessons/${lessonId}/view`);
   };
 
   // Filter subjects based on search query and selection

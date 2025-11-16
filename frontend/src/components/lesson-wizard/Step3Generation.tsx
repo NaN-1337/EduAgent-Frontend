@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { generateLecture, generatePresentation, downloadFile, Question } from "@/lib/api";
+import { generateLecture, generatePresentation, generatePodcast, downloadFile, Question } from "@/lib/api";
 import { gradeToStorage, teachingFieldToStorage } from "@/lib/dataConverters";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebaseConfig";
@@ -23,6 +23,8 @@ interface Step3GenerationProps {
   title: string;
   subject: string;
   grade: string;
+  numberOfSlides: number;
+  template?: string;
   questions: Question[];
   answers: Record<string, string>;
   onComplete: (lessonId: string) => void;
@@ -34,6 +36,8 @@ export function Step3Generation({
   title,
   subject,
   grade,
+  numberOfSlides,
+  template,
   questions,
   answers,
   onComplete,
@@ -48,18 +52,28 @@ export function Step3Generation({
   const initialSteps = useMemo<GenerationStep[]>(
     () => [
       {
+        id: "analyzing",
+        label: t.teacher.newLesson.step3.steps?.analyzing || "Thinking about student needs",
+        status: "pending",
+      },
+      {
         id: "lecture",
-        label: t.teacher.newLesson.step3.steps?.lecture || "Generating lecture content",
+        label: t.teacher.newLesson.step3.steps?.lecture || "Crafting lesson content",
         status: "pending",
       },
       {
         id: "presentation",
-        label: t.teacher.newLesson.step3.steps?.presentation || "Creating presentation",
+        label: t.teacher.newLesson.step3.steps?.presentation || "Designing presentation slides",
         status: "pending",
       },
       {
-        id: "saving",
-        label: t.teacher.newLesson.step3.steps?.saving || "Saving lesson",
+        id: "podcast",
+        label: t.teacher.newLesson.step3.steps?.podcast || "Creating educational podcast",
+        status: "pending",
+      },
+      {
+        id: "finalizing",
+        label: t.teacher.newLesson.step3.steps?.finalizing || "Finalizing your lesson",
         status: "pending",
       },
     ],
@@ -68,15 +82,21 @@ export function Step3Generation({
 
   const stepDescriptions = useMemo<Record<string, string>>(
     () => ({
+      analyzing:
+        t.teacher.newLesson.step3.descriptions?.analyzing ||
+        "Analyzing educational objectives and student context...",
       lecture:
         t.teacher.newLesson.step3.descriptions?.lecture ||
-        "Generating student and teacher versions...",
+        "Generating engaging content for students and comprehensive teacher guidelines...",
       presentation:
         t.teacher.newLesson.step3.descriptions?.presentation ||
-        "Creating PowerPoint presentation...",
-      saving:
-        t.teacher.newLesson.step3.descriptions?.saving ||
-        "Uploading files and saving to database...",
+        "Creating beautiful slides with your selected template...",
+      podcast:
+        t.teacher.newLesson.step3.descriptions?.podcast ||
+        "Generating educational podcast dialogue...",
+      finalizing:
+        t.teacher.newLesson.step3.descriptions?.finalizing ||
+        "Uploading files and preparing your lesson for review...",
     }),
     [t]
   );
@@ -111,12 +131,38 @@ export function Step3Generation({
           throw new Error("Invalid grade or subject");
         }
 
-        // Step 1: Generate lecture
+        // Step 0: Analyzing (visual only, shows briefly)
         setCurrentStepIndex(0);
         setSteps((prev) => {
           const newSteps = [...prev];
           newSteps[0] = {
             ...newSteps[0],
+            status: "in-progress",
+            description: stepDescriptions.analyzing,
+          };
+          return newSteps;
+        });
+
+        // Small delay for visual effect
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        // Mark analyzing as completed
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          newSteps[0] = {
+            ...newSteps[0],
+            status: "completed",
+            description: undefined,
+          };
+          return newSteps;
+        });
+
+        // Step 1: Generate lecture
+        setCurrentStepIndex(1);
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          newSteps[1] = {
+            ...newSteps[1],
             status: "in-progress",
             description: stepDescriptions.lecture,
           };
@@ -134,8 +180,8 @@ export function Step3Generation({
         // Mark lecture step as completed
         setSteps((prev) => {
           const newSteps = [...prev];
-          newSteps[0] = {
-            ...newSteps[0],
+          newSteps[1] = {
+            ...newSteps[1],
             status: "completed",
             description: undefined,
           };
@@ -143,22 +189,25 @@ export function Step3Generation({
         });
 
         // Step 2: Generate presentation
-        setCurrentStepIndex(1);
+        setCurrentStepIndex(2);
         setSteps((prev) => {
           const newSteps = [...prev];
-          newSteps[1] = {
-            ...newSteps[1],
+          newSteps[2] = {
+            ...newSteps[2],
             status: "in-progress",
             description: stepDescriptions.presentation,
           };
           return newSteps;
         });
 
+        // Extract template name without .pdf extension
+        const templateName = template ? template.replace(/\.pdf$/i, "") : "modern";
+        
         const presentationData = await generatePresentation({
           student_version: lectureData.student_version,
-          n_slides: 10,
+          n_slides: numberOfSlides,
           language: "Romanian",
-          template: "modern",
+          template: templateName,
           tone: "educational",
           verbosity: "standard",
           export_as: "pdf",
@@ -167,40 +216,36 @@ export function Step3Generation({
         // Mark presentation step as completed
         setSteps((prev) => {
           const newSteps = [...prev];
-          newSteps[1] = {
-            ...newSteps[1],
+          newSteps[2] = {
+            ...newSteps[2],
             status: "completed",
             description: undefined,
           };
           return newSteps;
         });
 
-        // Step 3: Download PDF and upload to Firebase Storage
-        setCurrentStepIndex(2);
+        // Step 3: Generate podcast
+        setCurrentStepIndex(3);
         setSteps((prev) => {
           const newSteps = [...prev];
-          newSteps[2] = {
-            ...newSteps[2],
+          newSteps[3] = {
+            ...newSteps[3],
             status: "in-progress",
-            description: stepDescriptions.saving,
+            description: stepDescriptions.podcast,
           };
           return newSteps;
         });
 
-        // Download PDF from presentation API
-        const pdfBlob = await downloadFile(presentationData.presentation.download_url);
-        const pdfFile = new File([pdfBlob], "presentation.pdf", { type: "application/pdf" });
-
-        // Create lesson document in Firestore first
+        // Create lesson document in Firestore first (needed for podcast generation)
         const lessonData: any = {
           teacherId: user.uid,
           title,
           grade: gradeNum,
           subject: subjectStorage,
           status: "draft",
-          studentSummary: lectureData.student_version, // Store HTML
+          studentSummary: lectureData.student_version,
           teacherGuidelines: {
-            content: lectureData.teacher_version, // Store HTML
+            content: lectureData.teacher_version,
           },
           slides: presentationData.slides.map((slide, index) => ({
             id: `slide-${index}`,
@@ -217,24 +262,73 @@ export function Step3Generation({
         const docRef = await addDoc(collection(db, "lessons"), lessonData);
         const finalLessonId = docRef.id;
 
+        // Generate podcast
+        const podcastData = await generatePodcast({
+          student_version: lectureData.student_version,
+          teacher_version: lectureData.teacher_version,
+          grade: gradeNum,
+          subject: subjectStorage,
+          teacher_id: user.uid,
+          lecture_id: finalLessonId,
+          target_duration: 300,
+          return_dialogue: true,
+          upload_to_firebase: true,
+        });
+
+        // Mark podcast step as completed
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          newSteps[3] = {
+            ...newSteps[3],
+            status: "completed",
+            description: undefined,
+          };
+          return newSteps;
+        });
+
+        // Step 4: Download PDF and upload to Firebase Storage
+        setCurrentStepIndex(4);
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          newSteps[4] = {
+            ...newSteps[4],
+            status: "in-progress",
+            description: stepDescriptions.finalizing,
+          };
+          return newSteps;
+        });
+
+        // Download PDF from presentation API
+        const pdfBlob = await downloadFile(presentationData.presentation.download_url);
+        const pdfFile = new File([pdfBlob], "presentation.pdf", { type: "application/pdf" });
+
         // Upload PDF to Firebase Storage
         const storagePath = `${user.uid}/${gradeNum}/${finalLessonId}/presentation.pdf`;
         const storageRef = ref(storage, storagePath);
         await uploadBytes(storageRef, pdfFile);
         const downloadURL = await getDownloadURL(storageRef);
 
-        // Update lesson with presentation file URL
-        await updateDoc(docRef, {
+        // Update lesson with presentation file URL and podcast URL
+        const updateData: any = {
           presentationFileUrl: downloadURL,
           presentationFileType: "pdf",
           updatedAt: serverTimestamp(),
-        });
+        };
 
-        // Mark saving step as completed
+        // Add podcast path and duration if available
+        // Store the path instead of signed URL - we'll use Firebase SDK to get download URL on frontend
+        if (podcastData.firebase?.path) {
+          updateData.podcastPath = podcastData.firebase.path;
+          updateData.podcastDuration = podcastData.duration_seconds;
+        }
+
+        await updateDoc(docRef, updateData);
+
+        // Mark finalizing step as completed
         setSteps((prev) => {
           const newSteps = [...prev];
-          newSteps[2] = {
-            ...newSteps[2],
+          newSteps[4] = {
+            ...newSteps[4],
             status: "completed",
             description: undefined,
           };

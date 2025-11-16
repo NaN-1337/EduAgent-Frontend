@@ -1,17 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, CheckCircle2, Loader2, ChevronsRight, ChevronsLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, CheckCircle2, Loader2, ChevronsRight, ChevronsLeft, Bot, Download, Headphones } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { doc, updateDoc, arrayUnion, serverTimestamp, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebaseConfig";
+import { doc, updateDoc, arrayUnion, serverTimestamp, getDoc, collection, addDoc, query, where, getDocs } from "firebase/firestore";
+import { db, storage } from "@/lib/firebaseConfig";
+import { ref, getDownloadURL } from "firebase/storage";
 import { translations } from "@/lib/translations";
 import { convertLessonFromStorage } from "@/lib/dataConverters";
 import { PDFSlideViewer } from "@/components/pdf-viewer/PDFSlideViewer";
+import { LessonChatbot, LessonChatbotRef } from "@/components/chatbot/LessonChatbot";
+import { TextSelectionHandler } from "@/components/chatbot/TextSelectionHandler";
+import { QuizQuestion } from "@/lib/api";
+import { QuizInteractive } from "@/components/quiz/QuizInteractive";
+import { QuizResults } from "@/components/quiz/QuizResults";
 
 export default function StudentLessonPlayer() {
   const { id: lessonId } = useParams<{ id: string }>();
@@ -21,16 +27,18 @@ export default function StudentLessonPlayer() {
   
   const [lesson, setLesson] = useState<any>(null);
   const [loadingLesson, setLoadingLesson] = useState(true);
-  const [teacherName, setTeacherName] = useState<string>("Unknown Teacher");
-  const [teacherTeachingField, setTeacherTeachingField] = useState<string>("");
   const [activeTab, setActiveTab] = useState("summary");
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [fontSize, setFontSize] = useState(16); // base font size in pixels
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [quizAnswers, setQuizAnswers] = useState<Record<string, number | null>>({});
-  const [quizSubmitted, setQuizSubmitted] = useState(false);
-  const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [quiz, setQuiz] = useState<{ questions: QuizQuestion[]; title: string; totalQuestions: number; quizId: string } | null>(null);
+  const [quizSubmission, setQuizSubmission] = useState<any>(null);
+  const [loadingQuiz, setLoadingQuiz] = useState(false);
+  const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
+  const chatbotRef = useRef<LessonChatbotRef>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const isUserStoppingRef = useRef(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -58,28 +66,6 @@ export default function StudentLessonPlayer() {
         }
 
         const data = lessonDocSnap.data();
-        
-        // Fetch teacher name and teaching field
-        if (data.teacherId) {
-          const teacherDocRef = doc(db, "users", data.teacherId);
-          const teacherDocSnap = await getDoc(teacherDocRef);
-          if (teacherDocSnap.exists()) {
-            const teacherData = teacherDocSnap.data();
-            setTeacherName(teacherData.name || "Unknown Teacher");
-            
-            // Get teaching field and convert to display format
-            if (teacherData.teachingField) {
-              const { teachingFieldFromStorage } = await import("@/lib/dataConverters");
-              const englishKey = teachingFieldFromStorage(teacherData.teachingField);
-              if (englishKey) {
-                const fieldDisplay = translations[language].teachingFields[englishKey] || teacherData.teachingField;
-                setTeacherTeachingField(fieldDisplay);
-              } else {
-                setTeacherTeachingField(teacherData.teachingField);
-              }
-            }
-          }
-        }
         
         // Parse slides from Firestore
         let slides: any[] = [];
@@ -131,18 +117,36 @@ export default function StudentLessonPlayer() {
           id: lessonDocSnap.id,
           title: converted.title || "Untitled Lesson",
           subject: converted.subject || "Unknown",
+          subjectRaw: data.subject || "", // Raw subject for API (e.g., "biologie", "matematica")
           grade: gradeDisplay,
+          gradeRaw: data.grade || 1, // Raw grade number for API (e.g., 5, 6)
           studentSummary: data.studentSummary || "",
+          contentStudent: data.studentSummary || "", // Alias for chatbot
           slides: slides,
           presentationFileUrl: data.presentationFileUrl,
           presentationFileType: data.presentationFileType,
+          podcastUrl: data.podcastUrl, // Legacy: keep for backward compatibility
+          podcastPath: data.podcastPath,
+          podcastDuration: data.podcastDuration,
           learningObjectives: learningObjectives.length > 0 ? learningObjectives : [
             "Understand the main concepts",
             "Apply knowledge to examples",
             "Complete the lesson activities"
           ],
-          quiz: [], // Quiz functionality can be added later
+          quizId: data.quizId || null,
         };
+
+        // If we have a podcast path, get a fresh download URL using Firebase SDK
+        // This ensures proper CORS and range request support for audio streaming
+        if (lessonData.podcastPath && !lessonData.podcastUrl) {
+          try {
+            const storageRef = ref(storage, lessonData.podcastPath);
+            const downloadURL = await getDownloadURL(storageRef);
+            lessonData.podcastUrl = downloadURL;
+          } catch (error) {
+            console.error("Error getting podcast download URL:", error);
+          }
+        }
 
         setLesson(lessonData);
       } catch (error) {
@@ -157,6 +161,113 @@ export default function StudentLessonPlayer() {
       fetchLesson();
     }
   }, [lessonId, language, navigate]);
+
+  // Fetch quiz data and check for existing submission
+  useEffect(() => {
+    const fetchQuizData = async () => {
+      if (!lesson?.quizId || !user) {
+        setQuiz(null);
+        setQuizSubmission(null);
+        return;
+      }
+
+      try {
+        setLoadingQuiz(true);
+
+        // Fetch quiz
+        const quizDocRef = doc(db, "quizzes", lesson.quizId);
+        const quizDocSnap = await getDoc(quizDocRef);
+
+        if (!quizDocSnap.exists()) {
+          setQuiz(null);
+          setQuizSubmission(null);
+          return;
+        }
+
+        const quizData = quizDocSnap.data();
+        setQuiz({
+          questions: quizData.questions || [],
+          title: quizData.title || "Quiz",
+          totalQuestions: quizData.totalQuestions || quizData.questions?.length || 0,
+          quizId: lesson.quizId,
+        });
+
+        // Check for existing submission
+        const submissionsQuery = query(
+          collection(db, "quiz_submissions"),
+          where("quizId", "==", lesson.quizId),
+          where("studentId", "==", user.uid)
+        );
+        const submissionsSnapshot = await getDocs(submissionsQuery);
+
+        if (!submissionsSnapshot.empty) {
+          const submissionDoc = submissionsSnapshot.docs[0];
+          setQuizSubmission(submissionDoc.data());
+        } else {
+          setQuizSubmission(null);
+        }
+      } catch (error) {
+        console.error("Error fetching quiz data:", error);
+        setQuiz(null);
+        setQuizSubmission(null);
+      } finally {
+        setLoadingQuiz(false);
+      }
+    };
+
+    fetchQuizData();
+  }, [lesson?.quizId, user]);
+
+  // Handle quiz submission
+  const handleQuizSubmit = async (answers: Record<string, string>) => {
+    if (!quiz || !user || !lesson) return;
+
+    try {
+      setIsSubmittingQuiz(true);
+
+      // Calculate results
+      const submissionAnswers = quiz.questions.map((question) => {
+        const selectedAnswerId = answers[question.id];
+        const isCorrect = selectedAnswerId === question.correctAnswerId;
+        return {
+          questionId: question.id,
+          selectedAnswerId: selectedAnswerId || "",
+          correctAnswerId: question.correctAnswerId,
+          isCorrect: isCorrect,
+        };
+      });
+
+      const correctAnswers = submissionAnswers.filter((a) => a.isCorrect).length;
+      const incorrectAnswers = submissionAnswers.filter((a) => !a.isCorrect).length;
+
+      // Get teacherId from quiz document
+      const quizDocRef = doc(db, "quizzes", quiz.quizId);
+      const quizDocSnap = await getDoc(quizDocRef);
+      const quizData = quizDocSnap.data();
+
+      // Create submission document
+      const submissionData = {
+        quizId: quiz.quizId,
+        lectureId: lesson.id,
+        studentId: user.uid,
+        teacherId: quizData?.teacherId || "",
+        correctAnswers: correctAnswers,
+        incorrectAnswers: incorrectAnswers,
+        answers: submissionAnswers,
+        submittedAt: serverTimestamp(),
+      };
+
+      const submissionDocRef = await addDoc(collection(db, "quiz_submissions"), submissionData);
+      const submissionDoc = await getDoc(submissionDocRef);
+      
+      setQuizSubmission(submissionDoc.data());
+    } catch (error: any) {
+      console.error("Error submitting quiz:", error);
+      throw error;
+    } finally {
+      setIsSubmittingQuiz(false);
+    }
+  };
 
   // Mark lesson as completed when student views it
   useEffect(() => {
@@ -188,6 +299,37 @@ export default function StudentLessonPlayer() {
       markLessonAsCompleted();
     }
   }, [user, lessonId]);
+
+  // Stop speech when switching away from summary tab
+  useEffect(() => {
+    if (activeTab !== "summary" && isPlaying) {
+      isUserStoppingRef.current = true;
+      window.speechSynthesis.cancel();
+      setIsPlaying(false);
+      speechSynthesisRef.current = null;
+    }
+  }, [activeTab, isPlaying]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  // Load voices when available (some browsers load voices asynchronously)
+  useEffect(() => {
+    const loadVoices = () => {
+      window.speechSynthesis.getVoices();
+    };
+    
+    loadVoices();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+  }, []);
 
   if (authLoading || loadingLesson) {
     return (
@@ -273,64 +415,125 @@ export default function StudentLessonPlayer() {
     });
   };
 
-  const handleQuizSubmit = async () => {
-    if (!user || !lesson.quiz || lesson.quiz.length === 0) return;
+  // Extract plain text from HTML or plain text content
+  const extractTextContent = (content: string): string => {
+    if (!content) return "";
+    
+    // If it's HTML, extract text
+    if (content.startsWith("<")) {
+      // Create a temporary div to parse HTML
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = content;
+      
+      // Remove script and style elements
+      const scripts = tempDiv.querySelectorAll("script, style");
+      scripts.forEach(el => el.remove());
+      
+      // Get text content and clean it up
+      let text = tempDiv.textContent || tempDiv.innerText || "";
+      
+      // Clean up extra whitespace
+      text = text
+        .replace(/\s+/g, " ") // Replace multiple spaces with single space
+        .replace(/\n\s*\n/g, "\n") // Replace multiple newlines with single newline
+        .trim();
+      
+      return text;
+    }
+    
+    // If it's plain text, return as is (with some cleanup)
+    return content
+      .replace(/\s+/g, " ")
+      .replace(/\n\s*\n/g, "\n")
+      .trim();
+  };
 
-      // Check if all questions are answered
-      const allAnswered = lesson.quiz.every((q) => quizAnswers[q.id] !== null && quizAnswers[q.id] !== undefined);
-      if (!allAnswered) {
-        alert(t.student.lessonPlayer.quiz.errors.notAllAnswered);
+  // Handle text-to-speech
+  const handleTextToSpeech = () => {
+    if (!lesson?.studentSummary) return;
+
+    // Check if browser supports speech synthesis
+    if (!("speechSynthesis" in window)) {
+      alert(t.student.lessonPlayer.summary.fontControls.ttsNotSupported || "Text-to-speech is not supported in your browser.");
+      return;
+    }
+
+    // Cancel any ongoing speech
+    isUserStoppingRef.current = true;
+    window.speechSynthesis.cancel();
+    isUserStoppingRef.current = false; // Reset since we're starting new speech
+
+    // Extract text content
+    const textToRead = extractTextContent(lesson.studentSummary);
+    
+    if (!textToRead) {
+      alert(t.student.lessonPlayer.summary.fontControls.noContent || "No content available to read.");
+      return;
+    }
+
+    // Create speech utterance
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    
+    // Set language based on current language context
+    utterance.lang = language === "ro" ? "ro-RO" : "en-US";
+    
+    // Set voice properties
+    utterance.rate = 1.0; // Normal speed
+    utterance.pitch = 1.0; // Normal pitch
+    utterance.volume = 1.0; // Full volume
+
+    // Try to find a Romanian voice if available
+    if (language === "ro") {
+      const voices = window.speechSynthesis.getVoices();
+      const romanianVoice = voices.find(voice => 
+        voice.lang.startsWith("ro") || voice.name.toLowerCase().includes("romanian")
+      );
+      if (romanianVoice) {
+        utterance.voice = romanianVoice;
+      }
+    }
+
+    // Event handlers
+    utterance.onstart = () => {
+      setIsPlaying(true);
+    };
+
+    utterance.onend = () => {
+      setIsPlaying(false);
+      speechSynthesisRef.current = null;
+      isUserStoppingRef.current = false;
+    };
+
+    utterance.onerror = (event) => {
+      // Don't show error if user manually stopped
+      if (isUserStoppingRef.current) {
+        setIsPlaying(false);
+        speechSynthesisRef.current = null;
+        isUserStoppingRef.current = false;
         return;
       }
 
-    setIsSubmitting(true);
-
-    try {
-      // Calculate score
-      let correct = 0;
-      const total = lesson.quiz.length;
-
-      lesson.quiz.forEach((question) => {
-        if (quizAnswers[question.id] === question.correctAnswer) {
-          correct++;
-        }
-      });
-
-      const score = { correct, total };
-      setQuizScore(score);
-
-      // Save to Firestore in student's document
-      const studentDocRef = doc(db, "users", user.uid);
+      // Only show error for actual errors (not cancellations)
+      if (event.error !== 'interrupted' && event.error !== 'canceled') {
+        console.error("Speech synthesis error:", event);
+        alert(t.student.lessonPlayer.summary.fontControls.ttsError || "An error occurred while reading the text.");
+      }
       
-      const quizSubmission = {
-        lessonId: lessonId || lesson.id,
-        lessonTitle: lesson.title,
-        answers: quizAnswers,
-        score: score,
-        submittedAt: serverTimestamp(),
-        status: "pending", // pending, reviewed
-      };
+      setIsPlaying(false);
+      speechSynthesisRef.current = null;
+    };
 
-      await updateDoc(studentDocRef, {
-        quizSubmissions: arrayUnion(quizSubmission),
-        updatedAt: serverTimestamp(),
-      });
-
-      setQuizSubmitted(true);
-    } catch (error) {
-      console.error("Error submitting quiz:", error);
-      alert(t.student.lessonPlayer.quiz.errors.submitFailed);
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Store reference and start speaking
+    speechSynthesisRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
   };
 
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col w-full overflow-x-hidden">
       {/* Top Bar */}
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full left-0 right-0">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left: Logo */}
             <Link to="/student/dashboard" className="flex items-center space-x-3">
@@ -366,9 +569,9 @@ export default function StudentLessonPlayer() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex relative">
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto w-full">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
             {/* Section Navigation Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -379,16 +582,38 @@ export default function StudentLessonPlayer() {
                 <TabsTrigger value="slides" className="flex-1">
                   {t.student.lessonPlayer.tabs.slides}
                 </TabsTrigger>
-                {lesson.quiz && lesson.quiz.length > 0 && (
+                <TabsTrigger value="podcast" className="flex-1">
+                  {t.student.lessonPlayer.tabs.podcast || "Podcast"}
+                </TabsTrigger>
+                {lesson?.quizId && (
                   <TabsTrigger value="quiz" className="flex-1">
-                    {t.student.lessonPlayer.tabs.quiz}
+                    {t.student.lessonPlayer.tabs.quiz || "Quiz"}
                   </TabsTrigger>
                 )}
               </TabsList>
 
               {/* Summary View */}
-              <TabsContent value="summary" className="mt-0">
-                <div className="space-y-6">
+              <TabsContent value="summary" className="mt-0 !mt-0">
+                <TextSelectionHandler
+                  enabled={activeTab === "summary"}
+                  onExplain={async (selectedText) => {
+                    // Open chatbot if collapsed
+                    if (sidebarCollapsed) {
+                      setSidebarCollapsed(false);
+                      // Wait a bit for the sidebar to open
+                      await new Promise(resolve => setTimeout(resolve, 300));
+                    }
+                    
+                    // Format prompt in Romanian
+                    const prompt = `Explica-mi te rog mai multe despre: ${selectedText}`;
+                    
+                    // Send message to chatbot
+                    if (chatbotRef.current) {
+                      await chatbotRef.current.sendMessage(prompt);
+                    }
+                  }}
+                />
+                <div className="space-y-6 w-full">
                   {/* Controls */}
                   <div className="flex items-center justify-between">
                     <h2 className="text-2xl font-bold">{lesson.title}</h2>
@@ -412,41 +637,46 @@ export default function StudentLessonPlayer() {
                         <span className="ml-1 hidden sm:inline">A+</span>
                       </Button>
                       <Button
-                        variant="outline"
+                        variant={isPlaying ? "default" : "outline"}
                         size="sm"
-                        disabled
+                        onClick={() => {
+                          if (isPlaying) {
+                            // Stop playback
+                            isUserStoppingRef.current = true;
+                            if (speechSynthesisRef.current) {
+                              window.speechSynthesis.cancel();
+                              speechSynthesisRef.current = null;
+                            }
+                            setIsPlaying(false);
+                          } else {
+                            // Start playback
+                            isUserStoppingRef.current = false;
+                            handleTextToSpeech();
+                          }
+                        }}
                         aria-label={t.student.lessonPlayer.summary.fontControls.listen}
-                        title={t.student.lessonPlayer.summary.fontControls.listenTooltip}
+                        title={isPlaying ? (t.student.lessonPlayer.summary.fontControls.stop || "Stop") : (t.student.lessonPlayer.summary.fontControls.listen || "Listen")}
                       >
-                        <Volume2 className="h-4 w-4" />
-                        <span className="ml-1 hidden sm:inline">{t.student.lessonPlayer.summary.fontControls.listen}</span>
+                        <Volume2 className={cn("h-4 w-4", isPlaying && "animate-pulse")} />
+                        <span className="ml-1 hidden sm:inline">
+                          {isPlaying ? (t.student.lessonPlayer.summary.fontControls.stop || "Stop") : (t.student.lessonPlayer.summary.fontControls.listen || "Listen")}
+                        </span>
                       </Button>
                     </div>
                   </div>
 
-                  {/* Learning Objectives */}
-                  <Card className="bg-primary/5 border-primary/20">
-                    <CardContent className="pt-6">
-                      <h3 className="text-lg font-semibold mb-3">
-                        {t.student.lessonPlayer.summary.learningObjectives}
-                      </h3>
-                      <ul className="space-y-2">
-                        {lesson.learningObjectives.map((objective, index) => (
-                          <li key={index} className="flex items-start gap-2">
-                            <span className="text-primary mt-1">•</span>
-                            <span>{objective}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-
                   {/* Main Content */}
                   <div
-                    className="max-w-none prose prose-lg dark:prose-invert max-w-none"
+                    className="prose prose-lg dark:prose-invert max-w-none"
+                    data-summary-content
                     style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
                   >
                     <style>{`
+                      .prose {
+                        max-width: 100% !important;
+                        margin-left: 0 !important;
+                        margin-right: 0 !important;
+                      }
                       .prose h1 {
                         font-size: 2em;
                         font-weight: bold;
@@ -499,6 +729,25 @@ export default function StudentLessonPlayer() {
               {/* Slides View */}
               <TabsContent value="slides" className="mt-0">
                 <div className="space-y-6">
+                  {/* Download Button */}
+                  {lesson.presentationFileUrl && (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          const link = document.createElement("a");
+                          link.href = lesson.presentationFileUrl;
+                          link.download = `${lesson.title || "presentation"}.pdf`;
+                          link.click();
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        {t.student.lessonPlayer.downloadSlides || "Download Slides"}
+                      </Button>
+                    </div>
+                  )}
+                  
                   {/* Show PDF viewer if presentation file is available */}
                   {lesson.presentationFileUrl && lesson.presentationFileType === "pdf" ? (
                     <PDFSlideViewer
@@ -592,135 +841,99 @@ export default function StudentLessonPlayer() {
                 </div>
               </TabsContent>
 
+              {/* Podcast View */}
+              <TabsContent value="podcast" className="mt-0">
+                <div className="space-y-6">
+                  {lesson.podcastUrl ? (
+                    <Card className="border-2">
+                      <CardContent className="p-6 space-y-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Headphones className="h-6 w-6 text-primary" />
+                            <div>
+                              <h3 className="text-lg font-semibold">
+                                {t.student.lessonPlayer.podcast?.title || "Educational Podcast"}
+                              </h3>
+                              {lesson.podcastDuration && (
+                                <p className="text-sm text-muted-foreground">
+                                  {t.student.lessonPlayer.podcast?.duration || "Duration"}:{" "}
+                                  {Math.floor(lesson.podcastDuration / 60)}:
+                                  {String(Math.floor(lesson.podcastDuration % 60)).padStart(2, "0")}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              const link = document.createElement("a");
+                              link.href = lesson.podcastUrl;
+                              link.download = `${lesson.title || "podcast"}.mp3`;
+                              link.click();
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            <Download className="h-4 w-4" />
+                            {t.student.lessonPlayer.podcast?.download || "Download"}
+                          </Button>
+                        </div>
+                        
+                        <div className="w-full">
+                          <audio
+                            controls
+                            className="w-full"
+                            src={lesson.podcastUrl ? `${lesson.podcastUrl}?t=${Date.now()}` : undefined}
+                            preload="metadata"
+                          >
+                            {t.student.lessonPlayer.podcast?.notSupported || "Your browser does not support the audio element."}
+                          </audio>
+                        </div>
+                        
+                        <p className="text-sm text-muted-foreground">
+                          {t.student.lessonPlayer.podcast?.description || 
+                           "Listen to an educational dialogue about this lesson. The podcast features a conversation between a teacher and student, making complex topics easier to understand."}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Headphones className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">
+                        {t.student.lessonPlayer.podcast?.notAvailable || "Podcast not available for this lesson."}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
               {/* Quiz View */}
               <TabsContent value="quiz" className="mt-0">
-                <div className="space-y-8">
-                  {lesson.quiz && lesson.quiz.length > 0 ? (
-                    <>
-                      {quizSubmitted ? (
-                        /* Success Message */
-                        <Card className="border-2 border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800">
-                          <CardContent className="pt-6">
-                            <div className="flex flex-col items-center text-center space-y-4">
-                              <CheckCircle2 className="h-16 w-16 text-green-600" />
-                              <div>
-                                <h3 className="text-2xl font-bold text-green-800 dark:text-green-300 mb-2">
-                                  {t.student.lessonPlayer.quiz.success.title}
-                                </h3>
-                                {quizScore && (
-                                  <p className="text-lg text-green-700 dark:text-green-400 mb-4">
-                                    {t.student.lessonPlayer.quiz.success.score(
-                                      quizScore.correct,
-                                      quizScore.total,
-                                      Math.round((quizScore.correct / quizScore.total) * 100)
-                                    )}
-                                  </p>
-                                )}
-                                <p className="text-base text-muted-foreground">
-                                  {t.student.lessonPlayer.quiz.success.message}
-                                </p>
-                                <p className="text-sm text-muted-foreground mt-2">
-                                  {t.student.lessonPlayer.quiz.success.feedbackMessage}
-                                </p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ) : (
-                        /* Quiz Questions */
-                        <>
-                          {lesson.quiz.map((question, questionIndex) => (
-                            <Card key={question.id} className="border-2">
-                              <CardContent className="pt-6">
-                                <div className="space-y-4">
-                                  <div className="flex items-start justify-between gap-4">
-                                    <h3 className="text-xl font-semibold">
-                                      {t.student.lessonPlayer.quiz.questionLabel(questionIndex + 1, question.question)}
-                                    </h3>
-                                  </div>
-
-                                  <div className="space-y-3">
-                                    {question.options.map((option, optionIndex) => (
-                                      <button
-                                        key={optionIndex}
-                                        onClick={() => {
-                                          setQuizAnswers({
-                                            ...quizAnswers,
-                                            [question.id]: optionIndex,
-                                          });
-                                        }}
-                                        className={cn(
-                                          "w-full text-left p-4 rounded-lg border-2 transition-colors",
-                                          quizAnswers[question.id] === optionIndex
-                                            ? "border-primary bg-primary/5"
-                                            : "border-border hover:border-primary/50"
-                                        )}
-                                      >
-                                        <div className="flex items-center gap-3">
-                                          <div
-                                            className={cn(
-                                              "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
-                                              quizAnswers[question.id] === optionIndex
-                                                ? "border-primary bg-primary"
-                                                : "border-muted-foreground"
-                                            )}
-                                          >
-                                            {quizAnswers[question.id] === optionIndex && (
-                                              <div className="w-2 h-2 rounded-full bg-primary-foreground" />
-                                            )}
-                                          </div>
-                                          <span className="flex-1">{option}</span>
-                                        </div>
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-
-                          {/* Submit Button */}
-                          <Card className="border-2">
-                            <CardContent className="pt-6">
-                              <div className="flex flex-col items-center space-y-4">
-                                <p className="text-sm text-muted-foreground text-center">
-                                  {t.student.lessonPlayer.quiz.answeredCount(
-                                    lesson.quiz.filter((q) => quizAnswers[q.id] !== null && quizAnswers[q.id] !== undefined).length,
-                                    lesson.quiz.length
-                                  )}
-                                </p>
-                                <Button
-                                  onClick={handleQuizSubmit}
-                                  disabled={
-                                    isSubmitting ||
-                                    lesson.quiz.some((q) => quizAnswers[q.id] === null || quizAnswers[q.id] === undefined)
-                                  }
-                                  size="lg"
-                                  className="w-full sm:w-auto min-w-[200px]"
-                                >
-                                  {isSubmitting ? (
-                                    <>
-                                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                      {t.student.lessonPlayer.quiz.submitButtonLoading}
-                                    </>
-                                  ) : (
-                                    t.student.lessonPlayer.quiz.submitButton
-                                  )}
-                                </Button>
-                                {lesson.quiz.some((q) => quizAnswers[q.id] === null || quizAnswers[q.id] === undefined) && (
-                                  <p className="text-xs text-muted-foreground text-center">
-                                    {t.student.lessonPlayer.quiz.submitWarning}
-                                  </p>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </>
-                      )}
-                    </>
+                <div className="space-y-6">
+                  {loadingQuiz ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : quiz ? (
+                    quizSubmission ? (
+                      <QuizResults
+                        questions={quiz.questions}
+                        title={quiz.title}
+                        answers={quizSubmission.answers || []}
+                        correctAnswers={quizSubmission.correctAnswers || 0}
+                        incorrectAnswers={quizSubmission.incorrectAnswers || 0}
+                        totalQuestions={quiz.totalQuestions}
+                      />
+                    ) : (
+                      <QuizInteractive
+                        questions={quiz.questions}
+                        title={quiz.title}
+                        onSubmit={handleQuizSubmit}
+                        isSubmitting={isSubmittingQuiz}
+                      />
+                    )
                   ) : (
                     <p className="text-center text-muted-foreground py-12">
-                      {t.student.lessonPlayer.quiz.emptyState}
+                      {t.student.lessonPlayer.quiz?.emptyState || "No quiz available for this lesson."}
                     </p>
                   )}
                 </div>
@@ -729,60 +942,59 @@ export default function StudentLessonPlayer() {
           </div>
         </main>
 
-        {/* Right Side Panel - Teacher Information */}
+        {/* Right Side Panel - Chatbot (Fixed to viewport, slides in/out) */}
         <aside className={cn(
-          "hidden lg:block border-l bg-muted/30 overflow-y-auto transition-all duration-300",
-          sidebarCollapsed ? "w-12" : "w-80"
+          "hidden lg:flex flex-col fixed right-0 border-l bg-background transition-transform duration-300 ease-in-out z-30",
+          "top-16 bottom-0 w-96",
+          sidebarCollapsed ? "translate-x-full" : "translate-x-0"
         )}>
-          {sidebarCollapsed ? (
-            <div className="p-4 flex flex-col items-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSidebarCollapsed(false)}
-                className="h-8 w-8"
-                aria-label={t.student.lessonPlayer.teacherInfo?.title || "Teacher Information"}
-              >
-                <ChevronsLeft className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : (
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">
-                  {t.student.lessonPlayer.teacherInfo?.title || "Teacher Information"}
-                </h3>
+          <div className="flex flex-col h-full w-full">
+            <div className="px-4 py-3 border-b bg-muted/30 flex-shrink-0">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-sm">
+                    {t.student.chatbot?.title || "Learning Assistant"}
+                  </h3>
+                </div>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setSidebarCollapsed(true)}
-                  className="h-8 w-8"
+                  className="h-8 w-8 -mr-2"
                   aria-label="Collapse sidebar"
                 >
                   <ChevronsRight className="h-4 w-4" />
                 </Button>
               </div>
-
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <h4 className="font-semibold text-sm">
-                    {t.student.lessonPlayer.teacherInfo?.teacherName || "Teacher"}
-                  </h4>
-                  <p className="text-sm text-muted-foreground">{teacherName}</p>
-                </div>
-                
-                {teacherTeachingField && (
-                  <div className="space-y-1">
-                    <h4 className="font-semibold text-sm">
-                      {t.student.lessonPlayer.teacherInfo?.teachingField || "Subject"}
-                    </h4>
-                    <p className="text-sm text-muted-foreground">{teacherTeachingField}</p>
-                  </div>
-                )}
-              </div>
+              <p className="text-xs text-muted-foreground pl-7">
+                {t.student.chatbot?.subtitle || "Ask me anything about this lesson"}
+              </p>
             </div>
-          )}
+            
+            {lesson && user && (
+              <LessonChatbot
+                ref={chatbotRef}
+                lessonContent={lesson.contentStudent || lesson.studentSummary || ""}
+                subject={lesson.subjectRaw || lesson.subject || ""}
+                grade={lesson.gradeRaw || lesson.grade || 1}
+                lessonId={lessonId || ""}
+                studentId={user.uid}
+              />
+            )}
+          </div>
         </aside>
+
+        {/* Collapse Button - Visible when sidebar is hidden */}
+        {sidebarCollapsed && (
+          <button
+            onClick={() => setSidebarCollapsed(false)}
+            className="hidden lg:flex fixed right-4 top-20 z-30 h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+            aria-label={t.student.chatbot?.title || "Show Learning Assistant"}
+          >
+            <ChevronsLeft className="h-5 w-5" />
+          </button>
+        )}
       </div>
     </div>
   );
