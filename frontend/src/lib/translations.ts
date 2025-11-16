@@ -41,6 +41,7 @@ export interface Translations {
       factcheckneeded: string;
       factcheckpending: string;
       ready: string;
+      sentToStudents: string;
     };
     labels: {
       status: string;
@@ -499,6 +500,7 @@ const ro: Translations = {
       factcheckneeded: "Necesită verificare",
       factcheckpending: "Verificare în așteptare",
       ready: "Gata",
+      sentToStudents: "Trimisă la elevi",
     },
     labels: {
       status: "Status",
@@ -1082,6 +1084,7 @@ const en: Translations = {
       factcheckneeded: "Fact-check needed",
       factcheckpending: "Fact-check pending",
       ready: "Ready",
+      sentToStudents: "Sent to students",
     },
     labels: {
       status: "Status",

@@ -18,7 +18,7 @@ import { translations } from "@/lib/translations";
 import { convertLessonFromStorage } from "@/lib/dataConverters";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebaseConfig";
-import { collection, query, where, getDocs, orderBy, deleteDoc, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, orderBy, deleteDoc, doc } from "firebase/firestore";
 
 interface Lesson {
   id: string;
@@ -27,8 +27,6 @@ interface Lesson {
   grade: string;
   dateModified: any;
   status: "draft" | "fact-check needed" | "ready";
-  completedCount?: number;
-  totalStudents?: number;
 }
 
 export default function TeacherDashboard() {
@@ -98,35 +96,6 @@ export default function TeacherDashboard() {
           });
         });
 
-        // Fetch completion data for each lesson
-        if (userData?.enrolledStudents && userData.enrolledStudents.length > 0) {
-          const completionPromises = lessonsData.map(async (lesson) => {
-            let completedCount = 0;
-            const studentPromises = userData.enrolledStudents!.map(async (studentId) => {
-              try {
-                const studentDocRef = doc(db, "users", studentId);
-                const studentDocSnap = await getDoc(studentDocRef);
-                if (studentDocSnap.exists()) {
-                  const studentData = studentDocSnap.data();
-                  const completedLessons = studentData.completedLessons || [];
-                  if (completedLessons.includes(lesson.id)) {
-                    completedCount++;
-                  }
-                }
-              } catch (error) {
-                console.error(`Error fetching student ${studentId}:`, error);
-              }
-            });
-            await Promise.all(studentPromises);
-            return {
-              ...lesson,
-              completedCount,
-              totalStudents: userData.enrolledStudents!.length,
-            };
-          });
-          const lessonsWithCompletion = await Promise.all(completionPromises);
-          lessonsData.splice(0, lessonsData.length, ...lessonsWithCompletion);
-        }
 
         // Get last 5 lessons for recent lessons
         const recent = lessonsData.slice(0, 5);
@@ -197,35 +166,6 @@ export default function TeacherDashboard() {
             return dateB.getTime() - dateA.getTime();
           });
 
-          // Fetch completion data for each lesson
-          if (userData?.enrolledStudents && userData.enrolledStudents.length > 0) {
-            const completionPromises = lessonsData.map(async (lesson) => {
-              let completedCount = 0;
-              const studentPromises = userData.enrolledStudents!.map(async (studentId) => {
-                try {
-                  const studentDocRef = doc(db, "users", studentId);
-                  const studentDocSnap = await getDoc(studentDocRef);
-                  if (studentDocSnap.exists()) {
-                    const studentData = studentDocSnap.data();
-                    const completedLessons = studentData.completedLessons || [];
-                    if (completedLessons.includes(lesson.id)) {
-                      completedCount++;
-                    }
-                  }
-                } catch (error) {
-                  console.error(`Error fetching student ${studentId}:`, error);
-                }
-              });
-              await Promise.all(studentPromises);
-              return {
-                ...lesson,
-                completedCount,
-                totalStudents: userData.enrolledStudents!.length,
-              };
-            });
-            const lessonsWithCompletion = await Promise.all(completionPromises);
-            lessonsData.splice(0, lessonsData.length, ...lessonsWithCompletion);
-          }
 
           const recent = lessonsData.slice(0, 5);
           setRecentLessons(recent);
@@ -285,6 +225,9 @@ export default function TeacherDashboard() {
   };
 
   const getStatusLabel = (status: "draft" | "fact-check needed" | "ready") => {
+    if (status === "ready") {
+      return t.common.status.sentToStudents;
+    }
     const statusKey = status.replace(/\s+/g, "").replace(/-/g, "") as keyof typeof t.common.status;
     return t.common.status[statusKey] || status;
   };
@@ -306,8 +249,8 @@ export default function TeacherDashboard() {
   };
 
   const handleLessonClick = (lessonId: string) => {
-    // Navigate to lesson editor
-    navigate(`/teacher/lessons/${lessonId}/edit`);
+    // Navigate to lesson viewer
+    navigate(`/teacher/lessons/${lessonId}/view`);
   };
 
   const handleDeleteClick = (e: React.MouseEvent, lesson: Lesson) => {
@@ -421,14 +364,6 @@ export default function TeacherDashboard() {
                             <span>{translations[language].grades[lesson.grade as keyof typeof translations.ro.grades] || lesson.grade}</span>
                             <span>·</span>
                             <span>{formatDate(lesson.dateModified)}</span>
-                            {lesson.status === "ready" && lesson.totalStudents !== undefined && lesson.totalStudents > 0 && (
-                              <>
-                                <span>·</span>
-                                <span className="text-green-600 dark:text-green-400 font-medium">
-                                  {lesson.completedCount || 0}/{lesson.totalStudents} {t.teacherDashboard.completed || "completed"}
-                                </span>
-                              </>
-                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-3">

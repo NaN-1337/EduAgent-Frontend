@@ -193,7 +193,7 @@ export default function MyLessons() {
   };
 
   const handleLessonClick = (lessonId: string) => {
-    navigate(`/teacher/lessons/${lessonId}/edit`);
+    navigate(`/teacher/lessons/${lessonId}/view`);
   };
 
   const gradeOrder = Object.keys(lessonsByGrade).sort((a, b) => {
