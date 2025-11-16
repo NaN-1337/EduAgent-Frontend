@@ -74,6 +74,11 @@ export interface Translations {
       myLessons: string;
       account: string;
     };
+    individual?: {
+      dashboard: string;
+      learningPaths: string;
+      account: string;
+    };
     profile: string;
     logout: string;
     menu: string;
@@ -388,6 +393,44 @@ export interface Translations {
       accountDescription: string;
       comingSoon: string;
     };
+    learningPaths: {
+      title: string;
+      description: string;
+      newLearningPath: string;
+      activeLearningPaths: string;
+      noActivePaths: string;
+      createNewPath: string;
+      viewPath: string;
+      chapter: string;
+      chapters: string;
+      completed: string;
+      inProgress: string;
+      unlocked: string;
+      locked: string;
+      completeLesson: string;
+      startLesson: string;
+      continueLesson: string;
+      createPath: {
+        title: string;
+        description: string;
+        selectGoal: string;
+        selectSubject: string;
+        goalPlaceholder: string;
+        subjectPlaceholder: string;
+        subjectPlaceholderSelectFirst: string;
+        createButton: string;
+        creating: string;
+        errors: {
+          goalRequired: string;
+          subjectRequired: string;
+        };
+      };
+      view: {
+        backToPaths: string;
+        progress: string;
+        chaptersCompleted: (completed: number, total: number) => string;
+      };
+    };
   };
 
   // Student Dashboard
@@ -682,6 +725,11 @@ const ro: Translations = {
     teacher: {
       dashboard: "Panou",
       myLessons: "Materiile mele",
+      account: "Cont",
+    },
+    individual: {
+      dashboard: "Panou",
+      learningPaths: "Căi de învățare",
       account: "Cont",
     },
     profile: "Profil",
@@ -999,6 +1047,44 @@ const ro: Translations = {
       accountTitle: "Cont individual",
       accountDescription: "Panoul tău personalizat de învățare",
       comingSoon: "Conținut în curând.",
+    },
+    learningPaths: {
+      title: "Căi de învățare",
+      description: "Creează și urmărește progresul tău în căile de învățare personalizate",
+      newLearningPath: "Cale de învățare nouă",
+      activeLearningPaths: "Căi de învățare active",
+      noActivePaths: "Nu ai căi de învățare active. Creează una nouă pentru a începe!",
+      createNewPath: "Creează cale nouă",
+      viewPath: "Vezi calea",
+      chapter: "Capitol",
+      chapters: "Capitole",
+      completed: "Completat",
+      inProgress: "În progres",
+      unlocked: "Deblocat",
+      locked: "Blocat",
+      completeLesson: "Finalizează lecția",
+      startLesson: "Începe lecția",
+      continueLesson: "Continuă lecția",
+      createPath: {
+        title: "Creează cale de învățare nouă",
+        description: "Selectează pentru ce vrei să te pregătești și materia",
+        selectGoal: "Pentru ce vrei să te pregătești?",
+        selectSubject: "Selectează materia",
+        goalPlaceholder: "Selectează tipul de evaluare",
+        subjectPlaceholder: "Selectează materia",
+        subjectPlaceholderSelectFirst: "Selectează mai întâi tipul de evaluare",
+        createButton: "Creează calea de învățare",
+        creating: "Se creează...",
+        errors: {
+          goalRequired: "Te rugăm să selectezi pentru ce vrei să te pregătești",
+          subjectRequired: "Te rugăm să selectezi materia",
+        },
+      },
+      view: {
+        backToPaths: "Înapoi la căile de învățare",
+        progress: "Progres",
+        chaptersCompleted: (completed: number, total: number) => `${completed} din ${total} capitole completate`,
+      },
     },
   },
 
@@ -1388,6 +1474,11 @@ const en: Translations = {
       myLessons: "My Subjects",
       account: "Account",
     },
+    individual: {
+      dashboard: "Dashboard",
+      learningPaths: "Learning Paths",
+      account: "Account",
+    },
     profile: "Profile",
     logout: "Logout",
     menu: "Menu",
@@ -1703,6 +1794,44 @@ const en: Translations = {
       accountTitle: "Individual Account",
       accountDescription: "Your personalized learning dashboard",
       comingSoon: "Content coming soon.",
+    },
+    learningPaths: {
+      title: "Learning Paths",
+      description: "Create and track your progress in personalized learning paths",
+      newLearningPath: "New Learning Path",
+      activeLearningPaths: "Active Learning Paths",
+      noActivePaths: "You don't have any active learning paths. Create one to get started!",
+      createNewPath: "Create New Path",
+      viewPath: "View Path",
+      chapter: "Chapter",
+      chapters: "Chapters",
+      completed: "Completed",
+      inProgress: "In Progress",
+      unlocked: "Unlocked",
+      locked: "Locked",
+      completeLesson: "Complete Lesson",
+      startLesson: "Start Lesson",
+      continueLesson: "Continue Lesson",
+      createPath: {
+        title: "Create New Learning Path",
+        description: "Select what you want to prepare for and the subject",
+        selectGoal: "What do you want to prepare for?",
+        selectSubject: "Select Subject",
+        goalPlaceholder: "Select evaluation type",
+        subjectPlaceholder: "Select subject",
+        subjectPlaceholderSelectFirst: "Please select evaluation type first",
+        createButton: "Create Learning Path",
+        creating: "Creating...",
+        errors: {
+          goalRequired: "Please select what you want to prepare for",
+          subjectRequired: "Please select the subject",
+        },
+      },
+      view: {
+        backToPaths: "Back to Learning Paths",
+        progress: "Progress",
+        chaptersCompleted: (completed: number, total: number) => `${completed} of ${total} chapters completed`,
+      },
     },
   },
 
