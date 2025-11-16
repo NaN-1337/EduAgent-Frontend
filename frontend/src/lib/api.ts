@@ -31,6 +31,8 @@ export interface GenerateLectureRequest {
   grade: number;
   questions: Question[];
   answers: Record<string, string>; // question ID -> selected answer
+  needs_recap?: boolean; // optional: if true, generates recap from previous lecture
+  previous_student_version?: string; // required if needs_recap=true: HTML content of previous lecture's student version
 }
 
 export interface GenerateLectureResponse {

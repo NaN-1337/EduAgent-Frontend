@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { translations } from "@/lib/translations";
@@ -19,6 +20,9 @@ import { TemplatePreviewDialog } from "./TemplatePreviewDialog";
 import { Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { generatePdfThumbnail } from "@/lib/pdfThumbnail";
+import { db } from "@/lib/firebaseConfig";
+import { collection, query, where, getDocs, orderBy, limit, doc, getDoc } from "firebase/firestore";
+import { teachingFieldToStorage } from "@/lib/dataConverters";
 
 interface Step1Data {
   title: string;
@@ -26,6 +30,8 @@ interface Step1Data {
   subject: string;
   numberOfSlides: number;
   template?: string;
+  needsRecap?: boolean;
+  previousStudentVersion?: string;
 }
 
 interface Template {
@@ -40,12 +46,15 @@ interface Step1DefineLessonProps {
 }
 
 export function Step1DefineLesson({ data, onChange }: Step1DefineLessonProps) {
-  const { userData } = useAuth();
+  const { userData, user } = useAuth();
   const { t, language } = useLanguage();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [showRecapCheckbox, setShowRecapCheckbox] = useState(false);
+  const [loadingRecapCheck, setLoadingRecapCheck] = useState(false);
+  const [previousLessonTitle, setPreviousLessonTitle] = useState<string | null>(null);
 
   // Auto-populate subject from teacher's teaching field
   useEffect(() => {
@@ -53,6 +62,163 @@ export function Step1DefineLesson({ data, onChange }: Step1DefineLessonProps) {
       onChange({ subject: userData.teachingField });
     }
   }, [userData?.teachingField, data.subject, onChange]);
+
+  // Check for previous lesson with poor quiz performance
+  useEffect(() => {
+    const checkPreviousLessonPerformance = async () => {
+      if (!user || !data.subject || !data.grade) {
+        console.log("Missing required data for recap check:", { user: !!user, subject: data.subject, grade: data.grade });
+        setShowRecapCheckbox(false);
+        return;
+      }
+
+      try {
+        setLoadingRecapCheck(true);
+        const subjectStorage = teachingFieldToStorage(data.subject);
+        if (!subjectStorage) {
+          console.log("Could not convert subject to storage format:", data.subject);
+          setShowRecapCheckbox(false);
+          return;
+        }
+
+        // Get grade number (assuming format "Grade X")
+        const gradeMatch = data.grade.match(/\d+/);
+        const gradeNum = gradeMatch ? parseInt(gradeMatch[0], 10) : null;
+        if (!gradeNum) {
+          console.log("Could not parse grade number from:", data.grade);
+          setShowRecapCheckbox(false);
+          return;
+        }
+
+        console.log("Checking for previous lesson:", { subject: subjectStorage, grade: gradeNum, teacherId: user.uid });
+
+        // Find previous lessons with same subject and grade
+        // Note: We query without orderBy to avoid requiring a composite index
+        // We'll sort in memory instead
+        const lessonsQuery = query(
+          collection(db, "lessons"),
+          where("teacherId", "==", user.uid),
+          where("subject", "==", subjectStorage),
+          where("grade", "==", gradeNum)
+        );
+
+        const lessonsSnapshot = await getDocs(lessonsQuery);
+        console.log("Found previous lessons:", lessonsSnapshot.size);
+        if (lessonsSnapshot.empty) {
+          console.log("No previous lessons found");
+          setShowRecapCheckbox(false);
+          return;
+        }
+
+        // Sort by createdAt in memory to get the most recent lesson
+        const lessons = lessonsSnapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            data: doc.data(),
+            createdAt: doc.data().createdAt?.toMillis() || doc.data().lastModified?.toMillis() || 0,
+          }))
+          .sort((a, b) => b.createdAt - a.createdAt);
+
+        if (lessons.length === 0) {
+          setShowRecapCheckbox(false);
+          return;
+        }
+
+        const previousLesson = lessons[0];
+        const previousLessonData = previousLesson.data;
+        const previousLessonId = previousLesson.id;
+
+        // Check if previous lesson has a quiz
+        if (!previousLessonData.quizId) {
+          console.log("Previous lesson has no quizId");
+          setShowRecapCheckbox(false);
+          return;
+        }
+
+        // Get all quiz submissions for the previous lesson's quiz
+        const submissionsQuery = query(
+          collection(db, "quiz_submissions"),
+          where("quizId", "==", previousLessonData.quizId),
+          where("lectureId", "==", previousLessonId)
+        );
+
+        const submissionsSnapshot = await getDocs(submissionsQuery);
+        if (submissionsSnapshot.empty) {
+          console.log("No quiz submissions found for previous lesson");
+          setShowRecapCheckbox(false);
+          return;
+        }
+
+        // Calculate class performance
+        let totalCorrect = 0;
+        let totalIncorrect = 0;
+        let totalQuestions = 0;
+
+        submissionsSnapshot.forEach((doc) => {
+          const submission = doc.data();
+          const correct = submission.correctAnswers || 0;
+          const incorrect = submission.incorrectAnswers || 0;
+          totalCorrect += correct;
+          totalIncorrect += incorrect;
+          // Calculate total questions from this submission
+          const submissionTotal = correct + incorrect;
+          if (submissionTotal > totalQuestions) {
+            totalQuestions = submissionTotal;
+          }
+        });
+
+        const totalAnswers = totalCorrect + totalIncorrect;
+        console.log("Quiz performance check:", {
+          previousLessonId,
+          quizId: previousLessonData.quizId,
+          submissionsCount: submissionsSnapshot.size,
+          totalCorrect,
+          totalIncorrect,
+          totalAnswers,
+          totalQuestions,
+        });
+
+        if (totalAnswers === 0) {
+          console.log("No answers found in submissions");
+          setShowRecapCheckbox(false);
+          return;
+        }
+
+        // Calculate success rate: correct answers / total answers
+        const classSuccessRate = totalCorrect / totalAnswers;
+        console.log("Class success rate:", classSuccessRate, "Threshold: 0.6", "Show checkbox:", classSuccessRate < 0.6);
+
+        // Show checkbox if performance < 60%
+        if (classSuccessRate < 0.6) {
+          setShowRecapCheckbox(true);
+          setPreviousLessonTitle(previousLessonData.title || "Previous Lesson");
+          
+          // Always fetch previous lesson's student version when checkbox is shown
+          // It will be used if the teacher checks the box
+          // The student version is stored in Firestore as 'studentSummary'
+          if (previousLessonData.studentSummary) {
+            // Only update if we don't already have it or if it's different
+            if (!data.previousStudentVersion || data.previousStudentVersion !== previousLessonData.studentSummary) {
+              onChange({ previousStudentVersion: previousLessonData.studentSummary });
+            }
+          }
+        } else {
+          setShowRecapCheckbox(false);
+          // Clear previous student version if performance is good
+          if (data.previousStudentVersion || data.needsRecap) {
+            onChange({ previousStudentVersion: undefined, needsRecap: false });
+          }
+        }
+      } catch (error) {
+        console.error("Error checking previous lesson performance:", error);
+        setShowRecapCheckbox(false);
+      } finally {
+        setLoadingRecapCheck(false);
+      }
+    };
+
+    checkPreviousLessonPerformance();
+  }, [user, data.subject, data.grade, data.needsRecap, onChange]);
 
   // Fetch templates from Firebase Storage
   useEffect(() => {
@@ -301,7 +467,7 @@ export function Step1DefineLesson({ data, onChange }: Step1DefineLessonProps) {
       </div>
 
       {/* Right helper panel */}
-      <div className="lg:col-span-1">
+      <div className="lg:col-span-1 space-y-4">
         <Card className="border-2 bg-primary/5 border-primary/20">
           <CardHeader>
             <CardTitle className="text-lg font-semibold">{t.teacher.newLesson.step1.exampleTitle}</CardTitle>
@@ -315,6 +481,51 @@ export function Step1DefineLesson({ data, onChange }: Step1DefineLessonProps) {
             </div>
           </CardContent>
         </Card>
+
+        {/* Recap Checkbox - Only shown if previous lesson had poor performance */}
+        {loadingRecapCheck ? (
+          <Card className="border-2">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : showRecapCheckbox ? (
+          <Card className="border-2 border-yellow-500/20 bg-yellow-50/50 dark:bg-yellow-950/10">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">
+                {t.teacher.newLesson.step1.recapTitle || "Review Previous Lesson"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {previousLessonTitle && t.teacher.newLesson.step1.recapDescription 
+                  ? t.teacher.newLesson.step1.recapDescription(previousLessonTitle)
+                  : `Your class had difficulty with the previous lesson "${previousLessonTitle}". Would you like to include a recap section?`}
+              </p>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="needsRecap"
+                  checked={data.needsRecap || false}
+                  onCheckedChange={(checked) => {
+                    onChange({ 
+                      needsRecap: checked as boolean,
+                      // Ensure previousStudentVersion is set when enabling recap
+                      previousStudentVersion: checked ? data.previousStudentVersion : undefined
+                    });
+                  }}
+                />
+                <Label
+                  htmlFor="needsRecap"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  {t.teacher.newLesson.step1.recapCheckboxLabel || "Include recap from previous lesson"}
+                </Label>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
 
       {/* Template Preview Dialog */}
