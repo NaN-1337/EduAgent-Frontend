@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { generateLecture, generatePresentation, downloadFile, Question } from "@/lib/api";
+import { generateLecture, generatePresentation, generatePodcast, downloadFile, Question } from "@/lib/api";
 import { gradeToStorage, teachingFieldToStorage } from "@/lib/dataConverters";
 import { useAuth } from "@/contexts/AuthContext";
 import { db } from "@/lib/firebaseConfig";
@@ -67,6 +67,11 @@ export function Step3Generation({
         status: "pending",
       },
       {
+        id: "podcast",
+        label: t.teacher.newLesson.step3.steps?.podcast || "Creating educational podcast",
+        status: "pending",
+      },
+      {
         id: "finalizing",
         label: t.teacher.newLesson.step3.steps?.finalizing || "Finalizing your lesson",
         status: "pending",
@@ -86,6 +91,9 @@ export function Step3Generation({
       presentation:
         t.teacher.newLesson.step3.descriptions?.presentation ||
         "Creating beautiful slides with your selected template...",
+      podcast:
+        t.teacher.newLesson.step3.descriptions?.podcast ||
+        "Generating educational podcast dialogue...",
       finalizing:
         t.teacher.newLesson.step3.descriptions?.finalizing ||
         "Uploading files and preparing your lesson for review...",
@@ -216,32 +224,28 @@ export function Step3Generation({
           return newSteps;
         });
 
-        // Step 3: Download PDF and upload to Firebase Storage
+        // Step 3: Generate podcast
         setCurrentStepIndex(3);
         setSteps((prev) => {
           const newSteps = [...prev];
           newSteps[3] = {
             ...newSteps[3],
             status: "in-progress",
-            description: stepDescriptions.finalizing,
+            description: stepDescriptions.podcast,
           };
           return newSteps;
         });
 
-        // Download PDF from presentation API
-        const pdfBlob = await downloadFile(presentationData.presentation.download_url);
-        const pdfFile = new File([pdfBlob], "presentation.pdf", { type: "application/pdf" });
-
-        // Create lesson document in Firestore first
+        // Create lesson document in Firestore first (needed for podcast generation)
         const lessonData: any = {
           teacherId: user.uid,
           title,
           grade: gradeNum,
           subject: subjectStorage,
           status: "draft",
-          studentSummary: lectureData.student_version, // Store HTML
+          studentSummary: lectureData.student_version,
           teacherGuidelines: {
-            content: lectureData.teacher_version, // Store HTML
+            content: lectureData.teacher_version,
           },
           slides: presentationData.slides.map((slide, index) => ({
             id: `slide-${index}`,
@@ -258,24 +262,72 @@ export function Step3Generation({
         const docRef = await addDoc(collection(db, "lessons"), lessonData);
         const finalLessonId = docRef.id;
 
+        // Generate podcast
+        const podcastData = await generatePodcast({
+          student_version: lectureData.student_version,
+          teacher_version: lectureData.teacher_version,
+          grade: gradeNum,
+          subject: subjectStorage,
+          teacher_id: user.uid,
+          lecture_id: finalLessonId,
+          target_duration: 300,
+          return_dialogue: true,
+          upload_to_firebase: true,
+        });
+
+        // Mark podcast step as completed
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          newSteps[3] = {
+            ...newSteps[3],
+            status: "completed",
+            description: undefined,
+          };
+          return newSteps;
+        });
+
+        // Step 4: Download PDF and upload to Firebase Storage
+        setCurrentStepIndex(4);
+        setSteps((prev) => {
+          const newSteps = [...prev];
+          newSteps[4] = {
+            ...newSteps[4],
+            status: "in-progress",
+            description: stepDescriptions.finalizing,
+          };
+          return newSteps;
+        });
+
+        // Download PDF from presentation API
+        const pdfBlob = await downloadFile(presentationData.presentation.download_url);
+        const pdfFile = new File([pdfBlob], "presentation.pdf", { type: "application/pdf" });
+
         // Upload PDF to Firebase Storage
         const storagePath = `${user.uid}/${gradeNum}/${finalLessonId}/presentation.pdf`;
         const storageRef = ref(storage, storagePath);
         await uploadBytes(storageRef, pdfFile);
         const downloadURL = await getDownloadURL(storageRef);
 
-        // Update lesson with presentation file URL
-        await updateDoc(docRef, {
+        // Update lesson with presentation file URL and podcast URL
+        const updateData: any = {
           presentationFileUrl: downloadURL,
           presentationFileType: "pdf",
           updatedAt: serverTimestamp(),
-        });
+        };
+
+        // Add podcast URL if available
+        if (podcastData.firebase?.download_url) {
+          updateData.podcastUrl = podcastData.firebase.download_url;
+          updateData.podcastDuration = podcastData.duration_seconds;
+        }
+
+        await updateDoc(docRef, updateData);
 
         // Mark finalizing step as completed
         setSteps((prev) => {
           const newSteps = [...prev];
-          newSteps[3] = {
-            ...newSteps[3],
+          newSteps[4] = {
+            ...newSteps[4],
             status: "completed",
             description: undefined,
           };

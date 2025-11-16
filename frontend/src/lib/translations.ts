@@ -429,6 +429,16 @@ export interface Translations {
         summary: string;
         slides: string;
         quiz: string;
+        podcast?: string;
+      };
+      downloadSlides?: string;
+      podcast?: {
+        title: string;
+        duration: string;
+        download: string;
+        notSupported: string;
+        description: string;
+        notAvailable: string;
       };
       summary: {
         learningObjectives: string;
@@ -890,6 +900,16 @@ const ro: Translations = {
         studentSummary: "Rezumat elev",
         slides: "Slide-uri",
         teacherGuidelines: "Ghiduri profesor",
+        podcast: "Podcast",
+      },
+      downloadSlides: "Descarcă slide-urile",
+      podcast: {
+        title: "Podcast educațional",
+        duration: "Durată",
+        download: "Descarcă",
+        notSupported: "Browserul tău nu suportă elementul audio.",
+        description: "Ascultă un dialog educațional despre această lecție. Podcastul prezintă o conversație între un profesor și un elev, făcând subiectele complexe mai ușor de înțeles.",
+        notAvailable: "Podcast-ul nu este disponibil pentru această lecție.",
       },
       deleteTitle: "Șterge lecția?",
       deleteDescription: (title: string) => `Această acțiune nu poate fi anulată. Aceasta va șterge permanent lecția "${title}".`,
@@ -992,6 +1012,16 @@ const ro: Translations = {
         summary: "Rezumat",
         slides: "Slide-uri",
         quiz: "Test",
+        podcast: "Podcast",
+      },
+      downloadSlides: "Descarcă slide-urile",
+      podcast: {
+        title: "Podcast educațional",
+        duration: "Durată",
+        download: "Descarcă",
+        notSupported: "Browserul tău nu suportă elementul audio.",
+        description: "Ascultă un dialog educațional despre această lecție. Podcastul prezintă o conversație între un profesor și un elev, făcând subiectele complexe mai ușor de înțeles.",
+        notAvailable: "Podcast-ul nu este disponibil pentru această lecție.",
       },
       summary: {
         learningObjectives: "La sfârșitul acestei lecții vei putea…",
@@ -1550,6 +1580,16 @@ const en: Translations = {
         studentSummary: "Student summary",
         slides: "Slides",
         teacherGuidelines: "Teacher guidelines",
+        podcast: "Podcast",
+      },
+      downloadSlides: "Download Slides",
+      podcast: {
+        title: "Educational Podcast",
+        duration: "Duration",
+        download: "Download",
+        notSupported: "Your browser does not support the audio element.",
+        description: "Listen to an educational dialogue about this lesson. The podcast features a conversation between a teacher and student, making complex topics easier to understand.",
+        notAvailable: "Podcast not available for this lesson.",
       },
       deleteTitle: "Delete lesson?",
       deleteDescription: (title: string) => `This action cannot be undone. This will permanently delete the lesson "${title}".`,
@@ -1652,6 +1692,16 @@ const en: Translations = {
         summary: "Summary",
         slides: "Slides",
         quiz: "Quiz",
+        podcast: "Podcast",
+      },
+      downloadSlides: "Download Slides",
+      podcast: {
+        title: "Educational Podcast",
+        duration: "Duration",
+        download: "Download",
+        notSupported: "Your browser does not support the audio element.",
+        description: "Listen to an educational dialogue about this lesson. The podcast features a conversation between a teacher and student, making complex topics easier to understand.",
+        notAvailable: "Podcast not available for this lesson.",
       },
       summary: {
         learningObjectives: "By the end of this lesson you will be able to…",

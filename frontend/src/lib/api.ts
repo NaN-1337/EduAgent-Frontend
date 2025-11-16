@@ -82,6 +82,45 @@ export interface GeneratePresentationResponse {
   };
 }
 
+export interface GeneratePodcastRequest {
+  student_version: string;
+  teacher_version: string;
+  grade: number;
+  subject: string;
+  teacher_id: string;
+  lecture_id: string;
+  target_duration?: number;
+  return_dialogue?: boolean;
+  silence_between_turns?: number;
+  upload_to_firebase?: boolean;
+}
+
+export interface GeneratePodcastResponse {
+  success: boolean;
+  data: {
+    audio_base64?: string;
+    audio_size_bytes: number;
+    duration_seconds: number;
+    dialogue?: Array<{
+      speaker: string;
+      text: string;
+    }>;
+    firebase?: {
+      path: string;
+      download_url: string;
+      size_bytes: number;
+    };
+    metadata: {
+      grade: number;
+      subject: string;
+      teacher_id: string;
+      lecture_id: string;
+      duration_target: number;
+      turns_count: number;
+    };
+  };
+}
+
 /**
  * Generate clarifying questions for a lesson
  */
@@ -160,6 +199,35 @@ export async function downloadFile(url: string): Promise<Blob> {
     throw new Error(`Failed to download file: ${response.statusText}`);
   }
   return await response.blob();
+}
+
+/**
+ * Generate educational podcast from lecture content
+ */
+export async function generatePodcast(
+  request: GeneratePodcastRequest
+): Promise<GeneratePodcastResponse["data"]> {
+  const response = await fetch(`${API_BASE_URL}/api/generate-podcast`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      ...request,
+      target_duration: request.target_duration || 300,
+      return_dialogue: request.return_dialogue !== false,
+      silence_between_turns: request.silence_between_turns || 500,
+      upload_to_firebase: request.upload_to_firebase !== false,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to generate podcast");
+  }
+
+  const data: GeneratePodcastResponse = await response.json();
+  return data.data;
 }
 
 // ===========================

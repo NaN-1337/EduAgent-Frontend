@@ -5,7 +5,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, CheckCircle2, Loader2, ChevronsRight, ChevronsLeft, Bot } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, CheckCircle2, Loader2, ChevronsRight, ChevronsLeft, Bot, Download, Headphones } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { doc, updateDoc, arrayUnion, serverTimestamp, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
@@ -121,6 +121,8 @@ export default function StudentLessonPlayer() {
           slides: slides,
           presentationFileUrl: data.presentationFileUrl,
           presentationFileType: data.presentationFileType,
+          podcastUrl: data.podcastUrl,
+          podcastDuration: data.podcastDuration,
           learningObjectives: learningObjectives.length > 0 ? learningObjectives : [
             "Understand the main concepts",
             "Apply knowledge to examples",
@@ -508,6 +510,9 @@ export default function StudentLessonPlayer() {
                 <TabsTrigger value="slides" className="flex-1">
                   {t.student.lessonPlayer.tabs.slides}
                 </TabsTrigger>
+                <TabsTrigger value="podcast" className="flex-1">
+                  {t.student.lessonPlayer.tabs.podcast || "Podcast"}
+                </TabsTrigger>
                 {lesson.quiz && lesson.quiz.length > 0 && (
                   <TabsTrigger value="quiz" className="flex-1">
                     {t.student.lessonPlayer.tabs.quiz}
@@ -652,6 +657,25 @@ export default function StudentLessonPlayer() {
               {/* Slides View */}
               <TabsContent value="slides" className="mt-0">
                 <div className="space-y-6">
+                  {/* Download Button */}
+                  {lesson.presentationFileUrl && (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          const link = document.createElement("a");
+                          link.href = lesson.presentationFileUrl;
+                          link.download = `${lesson.title || "presentation"}.pdf`;
+                          link.click();
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        {t.student.lessonPlayer.downloadSlides || "Download Slides"}
+                      </Button>
+                    </div>
+                  )}
+                  
                   {/* Show PDF viewer if presentation file is available */}
                   {lesson.presentationFileUrl && lesson.presentationFileType === "pdf" ? (
                     <PDFSlideViewer
@@ -741,6 +765,70 @@ export default function StudentLessonPlayer() {
                     <p className="text-center text-muted-foreground py-12">
                       {t.student.lessonPlayer.slides.emptyState}
                     </p>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Podcast View */}
+              <TabsContent value="podcast" className="mt-0">
+                <div className="space-y-6">
+                  {lesson.podcastUrl ? (
+                    <Card className="border-2">
+                      <CardContent className="p-6 space-y-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Headphones className="h-6 w-6 text-primary" />
+                            <div>
+                              <h3 className="text-lg font-semibold">
+                                {t.student.lessonPlayer.podcast?.title || "Educational Podcast"}
+                              </h3>
+                              {lesson.podcastDuration && (
+                                <p className="text-sm text-muted-foreground">
+                                  {t.student.lessonPlayer.podcast?.duration || "Duration"}:{" "}
+                                  {Math.floor(lesson.podcastDuration / 60)}:
+                                  {String(Math.floor(lesson.podcastDuration % 60)).padStart(2, "0")}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              const link = document.createElement("a");
+                              link.href = lesson.podcastUrl;
+                              link.download = `${lesson.title || "podcast"}.mp3`;
+                              link.click();
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            <Download className="h-4 w-4" />
+                            {t.student.lessonPlayer.podcast?.download || "Download"}
+                          </Button>
+                        </div>
+                        
+                        <div className="w-full">
+                          <audio
+                            controls
+                            className="w-full"
+                            src={lesson.podcastUrl}
+                          >
+                            {t.student.lessonPlayer.podcast?.notSupported || "Your browser does not support the audio element."}
+                          </audio>
+                        </div>
+                        
+                        <p className="text-sm text-muted-foreground">
+                          {t.student.lessonPlayer.podcast?.description || 
+                           "Listen to an educational dialogue about this lesson. The podcast features a conversation between a teacher and student, making complex topics easier to understand."}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Headphones className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">
+                        {t.student.lessonPlayer.podcast?.notAvailable || "Podcast not available for this lesson."}
+                      </p>
+                    </div>
                   )}
                 </div>
               </TabsContent>
