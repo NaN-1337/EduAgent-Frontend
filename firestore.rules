@@ -124,6 +124,50 @@ service cloud.firestore {
       // (quizzes are one-time submissions)
       allow update, delete: if false;
     }
+
+    // Homeworks collection
+    match /homeworks/{homeworkId} {
+      // Allow read if user is authenticated
+      allow read: if isAuthenticated();
+      
+      // Allow create if user is a teacher and sets themselves as the teacherId
+      allow create: if isTeacher() && 
+                       request.resource.data.teacherId == request.auth.uid;
+      
+      // Allow update/delete if user is the teacher who owns the homework
+      allow update: if isTeacher() && 
+                       resource.data.teacherId == request.auth.uid;
+      
+      allow delete: if isTeacher() && 
+                       resource.data.teacherId == request.auth.uid;
+    }
+
+    // Homework submissions collection
+    match /homework_submissions/{submissionId} {
+      // Allow read if user is authenticated
+      // Teachers can read submissions for their homeworks (check via homework document)
+      // Students can read their own submissions
+      allow read: if isAuthenticated() && (
+                     // Teacher reading submissions - check if homework belongs to teacher
+                     (isTeacher() && 
+                      exists(/databases/$(database)/documents/homeworks/$(resource.data.homeworkId)) &&
+                      get(/databases/$(database)/documents/homeworks/$(resource.data.homeworkId)).data.teacherId == request.auth.uid) ||
+                     // Student reading their own submission
+                     (isStudent() && 
+                      resource.data.studentId == request.auth.uid)
+                   );
+      
+      // Allow create if user is a student and sets themselves as the studentId
+      allow create: if isStudent() && 
+                       request.resource.data.studentId == request.auth.uid;
+      
+      // Allow delete if student owns the submission (for replacing with new submission)
+      allow delete: if isStudent() && 
+                       resource.data.studentId == request.auth.uid;
+      
+      // Students should not be able to update their submissions
+      allow update: if false;
+    }
   }
 }
 

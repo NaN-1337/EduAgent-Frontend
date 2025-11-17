@@ -447,3 +447,90 @@ export async function generateHomework(
   return data.data;
 }
 
+// ===========================
+// Homework Submission API
+// ===========================
+
+export interface ParseSubmissionRequest {
+  submission_url: string;
+}
+
+export interface ParseSubmissionResponse {
+  success: boolean;
+  data: {
+    parsed_text: string;
+    page_count: number;
+    pages: string[];
+  };
+}
+
+export async function parseSubmission(
+  request: ParseSubmissionRequest
+): Promise<ParseSubmissionResponse["data"]> {
+  const response = await fetch(`${API_BASE_URL}/api/parse-submission`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to parse submission");
+  }
+
+  const data: ParseSubmissionResponse = await response.json();
+  return data.data;
+}
+
+export interface GradeHomeworkRequest {
+  homework_html: string;
+  parsed_submission: string;
+  subject?: string;
+  grade?: number;
+}
+
+export interface GradeHomeworkResponse {
+  success: boolean;
+  data: {
+    total_points_earned: number;
+    total_points_possible: number;
+    final_grade_percentage: number;
+    exercises: Array<{
+      exercise_number: number;
+      exercise_content: string;
+      student_solution: string;
+      points_earned: number;
+      max_points: number;
+      percentage: number;
+      feedback: string;
+      is_correct: boolean;
+      is_partial: boolean;
+    }>;
+    overall_feedback: string;
+    subject?: string;
+    grade_level?: number;
+  };
+}
+
+export async function gradeHomework(
+  request: GradeHomeworkRequest
+): Promise<GradeHomeworkResponse["data"]> {
+  const response = await fetch(`${API_BASE_URL}/api/grade-homework`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to grade homework");
+  }
+
+  const data: GradeHomeworkResponse = await response.json();
+  return data.data;
+}
+
