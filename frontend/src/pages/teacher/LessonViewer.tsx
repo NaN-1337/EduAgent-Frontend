@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, Edit } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
@@ -64,6 +64,7 @@ export default function LessonViewer() {
   const [loadingQuiz, setLoadingQuiz] = useState(false);
   const [generateQuizModalOpen, setGenerateQuizModalOpen] = useState(false);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+  const [isMarkingAsReady, setIsMarkingAsReady] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || userData?.role !== "teacher")) {
@@ -197,6 +198,29 @@ export default function LessonViewer() {
 
     fetchQuiz();
   }, [lesson?.quizId, user]);
+
+  // Handle marking lesson as ready
+  const handleMarkAsReady = async () => {
+    if (!lesson || !lessonId) return;
+
+    try {
+      setIsMarkingAsReady(true);
+      const lessonDocRef = doc(db, "lessons", lessonId);
+      await updateDoc(lessonDocRef, {
+        status: "ready",
+        updatedAt: serverTimestamp(),
+        lastModified: serverTimestamp(),
+      });
+
+      // Update local state
+      setLesson({ ...lesson, status: "ready" });
+    } catch (error) {
+      console.error("Error marking lesson as ready:", error);
+      alert("Failed to mark lesson as ready. Please try again.");
+    } finally {
+      setIsMarkingAsReady(false);
+    }
+  };
 
   // Handle quiz generation
   const handleGenerateQuiz = async (title: string, numQuestions: number) => {
@@ -368,14 +392,26 @@ export default function LessonViewer() {
               <Badge className={cn(getStatusColor(lesson.status), "border")}>
                 {lesson.status === "ready" ? t.common.status.sentToStudents : (t.common.status[lesson.status as keyof typeof t.common.status] || lesson.status)}
               </Badge>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => navigate(`/teacher/lessons/${lessonId}/edit`)}
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                {t.common.edit}
-              </Button>
+              {lesson.status !== "ready" && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleMarkAsReady}
+                  disabled={isMarkingAsReady}
+                >
+                  {isMarkingAsReady ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {t.teacher.lessonEditor.markReadyForStudents || "Marking as ready..."}
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      {t.teacher.lessonEditor.markReadyForStudents || "Mark as ready for students"}
+                    </>
+                  )}
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
