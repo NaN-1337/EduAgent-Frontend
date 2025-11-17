@@ -258,6 +258,9 @@ export interface Translations {
         exampleTitle: string;
         exampleTitleLabel: string;
         exampleTitleText: string;
+        recapTitle?: string;
+        recapDescription?: (title: string) => string;
+        recapCheckboxLabel?: string;
       };
       step2: {
         title: string;
@@ -1003,6 +1006,9 @@ const ro: Translations = {
         exampleTitle: "Exemplu de configurare bună a lecției",
         exampleTitleLabel: "Titlu",
         exampleTitleText: "\"Introducere în Fotosinteză – Clasa a 5-a\"",
+        recapTitle: "Recapitulare lecție anterioară",
+        recapDescription: (title: string) => `Clasa ta a avut dificultăți cu lecția anterioară "${title}". Dorești să incluzi o secțiune de recapitulare?`,
+        recapCheckboxLabel: "Include recapitulare din lecția anterioară",
       },
       step2: {
         title: "Materiale de referință",
@@ -1862,6 +1868,9 @@ const en: Translations = {
         exampleTitle: "Example of a good lesson setup",
         exampleTitleLabel: "Title",
         exampleTitleText: "\"Introduction to Photosynthesis – Grade 5\"",
+        recapTitle: "Review Previous Lesson",
+        recapDescription: (title: string) => `Your class had difficulty with the previous lesson "${title}". Would you like to include a recap section?`,
+        recapCheckboxLabel: "Include recap from previous lesson",
       },
       step2: {
         title: "Reference materials",

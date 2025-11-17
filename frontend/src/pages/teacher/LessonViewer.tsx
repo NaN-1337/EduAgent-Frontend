@@ -6,10 +6,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, Edit } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, CheckCircle2, Download, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { translations } from "@/lib/translations";
 import { convertLessonFromStorage, gradeToStorage, teachingFieldToStorage } from "@/lib/dataConverters";
@@ -72,6 +79,11 @@ export default function LessonViewer() {
   const [generateHomeworkModalOpen, setGenerateHomeworkModalOpen] = useState(false);
   const [isGeneratingHomework, setIsGeneratingHomework] = useState(false);
   const [homeworkQuestions, setHomeworkQuestions] = useState<HomeworkQuestion[]>([]);
+  const [isMarkingAsReady, setIsMarkingAsReady] = useState(false);
+  const [homeworkSubmissions, setHomeworkSubmissions] = useState<any[]>([]);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null);
+  const [showSubmissionDialog, setShowSubmissionDialog] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || userData?.role !== "teacher")) {
@@ -206,6 +218,29 @@ export default function LessonViewer() {
     fetchQuiz();
   }, [lesson?.quizId, user]);
 
+  // Handle marking lesson as ready
+  const handleMarkAsReady = async () => {
+    if (!lesson || !lessonId) return;
+
+    try {
+      setIsMarkingAsReady(true);
+      const lessonDocRef = doc(db, "lessons", lessonId);
+      await updateDoc(lessonDocRef, {
+        status: "ready",
+        updatedAt: serverTimestamp(),
+        lastModified: serverTimestamp(),
+      });
+
+      // Update local state
+      setLesson({ ...lesson, status: "ready" });
+    } catch (error) {
+      console.error("Error marking lesson as ready:", error);
+      alert("Failed to mark lesson as ready. Please try again.");
+    } finally {
+      setIsMarkingAsReady(false);
+    }
+  };
+
   useEffect(() => {
     const fetchHomework = async () => {
       if (!lesson?.homeworkId || !user) {
@@ -236,6 +271,41 @@ export default function LessonViewer() {
     };
 
     fetchHomework();
+  }, [lesson?.homeworkId, user]);
+
+  // Fetch homework submissions
+  useEffect(() => {
+    const fetchSubmissions = async () => {
+      if (!lesson?.homeworkId || !user) {
+        setHomeworkSubmissions([]);
+        return;
+      }
+
+      try {
+        setLoadingSubmissions(true);
+        const submissionsQuery = query(
+          collection(db, "homework_submissions"),
+          where("homeworkId", "==", lesson.homeworkId)
+        );
+        const submissionsSnapshot = await getDocs(submissionsQuery);
+        const submissions: any[] = [];
+        
+        submissionsSnapshot.forEach((doc) => {
+          submissions.push({
+            id: doc.id,
+            ...doc.data(),
+          });
+        });
+        
+        setHomeworkSubmissions(submissions);
+      } catch (error) {
+        console.error("Error fetching homework submissions:", error);
+      } finally {
+        setLoadingSubmissions(false);
+      }
+    };
+
+    fetchSubmissions();
   }, [lesson?.homeworkId, user]);
 
   // Handle quiz generation
@@ -505,14 +575,26 @@ export default function LessonViewer() {
               <Badge className={cn(getStatusColor(lesson.status), "border")}>
                 {lesson.status === "ready" ? t.common.status.sentToStudents : (t.common.status[lesson.status as keyof typeof t.common.status] || lesson.status)}
               </Badge>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => navigate(`/teacher/lessons/${lessonId}/edit`)}
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                {t.common.edit}
-              </Button>
+              {lesson.status !== "ready" && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleMarkAsReady}
+                  disabled={isMarkingAsReady}
+                >
+                  {isMarkingAsReady ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {t.teacher.lessonEditor.markReadyForStudents || "Marking as ready..."}
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      {t.teacher.lessonEditor.markReadyForStudents || "Mark as ready for students"}
+                    </>
+                  )}
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -860,10 +942,77 @@ export default function LessonViewer() {
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
                   ) : homework ? (
-                    <HomeworkDisplay
-                      homeworkHtml={homework.html}
-                      title={homework.title}
-                    />
+                    <>
+                      <HomeworkDisplay
+                        homeworkHtml={homework.html}
+                        title={homework.title}
+                      />
+                      
+                      {/* Submissions Section */}
+                      <div className="border-t pt-6 mt-6">
+                        <h3 className="text-lg font-semibold mb-4">Teme trimise de elevi</h3>
+                        {loadingSubmissions ? (
+                          <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                          </div>
+                        ) : homeworkSubmissions.length > 0 ? (
+                          <div className="space-y-4">
+                            {homeworkSubmissions.map((submission) => (
+                              <Card key={submission.id} className="border-2">
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                      <p className="font-medium">Student ID: {submission.studentId}</p>
+                                      <p className="text-sm text-muted-foreground">
+                                        Trimis: {submission.createdAt?.toDate?.()?.toLocaleDateString() || "N/A"}
+                                      </p>
+                                      {submission.status === "graded" && submission.totalPointsEarned !== undefined ? (
+                                        <p className="text-sm font-semibold text-primary mt-1">
+                                          Puncte: {submission.totalPointsEarned} / {submission.totalPointsPossible} ({submission.finalGradePercentage?.toFixed(1)}%)
+                                        </p>
+                                      ) : (
+                                        <p className="text-sm text-muted-foreground mt-1">
+                                          Eroare la notare
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setSelectedSubmission(submission);
+                                          setShowSubmissionDialog(true);
+                                        }}
+                                      >
+                                        <Eye className="h-4 w-4 mr-2" />
+                                        Vezi
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          if (submission.submissionUrl) {
+                                            window.open(submission.submissionUrl, "_blank");
+                                          }
+                                        }}
+                                      >
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Descarcă
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground text-center py-8">
+                            Nu există teme trimise încă.
+                          </p>
+                        )}
+                      </div>
+                    </>
                   ) : (
                     <div className="text-center py-12 space-y-4">
                       <p className="text-muted-foreground">
@@ -1526,6 +1675,109 @@ export default function LessonViewer() {
         defaultTitle={lesson ? `Temă: ${lesson.title}` : ""}
         questions={homeworkQuestions}
       />
+
+      {/* Submission Viewer Dialog */}
+      <Dialog open={showSubmissionDialog} onOpenChange={setShowSubmissionDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalii temă trimisă</DialogTitle>
+            <DialogDescription>
+              Student ID: {selectedSubmission?.studentId}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedSubmission && (
+            <div className="mt-4 space-y-6">
+              {/* File Viewer */}
+              {selectedSubmission.submissionUrl && (
+                <div className="space-y-2">
+                  <h4 className="font-semibold">Fișier trimis:</h4>
+                  <div className="border rounded-lg p-4 bg-muted/30">
+                    {selectedSubmission.submissionUrl.toLowerCase().endsWith('.pdf') ? (
+                      <iframe
+                        src={selectedSubmission.submissionUrl}
+                        className="w-full h-96 border-0 rounded"
+                        title="Submission PDF"
+                      />
+                    ) : (
+                      <img
+                        src={selectedSubmission.submissionUrl}
+                        alt="Submission"
+                        className="max-w-full h-auto rounded"
+                      />
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(selectedSubmission.submissionUrl, "_blank")}
+                    className="w-full"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Descarcă fișier
+                  </Button>
+                </div>
+              )}
+
+              {/* Grade Information */}
+              {selectedSubmission.status === "graded" && selectedSubmission.totalPointsEarned !== undefined ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                    <h4 className="font-semibold mb-2">Notare automată:</h4>
+                    <p className="text-lg">
+                      <strong>{selectedSubmission.totalPointsEarned}</strong> / {selectedSubmission.totalPointsPossible} puncte
+                      ({selectedSubmission.finalGradePercentage?.toFixed(1)}%)
+                    </p>
+                  </div>
+
+                  {selectedSubmission.exercises && selectedSubmission.exercises.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="font-semibold">Detalii pe exerciții:</h4>
+                      {selectedSubmission.exercises.map((exercise: any, index: number) => (
+                        <Card key={index} className="border-2">
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <span className="font-medium">Exercițiul {exercise.exercise_number}</span>
+                              <span className="text-sm font-semibold">
+                                {exercise.points_earned} / {exercise.max_points} puncte
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-2">{exercise.exercise_content}</p>
+                            <p className="text-sm mb-2"><strong>Răspuns elev:</strong> {exercise.student_solution}</p>
+                            <p className="text-sm text-muted-foreground">{exercise.feedback}</p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedSubmission.overallFeedback && (
+                    <div className="p-4 bg-muted/50 rounded-lg">
+                      <h4 className="font-semibold mb-2">Feedback general:</h4>
+                      <p className="text-sm whitespace-pre-wrap">{selectedSubmission.overallFeedback}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-4 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                    Nu s-a putut nota automat această temă. Te rugăm să o verifici manual.
+                  </p>
+                </div>
+              )}
+
+              {/* Parsed Text */}
+              {selectedSubmission.parsedText && (
+                <div className="space-y-2">
+                  <h4 className="font-semibold">Text extras:</h4>
+                  <div className="p-4 bg-muted/30 rounded-lg max-h-48 overflow-y-auto">
+                    <p className="text-sm whitespace-pre-wrap">{selectedSubmission.parsedText}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

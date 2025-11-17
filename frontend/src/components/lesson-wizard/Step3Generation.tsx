@@ -27,6 +27,8 @@ interface Step3GenerationProps {
   template?: string;
   questions: Question[];
   answers: Record<string, string>;
+  needsRecap?: boolean;
+  previousStudentVersion?: string;
   onComplete: (lessonId: string) => void;
   onContinue?: () => void;
   canContinue?: boolean;
@@ -40,6 +42,8 @@ export function Step3Generation({
   template,
   questions,
   answers,
+  needsRecap,
+  previousStudentVersion,
   onComplete,
   onContinue,
   canContinue,
@@ -169,13 +173,21 @@ export function Step3Generation({
           return newSteps;
         });
 
-        const lectureData = await generateLecture({
+        const lectureRequest: any = {
           title,
           subject: subjectStorage,
           grade: gradeNum,
           questions,
           answers,
-        });
+        };
+
+        // Add recap fields if needed
+        if (needsRecap && previousStudentVersion) {
+          lectureRequest.needs_recap = true;
+          lectureRequest.previous_student_version = previousStudentVersion;
+        }
+
+        const lectureData = await generateLecture(lectureRequest);
 
         // Mark lecture step as completed
         setSteps((prev) => {

@@ -138,12 +138,18 @@ export default function StudentLessonPlayer() {
         // This ensures proper CORS and range request support for audio streaming
         if (lessonData.podcastPath && !lessonData.podcastUrl) {
           try {
+            console.log("Fetching podcast URL from path:", lessonData.podcastPath);
             const storageRef = ref(storage, lessonData.podcastPath);
             const downloadURL = await getDownloadURL(storageRef);
+            console.log("Podcast URL fetched:", downloadURL);
             lessonData.podcastUrl = downloadURL;
           } catch (error) {
             console.error("Error getting podcast download URL:", error);
           }
+        } else if (lessonData.podcastUrl) {
+          console.log("Podcast URL already available:", lessonData.podcastUrl);
+        } else {
+          console.log("No podcast path or URL found");
         }
 
         setLesson(lessonData);
@@ -791,13 +797,38 @@ export default function StudentLessonPlayer() {
                         
                         <div className="w-full">
                           <audio
+                            key={lesson.podcastUrl} // Force re-render when URL changes
                             controls
                             className="w-full"
-                            src={lesson.podcastUrl ? `${lesson.podcastUrl}?t=${Date.now()}` : undefined}
+                            src={lesson.podcastUrl || undefined}
                             preload="metadata"
+                            crossOrigin="anonymous"
+                            onError={(e) => {
+                              console.error("Audio playback error:", e);
+                              const audioElement = e.currentTarget;
+                              console.error("Audio error details:", {
+                                error: audioElement.error,
+                                networkState: audioElement.networkState,
+                                readyState: audioElement.readyState,
+                                src: audioElement.src,
+                              });
+                            }}
+                            onLoadStart={() => {
+                              console.log("Audio loading started:", lesson.podcastUrl);
+                            }}
+                            onCanPlay={() => {
+                              console.log("Audio can play:", lesson.podcastUrl);
+                            }}
                           >
                             {t.student.lessonPlayer.podcast?.notSupported || "Your browser does not support the audio element."}
                           </audio>
+                          {lesson.podcastUrl && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {t.student.lessonPlayer.podcast?.duration || "Duration"}: {lesson.podcastDuration 
+                                ? `${Math.floor(lesson.podcastDuration / 60)}:${String(Math.floor(lesson.podcastDuration % 60)).padStart(2, '0')}`
+                                : "N/A"}
+                            </p>
+                          )}
                         </div>
                         
                         <p className="text-sm text-muted-foreground">

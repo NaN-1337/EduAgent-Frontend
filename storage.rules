@@ -14,6 +14,13 @@ service firebase.storage {
              firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'teacher';
     }
     
+    // Helper function to check if user is a student
+    function isStudent() {
+      return isAuthenticated() && 
+             firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'student';
+    }
+    
     // Storage structure: {teacherUid}/{grade}/{lessonId}/presentation.{ext}
     // OR: {teacherUid}/{grade}/{fileName} (for mock files)
     // Teachers can upload files to their own folder structure
@@ -56,6 +63,27 @@ service firebase.storage {
       allow read: if isAuthenticated();
       // Only allow write/delete for admins (you can add admin check if needed)
       allow write, delete: if false;
+    }
+    
+    // Homework submissions: homework_submissions/{studentId}/{homeworkId}/{fileName}
+    // Students can upload to their own folder
+    // Teachers and students can read (teachers need to see submissions for grading)
+    match /homework_submissions/{studentId}/{homeworkId}/{fileName} {
+      // Allow read if user is authenticated (teachers and students can read)
+      allow read: if isAuthenticated();
+      
+      // Allow write (upload) if:
+      // 1. User is authenticated
+      // 2. User is a student
+      // 3. The studentId matches the authenticated user's UID
+      allow write: if isAuthenticated() && 
+                      isStudent() &&
+                      request.auth.uid == studentId;
+      
+      // Allow delete only by the student who owns the file
+      allow delete: if isAuthenticated() && 
+                       isStudent() &&
+                       request.auth.uid == studentId;
     }
     
     // Deny all other paths
