@@ -1324,6 +1324,7 @@ const ro: Translations = {
         slides: "Slide-uri",
         quiz: "Test",
         podcast: "Podcast",
+        flashcards: "Flashcards",
       },
       downloadSlides: "Descarcă slide-urile",
       podcast: {
@@ -1333,6 +1334,16 @@ const ro: Translations = {
         notSupported: "Browserul tău nu suportă elementul audio.",
         description: "Ascultă un dialog educațional despre această lecție. Podcastul prezintă o conversație între un profesor și un elev, făcând subiectele complexe mai ușor de înțeles.",
         notAvailable: "Podcast-ul nu este disponibil pentru această lecție.",
+      },
+      flashcards: {
+        title: "Generează Flashcards",
+        description: "Creează flashcards pentru a te ajuta să memorizezi conceptele cheie din această lecție.",
+        numCardsLabel: "Număr de flashcards",
+        cards: "carduri",
+        generateButton: "Generează Flashcards",
+        generating: "Se generează...",
+        cardsGenerated: "Flashcards",
+        regenerate: "Generează noi",
       },
       summary: {
         learningObjectives: "La sfârșitul acestei lecții vei putea…",
@@ -2175,6 +2186,7 @@ const en: Translations = {
         slides: "Slides",
         quiz: "Quiz",
         podcast: "Podcast",
+        flashcards: "Flashcards",
       },
       downloadSlides: "Download Slides",
       podcast: {
@@ -2184,6 +2196,16 @@ const en: Translations = {
         notSupported: "Your browser does not support the audio element.",
         description: "Listen to an educational dialogue about this lesson. The podcast features a conversation between a teacher and student, making complex topics easier to understand.",
         notAvailable: "Podcast not available for this lesson.",
+      },
+      flashcards: {
+        title: "Generate Flashcards",
+        description: "Create flashcards to help you memorize key concepts from this lesson.",
+        numCardsLabel: "Number of flashcards",
+        cards: "cards",
+        generateButton: "Generate Flashcards",
+        generating: "Generating...",
+        cardsGenerated: "Flashcards",
+        regenerate: "Generate New",
       },
       summary: {
         learningObjectives: "By the end of this lesson you will be able to…",

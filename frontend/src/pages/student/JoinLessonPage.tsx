@@ -147,9 +147,11 @@ export default function JoinLessonPage() {
           to="/student/dashboard" 
           className="flex items-center justify-center space-x-3 text-foreground/70 hover:text-foreground transition-colors"
         >
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-            EA
-          </div>
+          <img 
+            src="/logo.png" 
+            alt="EduAgent" 
+            className="w-30 h-30 object-contain"
+          />
           <span className="text-lg font-semibold">EduAgent</span>
         </Link>
       </div>
