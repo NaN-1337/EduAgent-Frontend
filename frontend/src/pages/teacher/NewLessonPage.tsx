@@ -22,6 +22,8 @@ interface Step1Data {
   subject: string;
   numberOfSlides: number;
   template?: string;
+  needsRecap?: boolean;
+  previousStudentVersion?: string;
 }
 
 interface Step2QuestionsData {
@@ -336,6 +338,8 @@ export default function NewLessonPage() {
                 template={step1Data.template}
                 questions={step2Data.questions}
                 answers={step2Data.answers}
+                needsRecap={step1Data.needsRecap}
+                previousStudentVersion={step1Data.previousStudentVersion}
                 onComplete={handleGenerationComplete}
                 onContinue={() => {
                   setCurrentStage("review");
