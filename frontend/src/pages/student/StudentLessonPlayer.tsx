@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -448,30 +448,15 @@ export default function StudentLessonPlayer() {
 
 
   return (
-    <div className="min-h-screen bg-background flex flex-col w-full overflow-x-hidden">
-      {/* Top Bar */}
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full left-0 right-0">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Left: Logo */}
-            <Link to="/student/dashboard" className="flex items-center space-x-3">
-              <img 
-                src="/logo.png" 
-                alt="EduAgent" 
-                className="w-30 h-30 object-contain"
-              />
-            </Link>
-
-            {/* Middle: Lesson Title */}
-            <div className="flex-1 text-center px-4">
-              <h1 className="text-base sm:text-lg font-semibold truncate">
-                {lesson.title}
-              </h1>
-            </div>
-
-            {/* Right: Back Link */}
-            <div className="flex items-center gap-4">
-              {user && (
+    <div className="min-h-screen bg-background flex flex-col w-full overflow-x-hidden pt-16">
+      {/* Main Content */}
+      <div className="flex-1 flex relative">
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto w-full">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+            {/* Lesson Header */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -481,17 +466,15 @@ export default function StudentLessonPlayer() {
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   {t.student.lessonPlayer.backToLessons}
                 </Button>
-              )}
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold mb-2">
+                {lesson.title}
+              </h1>
+              <p className="text-muted-foreground">
+                {lesson.subject} · {lesson.grade}
+              </p>
             </div>
-          </div>
-        </div>
-      </header>
 
-      {/* Main Content */}
-      <div className="flex-1 flex relative">
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto w-full">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
             {/* Section Navigation Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="w-full mb-6">

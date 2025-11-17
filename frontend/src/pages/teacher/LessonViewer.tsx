@@ -555,64 +555,57 @@ export default function LessonViewer() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Top Bar */}
-      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Left: Lesson Info */}
-            <div className="flex-1">
-              <h1 className="text-base sm:text-lg font-semibold truncate">
-                {lesson.title}
-              </h1>
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                {lesson.subject} · {translations[language].grades[lesson.grade as keyof typeof translations.ro.grades] || lesson.grade}
-              </p>
-            </div>
-
-            {/* Right: Actions */}
-            <div className="flex items-center gap-3">
-              <Badge className={cn(getStatusColor(lesson.status), "border")}>
-                {lesson.status === "ready" ? t.common.status.sentToStudents : (t.common.status[lesson.status as keyof typeof t.common.status] || lesson.status)}
-              </Badge>
-              {lesson.status !== "ready" && (
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleMarkAsReady}
-                  disabled={isMarkingAsReady}
-                >
-                  {isMarkingAsReady ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      {t.teacher.lessonEditor.markReadyForStudents || "Marking as ready..."}
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      {t.teacher.lessonEditor.markReadyForStudents || "Mark as ready for students"}
-                    </>
-                  )}
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/teacher/dashboard")}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                {t.common.back}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <div className="min-h-screen bg-background flex flex-col pt-16">
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+            {/* Lesson Header */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/teacher/dashboard")}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  {t.common.back}
+                </Button>
+                <div className="flex items-center gap-3">
+                  <Badge className={cn(getStatusColor(lesson.status), "border")}>
+                    {lesson.status === "ready" ? t.common.status.sentToStudents : (t.common.status[lesson.status as keyof typeof t.common.status] || lesson.status)}
+                  </Badge>
+                  {lesson.status !== "ready" && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleMarkAsReady}
+                      disabled={isMarkingAsReady}
+                    >
+                      {isMarkingAsReady ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          {t.teacher.lessonEditor.markReadyForStudents || "Marking as ready..."}
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          {t.teacher.lessonEditor.markReadyForStudents || "Mark as ready for students"}
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold mb-2">
+                {lesson.title}
+              </h1>
+              <p className="text-muted-foreground">
+                {lesson.subject} · {translations[language].grades[lesson.grade as keyof typeof translations.ro.grades] || lesson.grade}
+              </p>
+            </div>
+
             {/* Section Navigation Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="w-full mb-6">

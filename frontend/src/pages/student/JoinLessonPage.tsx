@@ -150,7 +150,7 @@ export default function JoinLessonPage() {
           <img 
             src="/logo.png" 
             alt="EduAgent" 
-            className="w-30 h-30 object-contain"
+            className="w-16 h-16 object-contain"
           />
           <span className="text-lg font-semibold">EduAgent</span>
         </Link>

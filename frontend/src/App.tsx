@@ -1,7 +1,8 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from './contexts/AuthContext'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { LanguageProvider } from './contexts/LanguageContext'
+import { Navbar } from './components/layout/Navbar'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ProfilePage from './pages/ProfilePage'
@@ -25,12 +26,19 @@ import LearningPathsPage from './pages/individual/LearningPathsPage'
 import NewLearningPathPage from './pages/individual/NewLearningPathPage'
 import LearningPathViewPage from './pages/individual/LearningPathViewPage'
 
-function App() {
+function AppContent() {
+  const location = useLocation()
+  const { userData } = useAuth()
+  
+  // Don't show navbar on login/register pages
+  const showNavbar = !['/login', '/register'].includes(location.pathname)
+  
   return (
-    <ThemeProvider>
-      <LanguageProvider>
-        <AuthProvider>
-          <Routes>
+    <>
+      {showNavbar && userData && (
+        <Navbar role={userData.role as "teacher" | "student" | "individual"} />
+      )}
+      <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -58,6 +66,16 @@ function App() {
           <Route path="/individual/learning-paths/new" element={<NewLearningPathPage />} />
           <Route path="/individual/learning-paths/:id" element={<LearningPathViewPage />} />
         </Routes>
+    </>
+  )
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <AppContent />
         </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>

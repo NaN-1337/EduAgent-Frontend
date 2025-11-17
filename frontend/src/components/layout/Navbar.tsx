@@ -100,7 +100,7 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
             <img 
               src="/logo.png" 
               alt="EduAgent" 
-              className="w-36 h-36 object-contain"
+              className="w-20 h-20 object-contain"
             />
           </Link>
 
