@@ -5,6 +5,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, Minus, Plus, Volume2, CheckCircle2, Loader2, ChevronsRight, ChevronsLeft, Bot, Download, Headphones } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { doc, updateDoc, arrayUnion, serverTimestamp, getDoc } from "firebase/firestore";
@@ -15,6 +16,8 @@ import { convertLessonFromStorage } from "@/lib/dataConverters";
 import { PDFSlideViewer } from "@/components/pdf-viewer/PDFSlideViewer";
 import { LessonChatbot, LessonChatbotRef } from "@/components/chatbot/LessonChatbot";
 import { TextSelectionHandler } from "@/components/chatbot/TextSelectionHandler";
+import { FlashcardItem } from "@/components/flashcards/FlashcardItem";
+import { generateFlashcards, Flashcard } from "@/lib/api";
 
 export default function StudentLessonPlayer() {
   const { id: lessonId } = useParams<{ id: string }>();
@@ -32,6 +35,9 @@ export default function StudentLessonPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
   const isUserStoppingRef = useRef(false);
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [loadingFlashcards, setLoadingFlashcards] = useState(false);
+  const [numFlashcards, setNumFlashcards] = useState(10);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -334,6 +340,27 @@ export default function StudentLessonPlayer() {
   };
 
   // Handle text-to-speech
+  const handleGenerateFlashcards = async () => {
+    if (!lesson || loadingFlashcards) return;
+
+    try {
+      setLoadingFlashcards(true);
+      
+      const flashcardsData = await generateFlashcards({
+        student_version: lesson.studentSummary || "",
+        num_flashcards: numFlashcards,
+        subject: lesson.subject,
+        grade: lesson.grade ? parseInt(lesson.grade) : undefined,
+      });
+
+      setFlashcards(flashcardsData.flashcards);
+    } catch (error: any) {
+      console.error("Error generating flashcards:", error);
+    } finally {
+      setLoadingFlashcards(false);
+    }
+  };
+
   const handleTextToSpeech = () => {
     if (!lesson?.studentSummary) return;
 
@@ -422,10 +449,11 @@ export default function StudentLessonPlayer() {
           <div className="flex items-center justify-between h-16">
             {/* Left: Logo */}
             <Link to="/student/dashboard" className="flex items-center space-x-3">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-                EA
-              </div>
-              <span className="text-lg font-semibold hidden sm:inline">EduAgent</span>
+              <img 
+                src="/logo.png" 
+                alt="EduAgent" 
+                className="w-30 h-30 object-contain"
+              />
             </Link>
 
             {/* Middle: Lesson Title */}
@@ -469,6 +497,9 @@ export default function StudentLessonPlayer() {
                 </TabsTrigger>
                 <TabsTrigger value="podcast" className="flex-1">
                   {t.student.lessonPlayer.tabs.podcast || "Podcast"}
+                </TabsTrigger>
+                <TabsTrigger value="flashcards" className="flex-1">
+                  {t.student.lessonPlayer.tabs.flashcards || "Flashcards"}
                 </TabsTrigger>
               </TabsList>
 
@@ -782,6 +813,97 @@ export default function StudentLessonPlayer() {
                         {t.student.lessonPlayer.podcast?.notAvailable || "Podcast not available for this lesson."}
                       </p>
                     </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Flashcards View */}
+              <TabsContent value="flashcards" className="mt-0">
+                <div className="space-y-6">
+                  {flashcards.length === 0 ? (
+                    <Card className="border-2">
+                      <CardContent className="p-6 space-y-6">
+                        <div className="text-center">
+                          <h3 className="text-lg font-semibold mb-4">
+                            {t.student.lessonPlayer.flashcards?.title || "Generate Flashcards"}
+                          </h3>
+                          <p className="text-sm text-muted-foreground mb-6">
+                            {t.student.lessonPlayer.flashcards?.description || 
+                             "Create flashcards to help you memorize key concepts from this lesson."}
+                          </p>
+                          
+                          <div className="flex flex-col items-center gap-4 max-w-sm mx-auto">
+                            <div className="w-full space-y-2">
+                              <label className="text-sm font-medium">
+                                {t.student.lessonPlayer.flashcards?.numCardsLabel || "Number of flashcards"}
+                              </label>
+                              <Select
+                                value={numFlashcards.toString()}
+                                onValueChange={(value) => setNumFlashcards(parseInt(value))}
+                                disabled={loadingFlashcards}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select number" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="5">5 {t.student.lessonPlayer.flashcards?.cards || "cards"}</SelectItem>
+                                  <SelectItem value="10">10 {t.student.lessonPlayer.flashcards?.cards || "cards"}</SelectItem>
+                                  <SelectItem value="15">15 {t.student.lessonPlayer.flashcards?.cards || "cards"}</SelectItem>
+                                  <SelectItem value="20">20 {t.student.lessonPlayer.flashcards?.cards || "cards"}</SelectItem>
+                                  <SelectItem value="25">25 {t.student.lessonPlayer.flashcards?.cards || "cards"}</SelectItem>
+                                  <SelectItem value="30">30 {t.student.lessonPlayer.flashcards?.cards || "cards"}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            <Button
+                              onClick={handleGenerateFlashcards}
+                              disabled={loadingFlashcards}
+                              className="w-full"
+                              size="lg"
+                            >
+                              {loadingFlashcards ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  {t.student.lessonPlayer.flashcards?.generating || "Generating..."}
+                                </>
+                              ) : (
+                                t.student.lessonPlayer.flashcards?.generateButton || "Generate Flashcards"
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold">
+                          {t.student.lessonPlayer.flashcards?.cardsGenerated || "Flashcards"} ({flashcards.length})
+                        </h3>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setFlashcards([]);
+                            setNumFlashcards(10);
+                          }}
+                          size="sm"
+                        >
+                          {t.student.lessonPlayer.flashcards?.regenerate || "Generate New"}
+                        </Button>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {flashcards.map((card, index) => (
+                          <FlashcardItem
+                            key={index}
+                            question={card.flashcard_text}
+                            answer={card.answer}
+                            index={index}
+                          />
+                        ))}
+                      </div>
+                    </>
                   )}
                 </div>
               </TabsContent>

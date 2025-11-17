@@ -8,8 +8,13 @@
 /**
  * Convert grade from display format ("Grade 5") to storage format (5)
  */
-export function gradeToStorage(gradeDisplay: string): number | null {
-  if (!gradeDisplay) return null;
+export function gradeToStorage(gradeDisplay: string | number): number | null {
+  if (!gradeDisplay && gradeDisplay !== 0) return null;
+  
+  // If it's already a number, return it
+  if (typeof gradeDisplay === 'number') {
+    return gradeDisplay;
+  }
   
   // Extract number from "Grade X" format
   const match = gradeDisplay.match(/Grade\s+(\d+)/i);

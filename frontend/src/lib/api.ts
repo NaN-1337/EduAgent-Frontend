@@ -445,3 +445,49 @@ export async function generateHomework(
   return data.data;
 }
 
+/**
+ * Flashcards Generation
+ */
+
+export interface Flashcard {
+  flashcard_text: string;
+  answer: string;
+}
+
+export interface GenerateFlashcardsRequest {
+  student_version: string;
+  num_flashcards: number;
+  subject?: string;
+  grade?: number;
+}
+
+export interface GenerateFlashcardsResponse {
+  success: boolean;
+  data: {
+    flashcards: Flashcard[];
+    count: number;
+    subject?: string;
+    grade?: number;
+  };
+}
+
+export async function generateFlashcards(
+  request: GenerateFlashcardsRequest
+): Promise<GenerateFlashcardsResponse["data"]> {
+  const response = await fetch(`${API_BASE_URL}/api/generate-flashcards`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to generate flashcards");
+  }
+
+  const data: GenerateFlashcardsResponse = await response.json();
+  return data.data;
+}
+

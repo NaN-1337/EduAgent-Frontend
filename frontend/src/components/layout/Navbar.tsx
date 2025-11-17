@@ -97,10 +97,11 @@ export function Navbar({ role = "teacher" }: NavbarProps) {
         <div className="flex items-center justify-between h-16">
           {/* Logo and name */}
           <Link to={role === "teacher" ? "/teacher/dashboard" : role === "individual" ? "/individual/dashboard" : "/student/dashboard"} className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary text-primary-foreground font-bold text-xl">
-              EA
-            </div>
-            <span className="text-xl font-semibold text-foreground">EduAgent</span>
+            <img 
+              src="/logo.png" 
+              alt="EduAgent" 
+              className="w-36 h-36 object-contain"
+            />
           </Link>
 
           {/* Desktop navigation */}
