@@ -80,6 +80,7 @@ export interface Translations {
       account: string;
     };
     quizzes?: string;
+    homeworks?: string;
     profile: string;
     logout: string;
     menu: string;
@@ -333,6 +334,7 @@ export interface Translations {
         teacherGuidelines: string;
         podcast?: string;
         quiz?: string;
+        homework?: string;
       };
       downloadSlides?: string;
       podcast?: {
@@ -373,6 +375,31 @@ export interface Translations {
           correct: string;
         };
       };
+      homework?: {
+        generateButton: string;
+        generating: string;
+        noHomework: string;
+        generateModal?: {
+          title: string;
+          description: string;
+          titleLabel: string;
+          titlePlaceholder: string;
+          exercisesLabel: string;
+          exercisesHint: string;
+          questionsTitle: string;
+          questionsDescription: string;
+          generateButton: string;
+          generating: string;
+          generatingQuestions: string;
+          errors?: {
+            titleRequired: string;
+            invalidExerciseCount: string;
+            allQuestionsRequired: string;
+            questionsGenerationFailed: string;
+            generationFailed: string;
+          };
+        };
+      };
     };
     lessonViewer: {
       slideCounter: (current: number, total: number) => string;
@@ -401,6 +428,12 @@ export interface Translations {
       correct: string;
       incorrect: string;
       totalSubmissions: string;
+    };
+    homeworks?: {
+      title: string;
+      description: string;
+      emptyTitle: string;
+      emptyDescription: string;
     };
   };
 
@@ -615,6 +648,26 @@ export interface Translations {
       inputPlaceholder: string;
       errorMessage: string;
     };
+
+    quizzes?: {
+      title: string;
+      description: string;
+      emptyTitle: string;
+      emptyDescription: string;
+      pending: string;
+      completed: string;
+      questions: string;
+      startQuiz: string;
+      score: string;
+      viewResults: string;
+    };
+
+    homeworks?: {
+      title: string;
+      description: string;
+      emptyTitle: string;
+      emptyDescription: string;
+    };
   };
 
   // Placeholders for dynamic content (lessons, subjects, etc.)
@@ -771,6 +824,8 @@ const ro: Translations = {
       learningPaths: "Căi de învățare",
       account: "Cont",
     },
+    quizzes: "Teste",
+    homeworks: "Teme",
     profile: "Profil",
     logout: "Deconectare",
     menu: "Meniu",
@@ -1027,6 +1082,7 @@ const ro: Translations = {
         teacherGuidelines: "Ghiduri profesor",
         podcast: "Podcast",
         quiz: "Test",
+        homework: "Temă",
       },
       downloadSlides: "Descarcă slide-urile",
       podcast: {
@@ -1067,6 +1123,31 @@ const ro: Translations = {
           correct: "Corect",
         },
       },
+      homework: {
+        generateButton: "Generează temă",
+        generating: "Se generează...",
+        noHomework: "Nu a fost generată încă nicio temă pentru această lecție.",
+        generateModal: {
+          title: "Generează temă",
+          description: "Creează o temă bazată pe conținutul lecției. Tema va conține diverse tipuri de exerciții.",
+          titleLabel: "Titlul temei",
+          titlePlaceholder: "ex: Temă: Celula - Structura și funcțiile",
+          exercisesLabel: "Număr de exerciții",
+          exercisesHint: "Între 1 și 20 de exerciții",
+          questionsTitle: "Întrebări clarificatoare",
+          questionsDescription: "Te rugăm să răspunzi la aceste întrebări pentru a ne ajuta să generăm cea mai bună temă pentru elevii tăi.",
+          generateButton: "Generează temă",
+          generating: "Se generează...",
+          generatingQuestions: "Se generează întrebări...",
+          errors: {
+            titleRequired: "Titlul temei este obligatoriu",
+            invalidExerciseCount: "Numărul de exerciții trebuie să fie între 1 și 20",
+            allQuestionsRequired: "Te rugăm să răspunzi la toate întrebările",
+            questionsGenerationFailed: "Eroare la generarea întrebărilor",
+            generationFailed: "Eroare la generarea temei",
+          },
+        },
+      },
     },
     lessonViewer: {
       slideCounter: (current: number, total: number) => `Slide ${current} din ${total}`,
@@ -1095,6 +1176,12 @@ const ro: Translations = {
       correct: "Corect",
       incorrect: "Incorect",
       totalSubmissions: "Total trimise",
+    },
+    homeworks: {
+      title: "Temele mele",
+      description: "Vizualizează și gestionează toate temele pentru elevi",
+      emptyTitle: "Nicio temă încă",
+      emptyDescription: "Temele generate pentru lecții vor apărea aici",
     },
   },
 
@@ -1315,6 +1402,26 @@ const ro: Translations = {
       welcomeMessage: "Bună! Sunt aici să te ajut să înțelegi această lecție. Simte-te liber să-mi pui orice întrebări! 😊",
       inputPlaceholder: "Scrie întrebarea ta...",
       errorMessage: "Ne pare rău, am întâmpinat o eroare. Te rog încearcă din nou.",
+    },
+
+    quizzes: {
+      title: "Testele mele",
+      description: "Completează testele pentru lecțiile tale",
+      emptyTitle: "Niciun test disponibil",
+      emptyDescription: "Testele vor apărea aici când profesorii tăi le vor crea pentru lecții",
+      pending: "Teste în așteptare",
+      completed: "Teste completate",
+      questions: "Întrebări",
+      startQuiz: "Începe testul",
+      score: "Scor",
+      viewResults: "Vezi rezultate",
+    },
+
+    homeworks: {
+      title: "Temele mele",
+      description: "Completează temele pentru lecțiile tale",
+      emptyTitle: "Nicio temă disponibilă",
+      emptyDescription: "Temele vor apărea aici când profesorii tăi le vor crea pentru lecții",
     },
   },
 
@@ -1572,6 +1679,8 @@ const en: Translations = {
     logout: "Logout",
     menu: "Menu",
     toggleMenu: "Toggle menu",
+    quizzes: "Quizzes",
+    homeworks: "Homeworks",
   },
 
   auth: {
@@ -1824,6 +1933,7 @@ const en: Translations = {
         teacherGuidelines: "Teacher guidelines",
         podcast: "Podcast",
         quiz: "Quiz",
+        homework: "Homework",
       },
       downloadSlides: "Download Slides",
       podcast: {
@@ -1864,6 +1974,31 @@ const en: Translations = {
           correct: "Correct",
         },
       },
+      homework: {
+        generateButton: "Generate Homework",
+        generating: "Generating...",
+        noHomework: "No homework has been generated for this lesson yet.",
+        generateModal: {
+          title: "Generate Homework",
+          description: "Create homework based on the lesson content. The homework will contain various types of exercises.",
+          titleLabel: "Homework Title",
+          titlePlaceholder: "e.g., Homework: Celula - Structura și funcțiile",
+          exercisesLabel: "Number of Exercises",
+          exercisesHint: "Between 1 and 20 exercises",
+          questionsTitle: "Clarifying Questions",
+          questionsDescription: "Please answer these questions to help us generate the best homework for your students.",
+          generateButton: "Generate Homework",
+          generating: "Generating...",
+          generatingQuestions: "Generating questions...",
+          errors: {
+            titleRequired: "Homework title is required",
+            invalidExerciseCount: "Number of exercises must be between 1 and 20",
+            allQuestionsRequired: "Please answer all questions",
+            questionsGenerationFailed: "Failed to generate questions",
+            generationFailed: "Failed to generate homework",
+          },
+        },
+      },
     },
     lessonViewer: {
       slideCounter: (current: number, total: number) => `Slide ${current} of ${total}`,
@@ -1876,6 +2011,28 @@ const en: Translations = {
         tips: "Tips",
         resources: "Resources",
       },
+    },
+    quizzes: {
+      title: "My Quizzes",
+      description: "View and manage all your quizzes",
+      emptyTitle: "No quizzes yet",
+      emptyDescription: "Create quizzes for your lessons to track student progress",
+      questions: "Questions",
+      completed: "Completed",
+      averageScore: "Average Score",
+      viewDetails: "View Details",
+      statistics: "Statistics",
+      questionStatistics: "Question Statistics",
+      question: "Question",
+      correct: "Correct",
+      incorrect: "Incorrect",
+      totalSubmissions: "Total Submissions",
+    },
+    homeworks: {
+      title: "My Homeworks",
+      description: "View and manage all homeworks for students",
+      emptyTitle: "No homeworks yet",
+      emptyDescription: "Homeworks generated for lessons will appear here",
     },
   },
 
@@ -2081,6 +2238,12 @@ const en: Translations = {
         score: "Score",
         startQuiz: "Start Quiz",
         viewResults: "View Results",
+      },
+      homeworks: {
+        title: "My Homeworks",
+        description: "Complete homeworks for your lessons",
+        emptyTitle: "No homeworks available",
+        emptyDescription: "Homeworks will appear here when your teachers create them for lessons",
       },
       teacherInfo: {
         title: "Teacher Information",

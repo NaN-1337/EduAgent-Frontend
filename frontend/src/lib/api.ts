@@ -366,3 +366,84 @@ export async function generateQuiz(
   return data.data;
 }
 
+/**
+ * Homework Generation
+ */
+
+export interface GenerateHomeworkQuestionsRequest {
+  lesson_content: string;
+  num_exercises: number;
+  subject: string;
+  grade: number;
+}
+
+export interface HomeworkQuestion {
+  id: number;
+  question: string;
+  type: "single-choice" | "multiple-choice" | "yes-no";
+  options: string[];
+}
+
+export interface GenerateHomeworkQuestionsResponse {
+  success: boolean;
+  data: {
+    questions: HomeworkQuestion[];
+  };
+}
+
+export async function generateHomeworkQuestions(
+  request: GenerateHomeworkQuestionsRequest
+): Promise<GenerateHomeworkQuestionsResponse["data"]> {
+  const response = await fetch(`${API_BASE_URL}/api/generate-homework-questions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to generate homework questions");
+  }
+
+  const data: GenerateHomeworkQuestionsResponse = await response.json();
+  return data.data;
+}
+
+export interface GenerateHomeworkRequest {
+  lesson_content: string;
+  num_exercises: number;
+  subject: string;
+  grade: number;
+  questions: HomeworkQuestion[];
+  answers: Record<string, string>;
+}
+
+export interface GenerateHomeworkResponse {
+  success: boolean;
+  data: {
+    homework: string; // HTML content
+  };
+}
+
+export async function generateHomework(
+  request: GenerateHomeworkRequest
+): Promise<GenerateHomeworkResponse["data"]> {
+  const response = await fetch(`${API_BASE_URL}/api/generate-homework`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to generate homework");
+  }
+
+  const data: GenerateHomeworkResponse = await response.json();
+  return data.data;
+}
+

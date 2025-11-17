@@ -14,9 +14,11 @@ import { db } from "@/lib/firebaseConfig";
 import { translations } from "@/lib/translations";
 import { convertLessonFromStorage, gradeToStorage, teachingFieldToStorage } from "@/lib/dataConverters";
 import { PDFSlideViewer } from "@/components/pdf-viewer/PDFSlideViewer";
-import { generateQuiz, QuizQuestion } from "@/lib/api";
+import { generateQuiz, QuizQuestion, generateHomeworkQuestions, generateHomework, HomeworkQuestion } from "@/lib/api";
 import { GenerateQuizModal } from "@/components/quiz/GenerateQuizModal";
 import { QuizDisplayReadOnly } from "@/components/quiz/QuizDisplayReadOnly";
+import { GenerateHomeworkModal } from "@/components/homework/GenerateHomeworkModal";
+import { HomeworkDisplay } from "@/components/homework/HomeworkDisplay";
 import { Loader2 } from "lucide-react";
 
 interface Slide {
@@ -39,6 +41,7 @@ interface LessonData {
   presentationFileUrl?: string;
   presentationFileType?: "pdf";
   quizId?: string | null;
+  homeworkId?: string | null;
   teacherGuidelines?: {
     content?: string; // HTML content from API
     objectives?: string;
@@ -64,6 +67,11 @@ export default function LessonViewer() {
   const [loadingQuiz, setLoadingQuiz] = useState(false);
   const [generateQuizModalOpen, setGenerateQuizModalOpen] = useState(false);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+  const [homework, setHomework] = useState<{ html: string; title: string } | null>(null);
+  const [loadingHomework, setLoadingHomework] = useState(false);
+  const [generateHomeworkModalOpen, setGenerateHomeworkModalOpen] = useState(false);
+  const [isGeneratingHomework, setIsGeneratingHomework] = useState(false);
+  const [homeworkQuestions, setHomeworkQuestions] = useState<HomeworkQuestion[]>([]);
   const [isMarkingAsReady, setIsMarkingAsReady] = useState(false);
 
   useEffect(() => {
@@ -222,6 +230,38 @@ export default function LessonViewer() {
     }
   };
 
+  useEffect(() => {
+    const fetchHomework = async () => {
+      if (!lesson?.homeworkId || !user) {
+        setHomework(null);
+        return;
+      }
+
+      try {
+        setLoadingHomework(true);
+        const homeworkDocRef = doc(db, "homeworks", lesson.homeworkId);
+        const homeworkDocSnap = await getDoc(homeworkDocRef);
+
+        if (homeworkDocSnap.exists()) {
+          const homeworkData = homeworkDocSnap.data();
+          setHomework({
+            html: homeworkData.htmlContent || "",
+            title: homeworkData.title || "Homework",
+          });
+        } else {
+          setHomework(null);
+        }
+      } catch (error) {
+        console.error("Error fetching homework:", error);
+        setHomework(null);
+      } finally {
+        setLoadingHomework(false);
+      }
+    };
+
+    fetchHomework();
+  }, [lesson?.homeworkId, user]);
+
   // Handle quiz generation
   const handleGenerateQuiz = async (title: string, numQuestions: number) => {
     if (!lesson || !user) return;
@@ -285,6 +325,103 @@ export default function LessonViewer() {
       throw error;
     } finally {
       setIsGeneratingQuiz(false);
+    }
+  };
+
+  // Handle homework generation - Step 1: Open modal and generate questions
+  const handleOpenHomeworkModal = async () => {
+    if (!lesson || !user) return;
+
+    setGenerateHomeworkModalOpen(true);
+    setHomeworkQuestions([]); // Clear previous questions
+    
+    try {
+      // Convert grade and subject for API
+      const gradeNum = gradeToStorage(lesson.grade);
+      const subjectStorage = teachingFieldToStorage(lesson.subject);
+
+      if (gradeNum === null || !subjectStorage) {
+        throw new Error("Invalid grade or subject");
+      }
+
+      // Generate clarifying questions
+      const questionsData = await generateHomeworkQuestions({
+        lesson_content: lesson.studentSummary,
+        num_exercises: 5,
+        subject: subjectStorage,
+        grade: gradeNum,
+      });
+
+      setHomeworkQuestions(questionsData.questions);
+    } catch (error: any) {
+      console.error("Error generating homework questions:", error);
+      setGenerateHomeworkModalOpen(false);
+    }
+  };
+
+  // Handle homework generation - Step 2: Generate actual homework
+  const handleGenerateHomework = async (
+    title: string,
+    numExercises: number,
+    questions: HomeworkQuestion[],
+    answers: Record<string, string>
+  ) => {
+    if (!lesson || !user) return;
+
+    try {
+      setIsGeneratingHomework(true);
+
+      // Convert grade and subject for API
+      const gradeNum = gradeToStorage(lesson.grade);
+      const subjectStorage = teachingFieldToStorage(lesson.subject);
+
+      if (gradeNum === null || !subjectStorage) {
+        throw new Error("Invalid grade or subject");
+      }
+
+      // Generate homework from API
+      const homeworkData = await generateHomework({
+        lesson_content: lesson.studentSummary,
+        num_exercises: numExercises,
+        subject: subjectStorage,
+        grade: gradeNum,
+        questions: questions,
+        answers: answers,
+      });
+
+      // Create homework document in Firestore
+      const homeworkDocData = {
+        lectureId: lesson.id,
+        teacherId: user.uid,
+        title: title,
+        subject: subjectStorage,
+        grade: gradeNum,
+        numExercises: numExercises,
+        htmlContent: homeworkData.homework,
+        createdAt: serverTimestamp(),
+      };
+
+      const homeworkDocRef = await addDoc(collection(db, "homeworks"), homeworkDocData);
+      const homeworkId = homeworkDocRef.id;
+
+      // Update lesson with homeworkId
+      const lessonDocRef = doc(db, "lessons", lesson.id);
+      await updateDoc(lessonDocRef, {
+        homeworkId: homeworkId,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Update local state
+      setLesson((prev) => (prev ? { ...prev, homeworkId } : null));
+      setHomework({
+        html: homeworkData.homework,
+        title: title,
+      });
+    } catch (error: any) {
+      console.error("Error generating homework:", error);
+      throw error;
+    } finally {
+      setIsGeneratingHomework(false);
     }
   };
 
@@ -444,6 +581,9 @@ export default function LessonViewer() {
                 </TabsTrigger>
                 <TabsTrigger value="quiz" className="flex-1">
                   {t.teacher.lessonEditor.tabs.quiz || "Quiz"}
+                </TabsTrigger>
+                <TabsTrigger value="homework" className="flex-1">
+                  {t.teacher.lessonEditor.tabs.homework || "Temă"}
                 </TabsTrigger>
               </TabsList>
 
@@ -741,6 +881,42 @@ export default function LessonViewer() {
                           </>
                         ) : (
                           t.teacher.lessonEditor.quiz?.generateButton || "Generate Quiz"
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Homework View */}
+              <TabsContent value="homework" className="mt-0">
+                <div className="space-y-6">
+                  {loadingHomework ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : homework ? (
+                    <HomeworkDisplay
+                      homeworkHtml={homework.html}
+                      title={homework.title}
+                    />
+                  ) : (
+                    <div className="text-center py-12 space-y-4">
+                      <p className="text-muted-foreground">
+                        {t.teacher.lessonEditor.homework?.noHomework || "No homework has been generated for this lesson yet."}
+                      </p>
+                      <Button
+                        size="lg"
+                        onClick={handleOpenHomeworkModal}
+                        disabled={isGeneratingHomework}
+                      >
+                        {isGeneratingHomework ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {t.teacher.lessonEditor.homework?.generating || "Generating..."}
+                          </>
+                        ) : (
+                          t.teacher.lessonEditor.homework?.generateButton || "Generate Homework"
                         )}
                       </Button>
                     </div>
@@ -1377,6 +1553,14 @@ export default function LessonViewer() {
         onOpenChange={setGenerateQuizModalOpen}
         onGenerate={handleGenerateQuiz}
         defaultTitle={lesson ? `Test: ${lesson.title}` : ""}
+      />
+      
+      <GenerateHomeworkModal
+        open={generateHomeworkModalOpen}
+        onOpenChange={setGenerateHomeworkModalOpen}
+        onGenerate={handleGenerateHomework}
+        defaultTitle={lesson ? `Temă: ${lesson.title}` : ""}
+        questions={homeworkQuestions}
       />
     </div>
   );
